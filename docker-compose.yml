@@ -8,18 +8,18 @@ services:
     restart: always
     environment:
       - ACCEPT_EULA=y
-      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD} # Nên để trong .env
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD} # nhận tham số từ file yml
     ports:
       - "1433:1433"
     volumes:
       - sql_data:/var/opt/mssql
-    networks:      # Khuyên dùng: Gom vào 1 network riêng cho xịn
+    networks:      
       - app-network
 
   # 2. BACKEND API
-  api: # Đặt tên ngắn gọn là api
-    # Nếu đang dev thì dùng build, nếu deploy thì dùng image
-    # image: ${REGISTRY}/${IMAGE_NAME}:${TAG} 
+  flood-rescue-api: # Đặt tên ngắn gọn là api
+    # Hứng tham số từ bên file yml
+    image: ${REGISTRY}/${REPO_USER}/${IMAGE_NAME}:${IMAGE_TAG_VERSION}
     build:
       context: .
       dockerfile: FloodRescue/FloodRescue.API/Dockerfile
@@ -28,7 +28,7 @@ services:
     depends_on: 
       - db
     ports:
-      - "8080:8080" # Map port để test local nếu cần
+      - "8080:80" # Map port để test local nếu cần
     environment:
       # Lưu ý: Server=db (tên service db ở trên)
       - ConnectionStrings__DefaultConnection=Server=db,1433;Database=FloodRescue;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False
@@ -42,7 +42,7 @@ services:
     restart: always
     command: tunnel run
     environment:
-      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN} #nhận tham số từ file .yml
     networks:
       - app-network
 
