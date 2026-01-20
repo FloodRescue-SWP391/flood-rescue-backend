@@ -39,5 +39,7 @@ namespace FloodRescue.Repositories.Entites
         [Column("IsDeleted", TypeName = "BIT")]
         public bool IsDeleted { get; set; } = false;
 
+        public ICollection<RescueRequestImage> Images { get; set; } = new List<RescueRequestImage>();
+
     }
 }
