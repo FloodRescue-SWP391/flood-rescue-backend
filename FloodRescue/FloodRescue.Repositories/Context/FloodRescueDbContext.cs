@@ -30,6 +30,7 @@ namespace FloodRescue.Repositories.Context
 
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<CitizenNotification> CitizenNotifications { get; set; }
+        public DbSet<RescueRequestImage> RescueRequestImages { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -89,6 +90,12 @@ namespace FloodRescue.Repositories.Context
                 .HasOne(rtm => rtm.User)
                 .WithMany()
                 .HasForeignKey(rtm => rtm.UserID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<RescueRequestImage>()
+                .HasOne(rri => rri.RescueRequest)
+                .WithMany()
+                .HasForeignKey(rri => rri.RescueRequestID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // [RegularExpression("^(AD|RC|IM|RT)$")]

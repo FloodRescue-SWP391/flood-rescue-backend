@@ -1,4 +1,6 @@
 ﻿using FloodRescue.Repositories.Context;
+using FloodRescue.Repositories.Implements;
+using FloodRescue.Repositories.Interface;
 using Microsoft.EntityFrameworkCore;
 
 namespace FloodRescue.API
@@ -16,8 +18,14 @@ namespace FloodRescue.API
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+            //Lấy Connection String
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
+            //Đăng ký Unit Of Work
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+
+            //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
                 options.UseSqlServer(
                     connectionString,
@@ -36,6 +44,7 @@ namespace FloodRescue.API
 
             var app = builder.Build();
 
+            //Đăng kí Migration để tự động kích hoạt các migration khi chạy ứng dụng
             //Auto chạy lại update-database migration cập nhật các migration mới nhất
             // Mở sql ra thêm vào rồi đóng cổng lại luôn
             using (var scope = app.Services.CreateScope())
