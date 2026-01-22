@@ -10,4 +10,15 @@
     <ProjectReference Include="..\FloodRescue.Repositories\FloodRescue.Repositories.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="12.0.1" />
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="DTO\Response\" />
+    <Folder Include="Interface\" />
+    <Folder Include="Implements\" />
+  </ItemGroup>
+
 </Project>

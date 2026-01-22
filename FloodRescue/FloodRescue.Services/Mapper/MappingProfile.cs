@@ -1,0 +1,33 @@
+﻿using AutoMapper;
+using FloodRescue.Repositories.Entites;
+using FloodRescue.Services.DTO.Request;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FloodRescue.Services.Mapper
+{
+    public class MappingProfile : Profile
+    {
+        public MappingProfile()
+        {
+            // Mapping UpdateUserRequestDTO -> User 
+            CreateMap<CreateUserRequestDTO, User>();
+            //Mapping chính xác các tên Property rồi nên ko cần ForMember nữa
+
+            // Mapping User -> UserResponseDTO
+            CreateMap<User, UserResponseDTO>()
+                .ForMember(
+                    destinationMember: destination => destination.RoleName,
+                    opt => opt.MapFrom(src => src.Role != null ? src.Role.RoleName : string.Empty)
+                    );
+
+            //Mapping UpdateUserRequestDTO -> User
+            CreateMap<UpdateUserRequestDTO, User>()
+                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+
+        }
+    }
+}
