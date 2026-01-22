@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Services.DTO.Request;
+using FloodRescue.Services.DTO.Request.Warehouse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,6 +28,10 @@ namespace FloodRescue.Services.Mapper
             //Mapping UpdateUserRequestDTO -> User
             CreateMap<UpdateUserRequestDTO, User>()
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+
+
+            //Mapping CreateWarehouseRequestDTO -> WarehouseRequest
+           CreateMap<CreateWarehouseRequestDTO, Warehouse>();
 
         }
     }

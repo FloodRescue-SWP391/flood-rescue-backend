@@ -1,6 +1,8 @@
 ﻿using FloodRescue.Repositories.Context;
 using FloodRescue.Repositories.Implements;
 using FloodRescue.Repositories.Interface;
+using FloodRescue.Services.Implements;
+using FloodRescue.Services.Interface;
 using FloodRescue.Services.Mapper;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +30,8 @@ namespace FloodRescue.API
             //Đăng ký AutoMapper
             builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
 
+            //Đăng ký WarehouseService
+            builder.Services.AddScoped<IWarehouseService, WarehouseService>();
 
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
