@@ -1,16 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using FloodRescue.Repositories.Context;
+using FloodRescue.Repositories.Entites;
+using FloodRescue.Services.BusinessModels;
+using FloodRescue.Services.DTO.Request.Warehouse;
+using FloodRescue.Services.DTO.Request.WarehouseRequest;
+using FloodRescue.Services.DTO.Response.Warehouse;
+using FloodRescue.Services.Implements;
+using FloodRescue.Services.Interface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using FloodRescue.Repositories.Context;
-using FloodRescue.Repositories.Entites;
-using FloodRescue.Services.Interface;
-using FloodRescue.Services.Implements;
-using FloodRescue.Services.DTO.Request.Warehouse;
-using FloodRescue.Services.BusinessModels;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace FloodRescue.API.Controllers
 {
@@ -27,83 +29,67 @@ namespace FloodRescue.API.Controllers
 
         // GET: api/Warehouses1
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Warehouse>>> GetWarehouses()
+        public async Task<ActionResult<ApiResponse<List<ShowWareHouseResponseDTO>>>> GetWarehouses()
         {
-            return null;
+            List<ShowWareHouseResponseDTO>? result = await _warehouseService.GetAllWarehousesAsync();
+            if (result != null)
+            {
+                return ApiResponse<List<ShowWareHouseResponseDTO>>.Ok(result, "Get all warehouses successfully", 200);
+            }
+            return ApiResponse<List<ShowWareHouseResponseDTO>>.Fail("Warehouse not found");
         }
 
         // GET: api/Warehouses1/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Warehouse>> GetWarehouse(int id)
+        public async Task<ActionResult<ApiResponse<ShowWareHouseResponseDTO>>> GetWarehouse(int id)
         {
-            var warehouse = new Warehouse();
-
-            if (warehouse == null)
+            ShowWareHouseResponseDTO? result = await _warehouseService.SearchWarehouseAsync(id);
+            if (result == null)
             {
-                return NotFound();
+                return ApiResponse<ShowWareHouseResponseDTO>.Fail("Warehouse not found");
             }
-
-            return warehouse;
+            return ApiResponse<ShowWareHouseResponseDTO>.Ok(result, "Get warehouse successfully", 200);
         }
 
         // PUT: api/Warehouses1/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutWarehouse(int id, Warehouse warehouse)
+        public async Task<ActionResult<ApiResponse<UpdateWarehouseResponseDTO>>> PutWarehouse(int id,UpdateWarehouseRequestDTO warehouse)
         {
-            if (id != warehouse.WarehouseID)
-            {
-                return BadRequest();
-            }
+            UpdateWarehouseResponseDTO? result = await _warehouseService.UpdateWarehouseAsync(id, warehouse);
 
-            
-
-            try
+            if (result == null)
             {
-                 
+                return NotFound(ApiResponse<UpdateWarehouseResponseDTO>.Fail("Warehouse not found or update failed", 404));
             }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!WarehouseExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
+            return Ok(ApiResponse<UpdateWarehouseResponseDTO>.Ok(result, "Update warehouse successfully", 200));
         }
 
         // POST: api/Warehouses1
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<bool>>> PostWarehouse(CreateWarehouseRequestDTO warehouse)
+        public async Task<ActionResult<ApiResponse<CreateWarehouseResponseDTO>>> PostWarehouse(CreateWarehouseRequestDTO warehouse)
         {
-            var result = await _warehouseService.CreateWarehouseAsync(warehouse);
-            if (!result)
+            CreateWarehouseResponseDTO result = await _warehouseService.CreateWarehouseAsync(warehouse);
+            if (result ==  null)
             {
-                return ApiResponse<bool>.Fail("Create warehouse failed");
+                return ApiResponse<CreateWarehouseResponseDTO>.Fail("Create warehouse failed");
             }
 
-            return ApiResponse<bool>.Ok(result,"Create warehouse successfully",200);
+            return ApiResponse<CreateWarehouseResponseDTO>.Ok(result, "Create warehouse successfully", 200);
         }
 
         // DELETE: api/Warehouses1/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteWarehouse(int id)
+        public async Task<ActionResult<ApiResponse<bool>>> DeleteWarehouse(int id)
         {
-            var warehouse = new Warehouse();
-            if (warehouse == null)
+            bool result = await _warehouseService.DeleteWarehouseAsync(id);
+            if (!result)
             {
-                return NotFound();
+                return ApiResponse<bool>.Fail("Delete failed");
             }
 
-
-
-            return NoContent();
+            return ApiResponse<bool>.Ok(true,"Delete warehouse successfully", 200);
         }
 
         private bool WarehouseExists(int id)

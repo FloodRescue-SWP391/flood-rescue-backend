@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using FloodRescue.Repositories.Entites;
-using FloodRescue.Services.DTO.Request;
+using FloodRescue.Services.DTO.Request.User;
 using FloodRescue.Services.DTO.Request.Warehouse;
+using FloodRescue.Services.DTO.Response.UserResponse;
+using FloodRescue.Services.DTO.Response.Warehouse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,8 +33,22 @@ namespace FloodRescue.Services.Mapper
 
 
             //Mapping CreateWarehouseRequestDTO -> WarehouseRequest
-           CreateMap<CreateWarehouseRequestDTO, Warehouse>();
+            CreateMap<CreateWarehouseRequestDTO, Warehouse>();
 
+            //Mapping Warehouse -> CreateWarehouseResponseDTO
+            CreateMap<Warehouse, CreateWarehouseResponseDTO>().ForMember(
+                    destinationMember: destination => destination.CreatedBy,
+                    opt => opt.MapFrom(src => src.Manager != null ? src.Manager.FullName : string.Empty)
+                );
+
+            // Mapping Warehouse -> ShowWareHouseResponseDTO
+            CreateMap<Warehouse, ShowWareHouseResponseDTO>().ForMember(
+                destinationMember: destination => destination.ManagedBy,
+                opt => opt.MapFrom(src => src.Manager != null ? src.Manager.FullName : string.Empty)
+            );
+
+            // Mapping Warehouse -> UpdateWarehouseResponseDTO
+            CreateMap<Warehouse, UpdateWarehouseResponseDTO>();
         }
     }
 }
