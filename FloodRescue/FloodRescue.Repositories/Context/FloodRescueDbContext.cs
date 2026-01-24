@@ -32,6 +32,8 @@ namespace FloodRescue.Repositories.Context
         public DbSet<CitizenNotification> CitizenNotifications { get; set; }
         public DbSet<RescueRequestImage> RescueRequestImages { get; set; }
 
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

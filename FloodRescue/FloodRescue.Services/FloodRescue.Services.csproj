@@ -17,8 +17,6 @@
 
   <ItemGroup>
     <Folder Include="DTO\Response\" />
-    <Folder Include="Interface\" />
-    <Folder Include="Implements\" />
   </ItemGroup>
 
 </Project>
