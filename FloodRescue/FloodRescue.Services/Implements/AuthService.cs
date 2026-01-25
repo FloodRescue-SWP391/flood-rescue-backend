@@ -2,10 +2,13 @@
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.BusinessModels;
-using FloodRescue.Services.DTO.Request.RegisterRequest;
+using FloodRescue.Services.DTO.Request.Auth;
+using FloodRescue.Services.DTO.Request.AuthRequest;
 using FloodRescue.Services.DTO.Request.User;
+using FloodRescue.Services.DTO.Response.AuthResponse;
 using FloodRescue.Services.DTO.Response.RegisterResponse;
 using FloodRescue.Services.Interface;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,14 +17,48 @@ using System.Threading.Tasks;
 
 namespace FloodRescue.Services.Implements
 {
-    public class RegisterService : IRegisterService
+    public class AuthService : IAuthService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ITokenService _tokenService;
+        private readonly IConfiguration _configuration;
 
-        public RegisterService(IUnitOfWork unitOfWork, IMapper mapper) {
+        public AuthService(IUnitOfWork unitOfWork, IMapper mapper, IConfiguration configuration, ITokenService tokenService) {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _configuration = configuration;
+            _tokenService = tokenService;
+        }
+
+        public async Task<(AuthResponseDTO? Data, string? ErrorMessage)> RefeshTokenAsync(RefreshTokenRequest request)
+        {
+            var result = await _tokenService.RefreshTokenFromAccessTokenAsync(request.AccessToken);
+
+            if(result == null)
+            {
+                return (null, "Invalid or expired token. Please login again");            
+            
+            }
+
+            //phân rã cấu trúc ra để xài
+            var (newAcessToken, newRefreshToken, user) = result.Value;
+
+            var expireTimeInMinutes = int.Parse(_configuration.GetSection("JwtSettings")["AccessTokenExpirationMinutes"]!);
+
+            AuthResponseDTO response = new AuthResponseDTO
+            {
+                AccessToken = newAcessToken,
+                TokenType = "Bearer",   
+                ExpiresIn = expireTimeInMinutes * 60, // seconds    
+                UserID = user.UserID,
+                Username = user.Username,
+                FullName = user.FullName,
+                Role = user.Role?.RoleName ?? ""
+            };
+
+            return (response, null);
+
         }
 
         public async Task<(RegisterResponseDTO? Data,string? ErrorMessage)> RegisterAsync(RegisterRequestDTO request)

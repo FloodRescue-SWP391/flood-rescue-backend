@@ -62,6 +62,51 @@ namespace FloodRescue.Repositories.Implements
         {
             _dbSet.Update(entity);
         }
-    }
 
+        // ===== OVERLOAD METHOD WITH INCLUDE SUPPORT =====
+        
+        /// <summary>
+        /// Lấy 1 entity theo filter VỚI navigation properties
+        /// Ví dụ: GetAsync(u => u.UserID == id, u => u.Role, u => u.RefreshTokens)
+        /// </summary>
+        public async Task<TEntity?> GetAsync(
+            Expression<Func<TEntity, bool>> filter, 
+            params Expression<Func<TEntity, object>>[] includes) 
+        {
+            IQueryable<TEntity> query = _dbSet;
+
+            // Thêm từng Include vào query
+            foreach (var include in includes)
+            {
+                query = query.Include(include);
+            }
+
+            // FIX: Thêm await cho FirstOrDefaultAsync
+            return await query.FirstOrDefaultAsync(filter);
+        }
+
+        /// <summary>
+        /// Lấy danh sách entity VỚI navigation properties
+        /// Ví dụ: GetAllAsync(u => u.IsDeleted == false, u => u.Role)
+        /// </summary>
+        public async Task<List<TEntity>> GetAllAsync(
+            Expression<Func<TEntity, bool>>? filter, 
+            params Expression<Func<TEntity, object>>[] includes)
+        {
+            IQueryable<TEntity> query = _dbSet;
+
+            // Thêm từng Include vào query
+            foreach (var include in includes)
+            {
+                query = query.Include(include); 
+            }
+
+            if(filter != null)
+            {
+                query = query.Where(filter);
+            }
+
+            return await query.ToListAsync();
+        }
+    }
 }

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FloodRescue.Services.DTO.Response.UserResponse
+namespace FloodRescue.Services.DTO.Response.AuthResponse
 {
     public class UserResponseDTO
     {

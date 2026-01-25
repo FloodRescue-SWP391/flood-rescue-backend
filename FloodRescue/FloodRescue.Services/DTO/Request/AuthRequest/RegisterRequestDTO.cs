@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FloodRescue.Services.DTO.Request.RegisterRequest
+namespace FloodRescue.Services.DTO.Request.Auth
 {
     public class RegisterRequestDTO
     {

@@ -4,7 +4,11 @@ using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.Implements;
 using FloodRescue.Services.Interface;
 using FloodRescue.Services.Mapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
 
 namespace FloodRescue.API
 {
@@ -19,7 +23,38 @@ namespace FloodRescue.API
             
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+
+            // ===== CẤU HÌNH SWAGGER ĐỂ HỖ TRỢ JWT =====
+            // Cho phép test API có [Authorize] trong Swagger
+            builder.Services.AddSwaggerGen(options =>
+            {
+                // Định nghĩa Security Scheme cho Bearer Token
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",           // Tên header
+                    Type = SecuritySchemeType.Http,   // Loại: HTTP
+                    Scheme = "Bearer",                // Scheme: Bearer
+                    BearerFormat = "JWT",             // Format: JWT
+                    In = ParameterLocation.Header,    // Vị trí: Header
+                    Description = "Nhập JWT token vào đây. Ví dụ: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                });
+
+                // Áp dụng Security Requirement cho tất cả API
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
 
             //Lấy Connection String
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -33,8 +68,11 @@ namespace FloodRescue.API
             //Đăng ký WarehouseService
             builder.Services.AddScoped<IWarehouseService, WarehouseService>();
 
-            // Đăng ký RegisterService
-            builder.Services.AddScoped<IRegisterService, RegisterService>();
+            // Đăng ký AuthService
+            builder.Services.AddScoped<IAuthService, AuthService>();
+
+            //Đăng ký TokenService
+            builder.Services.AddScoped<ITokenService, TokenService>();
 
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
@@ -42,6 +80,45 @@ namespace FloodRescue.API
                     connectionString,
                     b => b.MigrationsAssembly("FloodRescue.Repositories")
                 ));
+
+
+
+            // ===== CẤU HÌNH JWT AUTHENTICATION =====
+            // Đọc cấu hình từ appsettings.json
+            var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+            var secretKey = jwtSettings["SecretKey"]!;
+
+            builder.Services.AddAuthentication(options =>
+            {
+                // Mặc định sử dụng JWT Bearer cho tất cả authentication
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                // Cấu hình cách validate JWT Token
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    // Validate Issuer (ai phát hành token)
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtSettings["Issuer"],
+
+                    // Validate Audience (ai được dùng token)
+                    ValidateAudience = true,
+                    ValidAudience = jwtSettings["Audience"],
+
+                    // Validate Signing Key (chữ ký của token)
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+
+                    // Validate Lifetime (thời gian hết hạn)
+                    ValidateLifetime = true,
+
+                    // Không cho phép sai lệch thời gian (clock skew = 0)
+                    ClockSkew = TimeSpan.Zero
+                };
+            });
+
 
             // Cấu hình CORS (Để React gọi được API sau này)
             builder.Services.AddCors(options =>

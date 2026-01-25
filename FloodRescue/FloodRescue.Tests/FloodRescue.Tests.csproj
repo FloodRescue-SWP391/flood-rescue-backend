@@ -10,10 +10,22 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.23" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
     <PackageReference Include="NUnit" Version="4.3.2" />
     <PackageReference Include="NUnit.Analyzers" Version="4.7.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
+    <!-- Packages for JWT Token testing - UPDATE VERSION TO MATCH API PROJECT -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
+    <!-- Packages for Controller testing -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
+    <PackageReference Include="Moq" Version="4.20.70" />
+    <!-- For AutoMapper testing -->
+    <PackageReference Include="AutoMapper" Version="12.0.1" />
+    <!-- For BCrypt password hashing testing -->
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -22,6 +34,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FloodRescue.Repositories\FloodRescue.Repositories.csproj" />
+    <!-- Add Services project reference for TokenService testing -->
+    <ProjectReference Include="..\FloodRescue.Services\FloodRescue.Services.csproj" />
+    <!-- Add API project reference for Controller testing -->
+    <ProjectReference Include="..\FloodRescue.API\FloodRescue.API.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\" />
   </ItemGroup>
 
 </Project>

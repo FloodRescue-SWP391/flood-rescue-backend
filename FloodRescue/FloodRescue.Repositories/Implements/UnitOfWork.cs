@@ -31,6 +31,7 @@ namespace FloodRescue.Repositories.Implements
         private IBaseRepository<Role>? _roles;
         private IBaseRepository<User>? _users;
         private IBaseRepository<Warehouse>? _warehouses;
+        private IBaseRepository<RefreshToken>? _refreshTokens;
 
         public UnitOfWork(FloodRescueDbContext context)
         {
@@ -68,10 +69,12 @@ namespace FloodRescue.Repositories.Implements
 
         public IBaseRepository<Role> Roles => _roles ??= new BaseRepository<Role>(_context);
 
-        public IBaseRepository<User> Users => _users = new BaseRepository<User>(_context);
+        public IBaseRepository<User> Users => _users ??= new BaseRepository<User>(_context);
 
-        public IBaseRepository<Warehouse> Warehouses => _warehouses = new BaseRepository<Warehouse>(_context);
-        
+        public IBaseRepository<Warehouse> Warehouses => _warehouses ??= new BaseRepository<Warehouse>(_context);
+
+        public IBaseRepository<RefreshToken> RefreshTokens => _refreshTokens ??= new BaseRepository<RefreshToken>(_context);
+
         public void Dispose()
         {
             _context.Dispose();

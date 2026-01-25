@@ -1,10 +1,10 @@
 ﻿using AutoMapper;
 using FloodRescue.Repositories.Entites;
-using FloodRescue.Services.DTO.Request.RegisterRequest;
+using FloodRescue.Services.DTO.Request.Auth;
 using FloodRescue.Services.DTO.Request.User;
 using FloodRescue.Services.DTO.Request.Warehouse;
+using FloodRescue.Services.DTO.Response.AuthResponse;
 using FloodRescue.Services.DTO.Response.RegisterResponse;
-using FloodRescue.Services.DTO.Response.UserResponse;
 using FloodRescue.Services.DTO.Response.Warehouse;
 using System;
 using System.Collections.Generic;

@@ -33,9 +33,10 @@ namespace FloodRescue.Services.Implements
             CreateWarehouseResponseDTO responseDTO = _mapper.Map<CreateWarehouseResponseDTO>(warehouse);
             return responseDTO;
         }
+
         public async Task<bool> DeleteWarehouseAsync(int warehouseId)
         {
-            Warehouse? warehouse = await _unitOfWork.Warehouses.GetByIdAsync(warehouseId);
+            Warehouse? warehouse = await _unitOfWork.Warehouses.GetAsync(w => w.WarehouseID == warehouseId);
             int result = 0;
             if (warehouse != null)
             {
@@ -50,7 +51,10 @@ namespace FloodRescue.Services.Implements
         public async Task<ShowWareHouseResponseDTO?> SearchWarehouseAsync(int id)
         {
             ShowWareHouseResponseDTO? responseDTO = null;
-            Warehouse? warehouse = await _unitOfWork.Warehouses.GetByIdAsync(id);
+            Warehouse? warehouse = await _unitOfWork.Warehouses.GetAsync(
+                w => w.WarehouseID == id && !w.IsDeleted,
+                w => w.Manager!
+            );
             if (warehouse != null)
             {
                 responseDTO = _mapper.Map<ShowWareHouseResponseDTO>(warehouse);
@@ -59,12 +63,15 @@ namespace FloodRescue.Services.Implements
         }
         public async Task<List<ShowWareHouseResponseDTO>> GetAllWarehousesAsync()
         {
-            List<Warehouse> warehouse = await _unitOfWork.Warehouses.GetAllAsync();
+            List<Warehouse> warehouse = await _unitOfWork.Warehouses.GetAllAsync(
+                w => !w.IsDeleted,
+                w => w.Manager!
+            );
             return _mapper.Map<List<ShowWareHouseResponseDTO>>(warehouse);
         }
         public async Task<UpdateWarehouseResponseDTO> UpdateWarehouseAsync(int id, UpdateWarehouseRequestDTO warehouse)
         {
-            Warehouse? _warehouse = await _unitOfWork.Warehouses.GetByIdAsync(id);
+            Warehouse? _warehouse = await _unitOfWork.Warehouses.GetAsync(w => w.WarehouseID == id);
 
             if (_warehouse == null)
             {
