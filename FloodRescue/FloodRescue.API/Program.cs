@@ -33,6 +33,9 @@ namespace FloodRescue.API
             //Đăng ký WarehouseService
             builder.Services.AddScoped<IWarehouseService, WarehouseService>();
 
+            // Đăng ký RegisterService
+            builder.Services.AddScoped<IRegisterService, RegisterService>();
+
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
                 options.UseSqlServer(

@@ -92,9 +92,5 @@ namespace FloodRescue.API.Controllers
             return ApiResponse<bool>.Ok(true,"Delete warehouse successfully", 200);
         }
 
-        private bool WarehouseExists(int id)
-        {
-            return false;
-        }
     }
 }

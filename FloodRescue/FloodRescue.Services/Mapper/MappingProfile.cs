@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using FloodRescue.Repositories.Entites;
+using FloodRescue.Services.DTO.Request.RegisterRequest;
 using FloodRescue.Services.DTO.Request.User;
 using FloodRescue.Services.DTO.Request.Warehouse;
+using FloodRescue.Services.DTO.Response.RegisterResponse;
 using FloodRescue.Services.DTO.Response.UserResponse;
 using FloodRescue.Services.DTO.Response.Warehouse;
 using System;
@@ -31,6 +33,12 @@ namespace FloodRescue.Services.Mapper
             CreateMap<UpdateUserRequestDTO, User>()
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
+            // Mapping User -> RegisterResponseDTO
+            CreateMap<User, RegisterResponseDTO>();
+
+            // Mapping RegisterRequestDTO -> User (ignore Password vì cần hash riêng)
+            CreateMap<RegisterRequestDTO, User>()
+                .ForMember(destination => destination.Password, opt => opt.Ignore());
 
             //Mapping CreateWarehouseRequestDTO -> WarehouseRequest
             CreateMap<CreateWarehouseRequestDTO, Warehouse>();
