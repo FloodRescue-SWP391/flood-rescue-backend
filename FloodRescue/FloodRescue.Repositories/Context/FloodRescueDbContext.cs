@@ -11,7 +11,9 @@ namespace FloodRescue.Repositories.Context
     public class FloodRescueDbContext : DbContext
     {
         public FloodRescueDbContext(DbContextOptions<FloodRescueDbContext> options) : base(options) { }
-        
+
+
+        #region DbSets
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }  
 
@@ -31,6 +33,8 @@ namespace FloodRescue.Repositories.Context
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<CitizenNotification> CitizenNotifications { get; set; }
         public DbSet<RescueRequestImage> RescueRequestImages { get; set; }
+        #endregion
+
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 

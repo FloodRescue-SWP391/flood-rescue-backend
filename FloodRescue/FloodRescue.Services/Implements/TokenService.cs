@@ -75,7 +75,7 @@ namespace FloodRescue.Services.Implements
         /// </summary>
         /// <param name="token">Đưa vào token cũ để qua các bước kiểm ta</param>
         /// <returns></returns>
-        private ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
+        private ClaimsPrincipal?  GetPrincipalFromExpiredToken(string token)
         {
             //tạo ra 1 bộ luật kiểm tra
             TokenValidationParameters tokenValidationParameters = new TokenValidationParameters
@@ -158,13 +158,19 @@ namespace FloodRescue.Services.Implements
                 return null;
             }
 
-            var user = await _unitOfWork.Users.GetByIdAsync(userID);
+            // CHANGED: Dùng GetAsync với Include thay vì GetByIdAsync
+            // GetAsync tự động load Navigation Property (Role)
+            var user = await _unitOfWork.Users.GetAsync(
+                u => u.UserID == userID && !u.IsDeleted,  // Filter: tìm user theo ID và chưa bị xóa
+                u => u.Role!  // Include: load thêm Role navigation property
+            );
+            
             if(user == null)
             {
                 return null;
             }
 
-            // Ensure a return value for all code paths
+            // user.Role đã được load, không còn null nữa
             return await GenerateTokenAsync(user);
         }
 
@@ -252,6 +258,66 @@ namespace FloodRescue.Services.Implements
             // Chuyển sang Base64 string để dễ truyền qua HTTP
             // Ví dụ: "abc123xyz789..." (86 ký tự)
             return Convert.ToBase64String(randomBytes);
+
+        }
+
+        public async Task<(string accessToken, string refreshToken, User user)?> RefreshTokenFromAccessTokenAsync(string accessToken)
+        {
+            //Bước 1: parse token hết hạn ra để lấy claims
+            ClaimsPrincipal? principal = GetPrincipalFromExpiredToken(accessToken);
+
+            if(principal == null)
+            {
+                return null;
+            }
+
+
+            //Bước 2: lấy userID từ claims
+            Claim? userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub || c.Type == ClaimTypes.NameIdentifier);
+
+            if(userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
+            {
+                return null;
+            }
+
+            //Bước 3: Lấy JwtID từ access token
+            string? jwtId = principal.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
+            if (string.IsNullOrEmpty(jwtId))
+            {
+                return null;
+            }
+
+            //Bước 4: lấy ra thông tin của refresh token
+            //theo tiêu chí đúng user - đúng access token - chưa dùng - chưa bị thu hồi - chưa hết hạn  
+            RefreshToken? storedToken = await _unitOfWork.RefreshTokens.GetAsync(
+                rt => rt.JwtID == jwtId && 
+                       rt.UserID == userId &&
+                       !rt.IsUsed && !rt.IsRevoked &&
+                       rt.ExpiredAt > DateTime.UtcNow
+                );
+
+
+            if (storedToken == null)
+            {
+                return null;
+            }
+
+            //Bước 5: Đánh dấu token đã sử dụng
+            storedToken.IsUsed = true;
+            _unitOfWork.RefreshTokens.Update(storedToken);
+            await _unitOfWork.SaveChangesAsync();
+
+            //Bước 6: Lấy user với role
+            User? user = await _unitOfWork.Users.GetAsync((User user) => user.UserID == userId && !user.IsDeleted, (User user) => user.Role!);
+
+            if (user == null)
+            {
+                return null;
+            }
+
+            var (newAccessToken, newRefreshToken) = await GenerateTokenAsync(user); 
+
+            return (newAccessToken, newRefreshToken, user); 
 
         }
 

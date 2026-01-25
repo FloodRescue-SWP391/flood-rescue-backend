@@ -4,14 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FloodRescue.Services.DTO.Request
+namespace FloodRescue.Services.DTO.Response.RegisterResponse
 {
-    public class CreateUserRequestDTO
+    public class RegisterResponseDTO
     {
+        public Guid UserID { get; set; }
         public string Username { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
-        public string RoleID { get; set; } = string.Empty;  
+        public string RoleID { get; set; } = string.Empty;
     }
 }

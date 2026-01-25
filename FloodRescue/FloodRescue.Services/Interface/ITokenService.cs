@@ -26,6 +26,13 @@ namespace FloodRescue.Services.Interface
         Task<(string accessToken, string refreshToken)?> RefreshTokenAsync(string accessToken, string refreshToken);
 
         /// <summary>
+        /// Refresh token lại từ access token 
+        /// </summary>
+        /// <param name="accessToken">Truyền vào 1 access Token</param>
+        /// <returns></returns>
+        Task<(string accessToken, string refreshToken, User user)?> RefreshTokenFromAccessTokenAsync(string accessToken);
+
+        /// <summary>
         /// Thu hồi tất cả Refresh Token của user (khi logout hay là đổi password,...)
         /// </summary>
         /// <param name="userID">ID của user</param>

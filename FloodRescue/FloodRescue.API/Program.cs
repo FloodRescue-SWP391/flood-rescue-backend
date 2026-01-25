@@ -1,6 +1,8 @@
 ﻿using FloodRescue.Repositories.Context;
 using FloodRescue.Repositories.Implements;
 using FloodRescue.Repositories.Interface;
+using FloodRescue.Services.Implements;
+using FloodRescue.Services.Interface;
 using FloodRescue.Services.Mapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -63,6 +65,14 @@ namespace FloodRescue.API
             //Đăng ký AutoMapper
             builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
 
+            //Đăng ký WarehouseService
+            builder.Services.AddScoped<IWarehouseService, WarehouseService>();
+
+            // Đăng ký AuthService
+            builder.Services.AddScoped<IAuthService, AuthService>();
+
+            //Đăng ký TokenService
+            builder.Services.AddScoped<ITokenService, TokenService>();
 
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
@@ -113,9 +123,10 @@ namespace FloodRescue.API
             // Cấu hình CORS (Để React gọi được API sau này)
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowReactApp",
+                options.AddPolicy("AllowAlls",
                     policy => 
-                    policy.AllowAnyOrigin()
+                    policy.WithOrigins("http://localhost:3000")
+                          .AllowAnyOrigin()
                           .AllowAnyHeader()
                           .AllowAnyMethod());
             });
@@ -156,7 +167,7 @@ namespace FloodRescue.API
             app.UseHttpsRedirection();
 
             // Use CORS
-            app.UseCors("AllowReactApp");
+            app.UseCors("AllowAlls");
 
             app.UseAuthentication();
             app.UseAuthorization();
