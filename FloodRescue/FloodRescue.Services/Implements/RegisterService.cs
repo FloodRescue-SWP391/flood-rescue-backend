@@ -24,61 +24,55 @@ namespace FloodRescue.Services.Implements
             _mapper = mapper;
         }
 
-        public async Task<ApiResponse<RegisterResponseDTO>> RegisterAsync(RegisterRequestDTO request)
+        public async Task<(RegisterResponseDTO? Data,string? ErrorMessage)> RegisterAsync(RegisterRequestDTO request)
         {
             // 1. Check if username already exists
             var existingUserName = await _unitOfWork.Users.GetAsync(u => u.Username == request.Username && !u.IsDeleted);
             if (existingUserName != null)
             {
-                return ApiResponse<RegisterResponseDTO>.Fail("Username already exists", 400);
+                return (null, "Username already exists");
             }
 
             //  2. Check if phone number already exists
             var existingPhone = await _unitOfWork.Users.GetAsync(u => u.Phone == request.Phone && !u.IsDeleted);
             if (existingPhone != null)
             {
-                return ApiResponse<RegisterResponseDTO>.Fail("Phone number already exists", 400);
+                return (null, "Phone number already exists");
             }
-            // 3. Check if role exists
+            // 3. Check if role exists in Roles table
             var role = await _unitOfWork.Roles.GetAsync(r => r.RoleID == request.RoleID);
             if (role == null)
             {
-                return ApiResponse<RegisterResponseDTO>.Fail("Invalid RoleID", 400);
+                return (null, "Invalid RoleID");
             }
 
             // 4. Can't register as admin
-            if (request.RoleID.ToUpper() == "AD")
+            // OrdinalIgnoreCase: So sánh trực tiếp, bỏ qua hoa/thường không có tạo string tạm thời
+            if (string.Equals(request.RoleID, "AD", StringComparison.OrdinalIgnoreCase))
             {
-                return ApiResponse<RegisterResponseDTO>.Fail("Cannot register as admin", 400);
+                return (null, "Cannot register as admin");
             }
 
-            // 5. Hash the password
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-            // 6. Create new user
+
+            // 5. Create new user and hash the password
             User newUser = _mapper.Map<User>(request);
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
             newUser.Password = hashedPassword;
-            //var user = new CreateUserRequestDTO
-            //{
-            //    Username = request.Username,
-            //    Password = hashedPassword,
-            //    Phone = request.Phone,
-            //    FullName = request.FullName,
-            //    RoleID = request.RoleID,
-            //};
 
-            //// 7. Map DTO to Entity
+
+            //// 6. Map DTO to Entity
             //User newUser = _mapper.Map<User>(user);
 
-            // 8. Add new user to RAM
+            // 6. Add new user to RAM
             await _unitOfWork.Users.AddAsync(newUser);
-            // 9. Save to database
+            // 7. Save to database
             int result = await _unitOfWork.SaveChangesAsync();
 
-            // 10. Check if save was successful
+            // 8. Check if save was successful
             if (result <= 0) 
             {
-                return ApiResponse<RegisterResponseDTO>.Fail("Failed to create user", 500);
+                return (null, "Failed to create user");
             }
             // 11. Prepare response DTO
             //RegisterResponseDTO responseDTO = new RegisterResponseDTO
@@ -89,9 +83,9 @@ namespace FloodRescue.Services.Implements
             //    FullName = newUser.FullName,
             //    RoleID = newUser.RoleID,
             //};
-            var responseDTO = _mapper.Map<RegisterResponseDTO>(newUser);
 
-            return ApiResponse<RegisterResponseDTO>.Ok(responseDTO, "Register successfully", 201);
+            var responseDTO = _mapper.Map<RegisterResponseDTO>(newUser);
+            return (responseDTO, null);
         }
     }
 }

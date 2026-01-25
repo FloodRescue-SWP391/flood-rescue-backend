@@ -11,6 +11,6 @@ namespace FloodRescue.Services.Interface
 {
     public interface IRegisterService
     {
-        Task<ApiResponse<RegisterResponseDTO>> RegisterAsync(RegisterRequestDTO request);
+        Task<(RegisterResponseDTO? Data, string? ErrorMessage)> RegisterAsync(RegisterRequestDTO request);
     }
 }

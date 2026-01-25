@@ -19,15 +19,16 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<ApiResponse<RegisterResponseDTO>> Register(RegisterRequestDTO request)
+        public async Task<ApiResponse<RegisterResponseDTO>> Register([FromBody]RegisterRequestDTO request)
         {
-            var result = await _registerService.RegisterAsync(request);
-            if (!result.Success)
+            //  Destructure tuple
+            var (data, errorMessage) = await _registerService.RegisterAsync(request);
+            if (data == null)
             {
-                return ApiResponse<RegisterResponseDTO>.Fail(result.Message,400);
+                return ApiResponse<RegisterResponseDTO>.Fail(errorMessage!, 400);
             }
-
-            return ApiResponse<RegisterResponseDTO>.Ok(result.Data!,result.Message,200);
+            // Message: Register successfully được tạo ở đây vì bên RegisterService chỉ trả về data và errorMessage nếu mà để message thành công mà vô biến errorMessage thì không hợp lý
+            return ApiResponse<RegisterResponseDTO>.Ok(data!, "Register successfully", 201);
         }
     }
 }
