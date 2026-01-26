@@ -3,7 +3,7 @@ using FloodRescue.Repositories.Context;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Implements;
 using FloodRescue.Repositories.Interface;
-using FloodRescue.Services.DTO.Request.RegisterRequest;
+using FloodRescue.Services.DTO.Request.Auth;
 using FloodRescue.Services.Implements;
 using FloodRescue.Services.Interface;
 using FloodRescue.Services.Mapper;

@@ -90,8 +90,6 @@ namespace FloodRescue.Services.Implements
                 return (null, "Cannot register as admin");
             }
 
-
-
             // 5. Create new user and hash the password
             User newUser = _mapper.Map<User>(request);
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
@@ -123,6 +121,42 @@ namespace FloodRescue.Services.Implements
 
             var responseDTO = _mapper.Map<RegisterResponseDTO>(newUser);
             return (responseDTO, null);
+        }
+
+        public async Task<(AuthResponseDTO? Data, string? ErrorMessage)> LoginAsync(LoginRequestDTO request)
+        {
+            // 1. Tìm user theo username (không lấy user đã xóa)
+            var user = await _unitOfWork.Users.GetAsync(u => u.Username == request.Username && !u.IsDeleted, u => u.Role!);
+            if (user == null)
+            {
+                return (null, "Invalid username or password");
+            }
+
+            // 2. Kiểm tra mật khẩu
+            var isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.Password);
+            if (!isPasswordValid)
+            {
+                return (null, "Invalid username or password");
+            }
+
+            // 3. Tạo cặp token (access + refresh) và lưu refresh token trong TokenService
+            var (accessToken, refreshToken) = await _tokenService.GenerateTokenAsync(user);
+
+            // 4. Chuẩn bị AuthResponseDTO giống cách Register trả về
+            var expireTimeInMinutes = int.Parse(_configuration.GetSection("JwtSettings")["AccessTokenExpirationMinutes"]!);
+
+            var response = new AuthResponseDTO
+            {
+                AccessToken = accessToken,
+                TokenType = "Bearer",
+                ExpiresIn = expireTimeInMinutes * 60,
+                UserID = user.UserID,
+                Username = user.Username,
+                FullName = user.FullName,
+                Role = user.Role?.RoleName ?? string.Empty
+            };
+
+            return (response, null);
         }
     }
 }

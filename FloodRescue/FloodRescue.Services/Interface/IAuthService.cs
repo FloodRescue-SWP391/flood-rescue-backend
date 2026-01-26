@@ -26,5 +26,12 @@ namespace FloodRescue.Services.Interface
         /// <param name="request"></param>
         /// <returns></returns>
         Task<(AuthResponseDTO? Data, string? ErrorMessage)> RefeshTokenAsync(RefreshTokenRequest request);    
+
+        /// <summary>
+        /// Login bằng username/password
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        Task<(AuthResponseDTO? Data, string? ErrorMessage)> LoginAsync(LoginRequestDTO request);
     }
 }

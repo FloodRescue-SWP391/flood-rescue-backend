@@ -11,7 +11,7 @@ namespace FloodRescue.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class  AuthController : ControllerBase
+    public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
 
@@ -31,6 +31,19 @@ namespace FloodRescue.API.Controllers
             }
             // Message: Register successfully được tạo ở đây vì bên RegisterService chỉ trả về data và errorMessage nếu mà để message thành công mà vô biến errorMessage thì không hợp lý
             return ApiResponse<RegisterResponseDTO>.Ok(data!, "Register successfully", 201);
+        }
+
+        [HttpPost("login")]
+        public async Task<ActionResult<ApiResponse<AuthResponseDTO>>> Login([FromBody] LoginRequestDTO request)
+        {
+            var (data, errorMessage) = await _authService.LoginAsync(request);
+
+            if (data == null)
+            {
+                return ApiResponse<AuthResponseDTO>.Fail(errorMessage!, 401);
+            }
+
+            return ApiResponse<AuthResponseDTO>.Ok(data: data!, message: "Login successfully", 200);
         }
 
         [HttpPost("refresh-token")]
