@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -94,8 +95,10 @@ namespace FloodRescue.Services.Implements
 
             // 5. Create new user and hash the password
             User newUser = _mapper.Map<User>(request);
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            //var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            CreatePasswordHash(request.Password, out byte[] hashedPassword, out byte[] salt);
             newUser.Password = hashedPassword;
+            newUser.Salt = salt;
 
 
             //// 6. Map DTO to Entity
@@ -124,5 +127,13 @@ namespace FloodRescue.Services.Implements
             var responseDTO = _mapper.Map<RegisterResponseDTO>(newUser);
             return (responseDTO, null);
         }
+
+        private static void CreatePasswordHash(string password, out byte[] hash, out byte[] salt)
+        {
+            using var hmac = new HMACSHA512();
+            salt = hmac.Key;
+            hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+        }
+
     }
 }

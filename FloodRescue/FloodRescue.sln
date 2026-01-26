@@ -1,15 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36401.2
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11222.15 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FloodRescue.API", "FloodRescue.API\FloodRescue.API.csproj", "{51DC4E97-4792-464A-AB0C-AC5A88201F68}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FloodRescue.Services", "FloodRescue.Services\FloodRescue.Services.csproj", "{0894DC19-B3F0-4D3C-B859-B3627BA276E9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FloodRescue.Repositories", "FloodRescue.Repositories\FloodRescue.Repositories.csproj", "{78851506-2406-4716-9196-B5EDE38D3BEF}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FloodRescue.Tests", "FloodRescue.Tests\FloodRescue.Tests.csproj", "{331B8315-8D55-4655-8F66-BCBA524A7DDB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -57,18 +55,6 @@ Global
 		{78851506-2406-4716-9196-B5EDE38D3BEF}.Release|x64.Build.0 = Release|Any CPU
 		{78851506-2406-4716-9196-B5EDE38D3BEF}.Release|x86.ActiveCfg = Release|Any CPU
 		{78851506-2406-4716-9196-B5EDE38D3BEF}.Release|x86.Build.0 = Release|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Debug|x64.Build.0 = Debug|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Debug|x86.Build.0 = Debug|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Release|x64.ActiveCfg = Release|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Release|x64.Build.0 = Release|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Release|x86.ActiveCfg = Release|Any CPU
-		{331B8315-8D55-4655-8F66-BCBA524A7DDB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -3,11 +3,13 @@ using FloodRescue.Repositories.Context;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Implements;
 using FloodRescue.Repositories.Interface;
-using FloodRescue.Services.DTO.Request.RegisterRequest;
+using FloodRescue.Services.DTO.Request.Auth;
 using FloodRescue.Services.Implements;
 using FloodRescue.Services.Interface;
 using FloodRescue.Services.Mapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Moq;
 using NUnit.Framework;
 
 namespace FloodRescue.Tests.Services
@@ -24,7 +26,8 @@ namespace FloodRescue.Tests.Services
         private IUnitOfWork _unitOfWork = null!;
         private IMapper _mapper = null!;
         private IAuthService _registerService = null!;
-
+        private ITokenService _tokenService = null!;
+        private IConfiguration _configuration = null!;
         // Test roles
         private Role _adminRole = null!;
         private Role _coordinatorRole = null!;
@@ -52,7 +55,8 @@ namespace FloodRescue.Tests.Services
             _mapper = config.CreateMapper();
 
             // BƯỚC 4: Khởi tạo RegisterService
-            _registerService = new AuthService(_unitOfWork, _mapper);
+             
+            _registerService = new AuthService(_unitOfWork, _mapper, _configuration, _tokenService);
 
             // BƯỚC 5: Tạo test roles
             _adminRole = new Role { RoleID = "AD", RoleName = "Admin", IsDeleted = false };
