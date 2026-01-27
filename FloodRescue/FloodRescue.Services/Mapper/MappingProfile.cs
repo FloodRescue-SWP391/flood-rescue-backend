@@ -38,7 +38,11 @@ namespace FloodRescue.Services.Mapper
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
             // Mapping User -> RegisterResponseDTO
-            CreateMap<User, RegisterResponseDTO>();
+            CreateMap<User, RegisterResponseDTO>()
+                .ForMember(
+                    destinationMember: destination => destination.RoleName,
+                    opt => opt.MapFrom(src => src.Role != null ? src.Role.RoleName : string.Empty)
+                    );
 
             // Mapping RegisterRequestDTO -> User (ignore Password vì cần hash riêng)
             CreateMap<RegisterRequestDTO, User>()

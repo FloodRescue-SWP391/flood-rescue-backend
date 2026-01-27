@@ -26,7 +26,7 @@ namespace FloodRescue.Services.DTO.Request.Auth
 
         [Required(ErrorMessage = "RoleID is required")]
         [MaxLength(2)]
-        [RegularExpression("^(RC|IM|RT)$", ErrorMessage = "RoleID must be RC, IM or RT")]
+        [RegularExpression("^(RC|IM|RT|AD)$", ErrorMessage = "RoleID must be AD, RC, IM or RT")]
         public string RoleID { get; set; } = string.Empty;
     }
 }

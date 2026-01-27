@@ -78,7 +78,8 @@ namespace FloodRescue.Services.Implements
                 return (null, "Phone number already exists");
             }
             // 3. Check if role exists in Roles table
-            var role = await _unitOfWork.Roles.GetAsync(r => r.RoleID == request.RoleID);
+            Role? role = await _unitOfWork.Roles.GetAsync(r => r.RoleID == request.RoleID);
+
             if (role == null)
             {
                 return (null, "Invalid RoleID");
@@ -86,24 +87,28 @@ namespace FloodRescue.Services.Implements
 
             // 4. Can't register as admin
             // OrdinalIgnoreCase: So sánh trực tiếp, bỏ qua hoa/thường không có tạo string tạm thời
-            if (string.Equals(request.RoleID, "AD", StringComparison.OrdinalIgnoreCase))
-            {
-                return (null, "Cannot register as admin");
-            }
+            // if (string.Equals(request.RoleID, "AD", StringComparison.OrdinalIgnoreCase))
+            // {
+            //     return (null, "Cannot register as admin");
+            // }
 
             // 5. Create new user and hash the password
             User newUser = _mapper.Map<User>(request);
+
+            //map Role - navigate property manually
+            newUser.Role = role;
+
             //var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
             CreatePasswordHash(request.Password, out byte[] hashedPassword, out byte[] salt);
             newUser.Password = hashedPassword;
             newUser.Salt = salt;
 
 
-            //// 6. Map DTO to Entity
             //User newUser = _mapper.Map<User>(user);
 
             // 6. Add new user to RAM
             await _unitOfWork.Users.AddAsync(newUser);
+
             // 7. Save to database
             int result = await _unitOfWork.SaveChangesAsync();
 
@@ -112,16 +117,7 @@ namespace FloodRescue.Services.Implements
             {
                 return (null, "Failed to create user");
             }
-            // 11. Prepare response DTO
-            //RegisterResponseDTO responseDTO = new RegisterResponseDTO
-            //{
-            //    UserID = newUser.UserID,
-            //    Username = newUser.Username,
-            //    Phone = newUser.Phone,
-            //    FullName = newUser.FullName,
-            //    RoleID = newUser.RoleID,
-            //};
-
+            
             var responseDTO = _mapper.Map<RegisterResponseDTO>(newUser);
             return (responseDTO, null);
         }
@@ -135,7 +131,7 @@ namespace FloodRescue.Services.Implements
                 return (null, "Invalid username or password");
             }
 
-            // 2. Kiểm tra mật khẩu
+            // 2. Kiểm tra mật khẩu 
             var isPasswordValid = VerifyPasswordHash(request.Password, user.Password, user.Salt);
             if (!isPasswordValid)
             {
@@ -165,19 +161,34 @@ namespace FloodRescue.Services.Implements
         {
             // Dùng out thay thế cho return nhiều giá trị
             using var hmac = new HMACSHA512();
+            //lấy salt ra để đem đi cất vào database thông qua biến out
             salt = hmac.Key;
+            //salt là dùng để trộn với thuật toán hmac để sinh ra pass hashing
+            //gọi thẳng mà không cần qua tinh gọn
             hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="password">Truyền vào request password</param>
+        /// <param name="storedHash">Lấy ra cái store hash password của user trong database</param>
+        /// <param name="storedSalt">Lấy ra cái store salt của user trong database</param>
+        /// <returns></returns>
         private static bool VerifyPasswordHash(string password, byte[] storedHash, byte[] storedSalt)
         {
             // Tạo HMAC với CÙNG salt đã lưu
             // Sử dụng using để tự động Dipose()
+
+            //truyền lại cái salt cũ để trộn ra lại để sinh ra được cái password map salt cũ
+            //password có thể giống nhau nhưng nó phải đi kèm với salt
             using var hmac = new HMACSHA512(storedSalt);
       
+            //tinh gọn vào 1 biến passwordBytes
             byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
 
             // Hash password user nhập - OneWay can't be reversed
+            //truyền cái biến tinh gọn vào
             var computedHash = hmac.ComputeHash(passwordBytes);
 
             // So sánh từng byte
