@@ -34,7 +34,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "AD,IM")]
+        
         public async Task<ActionResult<ApiResponse<ReliefItemResponseDTO>>> Create(CreateReliefItemRequestDTO request)
         {
             var result = await _service.CreateAsync(request);
@@ -42,7 +42,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "AD,IM")]
+        
         public async Task<ActionResult<ApiResponse<bool>>> Update(int id, CreateReliefItemRequestDTO request)
         {
             var result = await _service.UpdateAsync(id, request);
@@ -51,7 +51,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "AD,IM")]
+        
         public async Task<ActionResult<ApiResponse<bool>>> Delete(int id)
         {
             var result = await _service.DeleteAsync(id);

@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using FloodRescue.Services.BusinessModels;
+using FloodRescue.Services.DTO.Request.Category;
+using FloodRescue.Services.DTO.Response.Category;
+using FloodRescue.Services.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using FloodRescue.Repositories.Context;
-using FloodRescue.Repositories.Entites;
 
 namespace FloodRescue.API.Controllers
 {
@@ -14,95 +11,66 @@ namespace FloodRescue.API.Controllers
     [ApiController]
     public class CategoriesController : ControllerBase
     {
-        private readonly FloodRescueDbContext _context;
+        private readonly ICategoryService _categoryService;
 
-        public CategoriesController(FloodRescueDbContext context)
+        public CategoriesController(ICategoryService categoryService)
         {
-            _context = context;
+            _categoryService = categoryService;
         }
 
         // GET: api/Categories
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
+        public async Task<ActionResult<ApiResponse<List<CategoryResponseDTO>>>> GetCategories()
         {
-            return await _context.Categories.ToListAsync();
+            var list = await _categoryService.GetAllAsync();
+            return ApiResponse<List<CategoryResponseDTO>>.Ok(list, "Get categories successfully", 200);
         }
 
         // GET: api/Categories/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Category>> GetCategory(int id)
+        public async Task<ActionResult<ApiResponse<CategoryResponseDTO>>> GetCategory(int id)
         {
-            var category = await _context.Categories.FindAsync(id);
-
+            var category = await _categoryService.GetByIdAsync(id);
             if (category == null)
             {
-                return NotFound();
+                return ApiResponse<CategoryResponseDTO>.Fail("Category not found", 404);
             }
-
-            return category;
+            return ApiResponse<CategoryResponseDTO>.Ok(category, "Get category successfully", 200);
         }
 
         // PUT: api/Categories/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutCategory(int id, Category category)
+        
+        public async Task<ActionResult<ApiResponse<bool>>> PutCategory(int id, CreateCategoryRequestDTO request)
         {
-            if (id != category.CategoryID)
+            var result = await _categoryService.UpdateAsync(id, request);
+            if (!result)
             {
-                return BadRequest();
+                return ApiResponse<bool>.Fail("Update failed or category not found", 400);
             }
-
-            _context.Entry(category).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!CategoryExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
+            return ApiResponse<bool>.Ok(true, "Update category successfully", 200);
         }
 
         // POST: api/Categories
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Category>> PostCategory(Category category)
+        
+        public async Task<ActionResult<ApiResponse<CategoryResponseDTO>>> PostCategory(CreateCategoryRequestDTO request)
         {
-            _context.Categories.Add(category);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetCategory", new { id = category.CategoryID }, category);
+            var result = await _categoryService.CreateAsync(request);
+            return ApiResponse<CategoryResponseDTO>.Ok(result, "Create category successfully", 201);
         }
 
         // DELETE: api/Categories/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteCategory(int id)
+       
+        public async Task<ActionResult<ApiResponse<bool>>> DeleteCategory(int id)
         {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
+            var result = await _categoryService.DeleteAsync(id);
+            if (!result)
             {
-                return NotFound();
+                return ApiResponse<bool>.Fail("Delete failed or category not found", 400);
             }
-
-            _context.Categories.Remove(category);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private bool CategoryExists(int id)
-        {
-            return _context.Categories.Any(e => e.CategoryID == id);
+            return ApiResponse<bool>.Ok(true, "Delete category successfully", 200);
         }
     }
 }
