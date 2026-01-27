@@ -136,7 +136,7 @@ namespace FloodRescue.Services.Implements
             }
 
             // 2. Kiểm tra mật khẩu
-            var isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.Password);
+            var isPasswordValid = VerifyPasswordHash(request.Password, user.Password, user.Salt);
             if (!isPasswordValid)
             {
                 return (null, "Invalid username or password");
