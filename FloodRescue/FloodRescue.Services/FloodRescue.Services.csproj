@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="DTO\Request\CategoriesRequest\**" />
+    <EmbeddedResource Remove="DTO\Request\CategoriesRequest\**" />
+    <None Remove="DTO\Request\CategoriesRequest\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FloodRescue.Repositories\FloodRescue.Repositories.csproj" />
   </ItemGroup>
 
