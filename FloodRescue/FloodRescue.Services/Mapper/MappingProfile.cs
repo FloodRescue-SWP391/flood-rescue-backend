@@ -6,6 +6,10 @@ using FloodRescue.Services.DTO.Request.Warehouse;
 using FloodRescue.Services.DTO.Response.AuthResponse;
 using FloodRescue.Services.DTO.Response.RegisterResponse;
 using FloodRescue.Services.DTO.Response.Warehouse;
+using FloodRescue.Services.DTO.Request.Category;
+using FloodRescue.Services.DTO.Response.Category;
+using FloodRescue.Services.DTO.Request.ReliefItem;
+using FloodRescue.Services.DTO.Response.ReliefItem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -58,6 +62,15 @@ namespace FloodRescue.Services.Mapper
             // Mapping Warehouse -> UpdateWarehouseResponseDTO
             CreateMap<Warehouse, UpdateWarehouseResponseDTO>();
 
+            // Mapping Category DTOs
+            CreateMap<CreateCategoryRequestDTO, Category>();
+
+            CreateMap<Category, CategoryResponseDTO>();
+
+            // Mapping ReliefItem DTOs
+            CreateMap<CreateReliefItemRequestDTO, ReliefItem>();
+
+            CreateMap<ReliefItem, ReliefItemResponseDTO>();
             // Mapping UpdateUserRequestDTO -> Warehouse
             CreateMap<UpdateUserRequestDTO, Warehouse>();
         }
