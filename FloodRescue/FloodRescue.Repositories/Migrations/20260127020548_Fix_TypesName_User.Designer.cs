@@ -4,6 +4,7 @@ using FloodRescue.Repositories.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FloodRescue.Repositories.Migrations
 {
     [DbContext(typeof(FloodRescueDbContext))]
-    partial class FloodRescueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260127020548_Fix_TypesName_User")]
+    partial class Fix_TypesName_User
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -673,7 +676,7 @@ namespace FloodRescue.Repositories.Migrations
 
                     b.Property<byte[]>("Password")
                         .IsRequired()
-                        .HasColumnType("varbinary(64)")
+                        .HasColumnType("varbinary(50)")
                         .HasColumnName("Password");
 
                     b.Property<string>("Phone")
@@ -690,7 +693,7 @@ namespace FloodRescue.Repositories.Migrations
 
                     b.Property<byte[]>("Salt")
                         .IsRequired()
-                        .HasColumnType("varbinary(128)")
+                        .HasColumnType("varbinary(64)")
                         .HasColumnName("Salt");
 
                     b.Property<string>("Username")

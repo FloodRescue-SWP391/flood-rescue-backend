@@ -20,15 +20,19 @@ namespace FloodRescue.Repositories.Entites
         [Column("UserID", TypeName = "uniqueidentifier")]
         public Guid UserID { get; set; } = Guid.NewGuid();
 
-        [Column("Username", TypeName = "varchar(50)")]
+        [Column("Username", TypeName = "nvarchar(50)")]
         [Required(ErrorMessage = "Username cannot be blank")]
         [MaxLength(50)]
         public string Username { get; set; } = string.Empty;
-
-        [Column("Password", TypeName = "varchar(255)")]
+        // Password hash - Fixed 64 bytes
+        [Column("Password", TypeName = "varbinary(64)")]
         [Required(ErrorMessage = "Password cannot be blank")]
-        [MaxLength(25), MinLength(8)]
-        public string Password { get; set; } = string.Empty;  
+        [MinLength(8)]
+        public byte[] Password { get; set; } = Array.Empty<byte>();
+        // Salt - Fixed 128 bytes
+        [Column("Salt", TypeName = "varbinary(128)")]
+        [Required(ErrorMessage = "Salt cannot be blank")]
+        public byte[] Salt { get; set; } = Array.Empty<byte>();
 
         [Column("Phone", TypeName = "varchar(15)")]
         [Required(ErrorMessage = "Phone cannot be blank")]
@@ -36,7 +40,7 @@ namespace FloodRescue.Repositories.Entites
         [Phone]
         public string Phone { get; set; } = string.Empty;
 
-        [Column("FullName", TypeName = "varchar(100)")]
+        [Column("FullName", TypeName = "nvarchar(100)")]
         [Required(ErrorMessage = "FullName cannot be blank")]
         [MaxLength(100)]
         public string FullName { get; set; } = string.Empty;    

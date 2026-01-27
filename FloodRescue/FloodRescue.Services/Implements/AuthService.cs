@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -92,8 +93,10 @@ namespace FloodRescue.Services.Implements
 
             // 5. Create new user and hash the password
             User newUser = _mapper.Map<User>(request);
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            //var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            CreatePasswordHash(request.Password, out byte[] hashedPassword, out byte[] salt);
             newUser.Password = hashedPassword;
+            newUser.Salt = salt;
 
 
             //// 6. Map DTO to Entity
@@ -158,5 +161,29 @@ namespace FloodRescue.Services.Implements
 
             return (response, null);
         }
+        private static void CreatePasswordHash(string password, out byte[] hash, out byte[] salt)
+        {
+            // Dùng out thay thế cho return nhiều giá trị
+            using var hmac = new HMACSHA512();
+            salt = hmac.Key;
+            hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+        }
+
+        private static bool VerifyPasswordHash(string password, byte[] storedHash, byte[] storedSalt)
+        {
+            // Tạo HMAC với CÙNG salt đã lưu
+            // Sử dụng using để tự động Dipose()
+            using var hmac = new HMACSHA512(storedSalt);
+      
+            byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
+
+            // Hash password user nhập - OneWay can't be reversed
+            var computedHash = hmac.ComputeHash(passwordBytes);
+
+            // So sánh từng byte
+            return computedHash.SequenceEqual(storedHash);
+        }
+
+
     }
 }
