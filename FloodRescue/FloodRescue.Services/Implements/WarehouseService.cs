@@ -69,7 +69,7 @@ namespace FloodRescue.Services.Implements
             );
             return _mapper.Map<List<ShowWareHouseResponseDTO>>(warehouse);
         }
-        public async Task<UpdateWarehouseResponseDTO> UpdateWarehouseAsync(int id, UpdateWarehouseRequestDTO warehouse)
+        public async Task<UpdateWarehouseResponseDTO> UpdateWarehouseAsync(int id, UpdateWarehouseRequestDTO request)
         {
             Warehouse? _warehouse = await _unitOfWork.Warehouses.GetAsync(w => w.WarehouseID == id);
 
@@ -78,17 +78,18 @@ namespace FloodRescue.Services.Implements
                 return null;
             }
 
-            _warehouse.Name = warehouse.Name;
-            _warehouse.Address = warehouse.Address;
-            _warehouse.LocationLong = warehouse.LocationLong;
-            _warehouse.LocationLat = warehouse.LocationLat;
-            _warehouse.IsDeleted = warehouse.IsDeleted;
+            Warehouse newWarehouse = _mapper.Map<Warehouse>(request);
+            //_warehouse.Name = request.Name;
+            //_warehouse.Address = request.Address;
+            //_warehouse.LocationLong = request.LocationLong;
+            //_warehouse.LocationLat = request.LocationLat;
+            //_warehouse.IsDeleted = request.IsDeleted;
 
             int result = await _unitOfWork.SaveChangesAsync();
 
             if (result > 0)
             {
-                return _mapper.Map<UpdateWarehouseResponseDTO>(_warehouse);
+                return _mapper.Map<UpdateWarehouseResponseDTO>(newWarehouse);
             }
             return null;
         }

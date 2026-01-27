@@ -24,15 +24,14 @@ namespace FloodRescue.Repositories.Entites
         [Required(ErrorMessage = "Username cannot be blank")]
         [MaxLength(50)]
         public string Username { get; set; } = string.Empty;
-
-        [Column("Password", TypeName = "varchar(255)")]
+        // Password hash - Fixed 64 bytes
+        [Column("Password", TypeName = "varbinary(64)")]
         [Required(ErrorMessage = "Password cannot be blank")]
-        [MaxLength(25), MinLength(8)]
+        [MinLength(8)]
         public byte[] Password { get; set; } = Array.Empty<byte>();
-
-        [Column("Salt", TypeName = "varchar(255)")]
+        // Salt - Fixed 128 bytes
+        [Column("Salt", TypeName = "varbinary(128)")]
         [Required(ErrorMessage = "Salt cannot be blank")]
-        [MaxLength(255)]
         public byte[] Salt { get; set; } = Array.Empty<byte>();
 
         [Column("Phone", TypeName = "varchar(15)")]
