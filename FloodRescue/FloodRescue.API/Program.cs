@@ -3,6 +3,7 @@ using FloodRescue.Repositories.Implements;
 using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.Implements;
 using FloodRescue.Services.Interface;
+using FloodRescue.Infrastructure.Services;
 using FloodRescue.Services.Mapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,8 @@ namespace FloodRescue.API
             
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
+
+            builder.Services.AddHttpContextAccessor();
 
             // ===== CẤU HÌNH SWAGGER ĐỂ HỖ TRỢ JWT =====
             // Cho phép test API có [Authorize] trong Swagger
@@ -78,6 +81,9 @@ namespace FloodRescue.API
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IReliefItemService, ReliefItemService>();
 
+            // Đăng ký FileStorageService
+            builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
                 options.UseSqlServer(
@@ -129,10 +135,10 @@ namespace FloodRescue.API
             {
                 options.AddPolicy("AllowAlls",
                     policy => 
-                    policy.WithOrigins("http://localhost:3000")
-                          .AllowAnyOrigin()
+                    policy.AllowAnyOrigin()
                           .AllowAnyHeader()
                           .AllowAnyMethod());
+                //.WithOrigins("http://localhost:3000")
             });
 
             var app = builder.Build();
@@ -167,7 +173,7 @@ namespace FloodRescue.API
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
+            app.UseStaticFiles();
             app.UseHttpsRedirection();
 
             // Use CORS
@@ -175,6 +181,8 @@ namespace FloodRescue.API
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+
 
             app.MapControllers();
 
