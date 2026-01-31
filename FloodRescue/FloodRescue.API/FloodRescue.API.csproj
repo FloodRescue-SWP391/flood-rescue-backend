@@ -14,6 +14,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.23" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.23">
       <PrivateAssets>all</PrivateAssets>
@@ -25,7 +26,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FloodRescue.Infrastructure\FloodRescue.Infrastructure.csproj" />
     <ProjectReference Include="..\FloodRescue.Services\FloodRescue.Services.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
   </ItemGroup>
 
 </Project>

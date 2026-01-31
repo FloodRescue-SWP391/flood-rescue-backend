@@ -43,7 +43,10 @@ namespace FloodRescue.Repositories.Entites
         [Column("FullName", TypeName = "nvarchar(100)")]
         [Required(ErrorMessage = "FullName cannot be blank")]
         [MaxLength(100)]
-        public string FullName { get; set; } = string.Empty;    
+        public string FullName { get; set; } = string.Empty;
+
+        [Column("AvatarUrl", TypeName = "nvarchar(500)")]
+        public string? AvatarUrl { get; set; }
 
         [Column("RoleID", TypeName = "char(2)")]
         [Required(ErrorMessage = "RoleID cannot be blank")]
