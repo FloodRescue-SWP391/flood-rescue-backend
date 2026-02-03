@@ -78,6 +78,9 @@ namespace FloodRescue.API
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IReliefItemService, ReliefItemService>();
 
+            // Đăng ký RescueRequestService
+            builder.Services.AddScoped<IRescueRequestService, RescueRequestService>();
+
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
                 options.UseSqlServer(

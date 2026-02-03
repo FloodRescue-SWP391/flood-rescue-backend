@@ -15,6 +15,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FloodRescue.Services.DTO.Request.RescueRequestRequest;
+using FloodRescue.Services.DTO.Response.RescueRequestResponse;
 
 namespace FloodRescue.Services.Mapper
 {
@@ -77,6 +79,15 @@ namespace FloodRescue.Services.Mapper
             CreateMap<ReliefItem, ReliefItemResponseDTO>();
             // Mapping UpdateUserRequestDTO -> Warehouse
             CreateMap<UpdateUserRequestDTO, Warehouse>();
+
+
+            // Mapping RescueRequestRequestDTO -> RescueRequest
+            CreateMap<RescueRequestRequestDTO, RescueRequest>();
+            // Mapping RescueRequest -> RescueRequestResponseDTO
+            CreateMap<RescueRequest, RescueRequestResponseDTO>().ForMember(
+                destinationMember: destination => destination.CoordinatorBy,
+                opt => opt.MapFrom(src => src.Coordinator != null ? src.Coordinator.FullName : string.Empty)
+            );
         }
     }
 }
