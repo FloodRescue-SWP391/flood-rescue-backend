@@ -15,7 +15,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using FloodRescue.Services.DTO.Request.RescueMission;
+using FloodRescue.Services.DTO.Response.RescueMission;
+using FloodRescue.Services.DTO.Request.IncidentReport;
+using FloodRescue.Services.DTO.Response.IncidentReport;
 namespace FloodRescue.Services.Mapper
 {
     public class MappingProfile : Profile
@@ -77,6 +80,14 @@ namespace FloodRescue.Services.Mapper
             CreateMap<ReliefItem, ReliefItemResponseDTO>();
             // Mapping UpdateUserRequestDTO -> Warehouse
             CreateMap<UpdateUserRequestDTO, Warehouse>();
+
+            // RescueMission mappings
+            CreateMap<CreateRescueMissionRequestDTO, RescueMission>();
+            CreateMap<RescueMission, RescueMissionResponseDTO>();
+
+            // IncidentReport mappings
+            CreateMap<CreateIncidentReportRequestDTO, IncidentReport>();
+            CreateMap<IncidentReport, IncidentReportResponseDTO>();
         }
     }
 }
