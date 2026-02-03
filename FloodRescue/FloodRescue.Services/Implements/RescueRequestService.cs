@@ -76,15 +76,15 @@ namespace FloodRescue.Services.Implements
             RescueRequest? existingRequest = await _unitOfWork.RescueRequests.GetByIdAsync(id);
             if (existingRequest == null || existingRequest.IsDeleted)
             {
-                return (null, "Không tìm thấy yêu cầu cứu hộ cần cập nhật."); // Hoặc ném ra ngoại lệ tùy theo yêu cầu của bạn
+                return (null, "Rescue request not found."); // Hoặc ném ra ngoại lệ tùy theo yêu cầu của bạn
             }
             // 2. Kiểm tra quyền của CoordinatorID gửi lên
             var user = await _unitOfWork.Users.GetByIdAsync(request.CoordinatorID ?? Guid.Empty);
             if (user == null)
-                return (null, "Người điều phối không tồn tại.");
+                return (null, "Coordinator not found.");
 
             if (user.RoleID != "RC")
-                return (null, "Chỉ người dùng có vai trò RC mới có quyền cập nhật yêu cầu này.");
+                return (null, "Access denied. Only users with 'RC' role can update rescue requests.");
             // 3. Thực hiện cập nhật
             
 
