@@ -1,0 +1,76 @@
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
+using System.Security.Claims;
+
+namespace FloodRescue.Services.Hubs
+{
+    public class NotificationHub: Hub
+    {
+        private readonly ILogger<NotificationHub> _logger;
+
+        public NotificationHub(ILogger<NotificationHub> logger)
+        {
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// chạy qua hàm này khi có kết nối từ client
+        /// </summary>
+        /// <returns></returns>
+      public override async Task OnConnectedAsync()
+        {
+            var user = Context.User;
+            _logger.LogInformation("User connected to NotificationHub. UserID: {UserId}", user);
+
+            //add user vào group sau
+            //......
+            //phần code để add
+            
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value);
+
+                foreach (var roleName in roles)
+                {
+                    await Groups.AddToGroupAsync(Context.ConnectionId, roleName);
+
+                    _logger.LogInformation("User {UserId} added to group {GroupName}", Context.UserIdentifier, roleName);
+                }
+            }
+
+            
+            //------------
+
+            await base.OnConnectedAsync();
+        }
+
+
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            _logger.LogInformation("User disconnected from NotificationHub. UserID: {UserId}", Context.UserIdentifier);
+
+            await base.OnDisconnectedAsync(exception);
+        }
+
+        /// <summary>
+        /// này để client gọi vào
+        /// </summary>
+        /// <param name="groupName"></param>
+        /// <returns></returns>
+        public async Task JoinGroup(string groupName)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);  
+            _logger.LogInformation("User {UserId} joined group {GroupName}", Context.UserIdentifier, groupName);
+        }
+
+        /// <summary>
+        /// Client gọi method này để rời khỏi room/group
+        /// </summary>
+        public async Task LeaveGroup(string groupName)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+            _logger.LogInformation("User {UserId} left group {Group}", Context.UserIdentifier, groupName);
+        }
+    }
+}

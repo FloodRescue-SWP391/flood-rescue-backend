@@ -1,6 +1,5 @@
 ﻿using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
-using FloodRescue.Services.Interface;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
@@ -11,8 +10,9 @@ using System.Threading.Tasks;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
+using FloodRescue.Services.Interface.Auth;
 
-namespace FloodRescue.Services.Implements
+namespace FloodRescue.Services.Implements.Auth
 {
     public class TokenService : ITokenService
     {

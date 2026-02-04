@@ -1,7 +1,7 @@
 ﻿using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.Category;
 using FloodRescue.Services.DTO.Response.Category;
-using FloodRescue.Services.Interface;
+using FloodRescue.Services.Interface.Category;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

@@ -3,9 +3,11 @@ using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.DTO.Request.ReliefItem;
 using FloodRescue.Services.DTO.Response.ReliefItem;
-using FloodRescue.Services.Interface;
+using FloodRescue.Services.Interface.ReliefItem;
 
-namespace FloodRescue.Services.Implements
+using ReliefItemEntity = FloodRescue.Repositories.Entites.ReliefItem;
+
+namespace FloodRescue.Services.Implements.ReliefItem
 {
     public class ReliefItemService : IReliefItemService
     {
@@ -20,7 +22,7 @@ namespace FloodRescue.Services.Implements
 
         public async Task<ReliefItemResponseDTO> CreateAsync(CreateReliefItemRequestDTO request)
         {
-            var item = _mapper.Map<ReliefItem>(request);
+            var item = _mapper.Map<ReliefItemEntity>(request);
             await _unitOfWork.ReliefItems.AddAsync(item);
             await _unitOfWork.SaveChangesAsync();
             return _mapper.Map<ReliefItemResponseDTO>(item);

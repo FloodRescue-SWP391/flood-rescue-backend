@@ -7,7 +7,7 @@ using FloodRescue.Services.DTO.Request.AuthRequest;
 using FloodRescue.Services.DTO.Request.User;
 using FloodRescue.Services.DTO.Response.AuthResponse;
 using FloodRescue.Services.DTO.Response.RegisterResponse;
-using FloodRescue.Services.Interface;
+using FloodRescue.Services.Interface.Auth;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -16,7 +16,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FloodRescue.Services.Implements
+namespace FloodRescue.Services.Implements.Auth
 {
     public class AuthService : IAuthService
     {
