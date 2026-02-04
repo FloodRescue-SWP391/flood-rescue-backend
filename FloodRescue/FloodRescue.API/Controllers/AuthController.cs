@@ -3,7 +3,7 @@ using FloodRescue.Services.DTO.Request.Auth;
 using FloodRescue.Services.DTO.Request.AuthRequest;
 using FloodRescue.Services.DTO.Response.AuthResponse;
 using FloodRescue.Services.DTO.Response.RegisterResponse;
-using FloodRescue.Services.Interface;
+using FloodRescue.Services.Interface.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 

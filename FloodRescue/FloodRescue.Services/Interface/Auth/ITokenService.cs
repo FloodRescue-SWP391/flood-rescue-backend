@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FloodRescue.Services.Interface
+namespace FloodRescue.Services.Interface.Auth
 {
     public interface ITokenService
     {

@@ -3,9 +3,11 @@ using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.DTO.Request.Category;
 using FloodRescue.Services.DTO.Response.Category;
-using FloodRescue.Services.Interface;
+using FloodRescue.Services.Interface.Category;
 
-namespace FloodRescue.Services.Implements
+using CategoryEntity = FloodRescue.Repositories.Entites.Category;
+
+namespace FloodRescue.Services.Implements.Category
 {
     public class CategoryService : ICategoryService
     {
@@ -20,7 +22,7 @@ namespace FloodRescue.Services.Implements
 
         public async Task<CategoryResponseDTO> CreateAsync(CreateCategoryRequestDTO request)
         {
-            var category = _mapper.Map<Category>(request);
+            var category = _mapper.Map<CategoryEntity>(request);
             await _unitOfWork.Categories.AddAsync(category);
             await _unitOfWork.SaveChangesAsync();
             return _mapper.Map<CategoryResponseDTO>(category);

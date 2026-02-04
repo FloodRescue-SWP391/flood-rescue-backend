@@ -5,7 +5,7 @@ using FloodRescue.Services.DTO.Request.Warehouse;
 using FloodRescue.Services.DTO.Request.WarehouseRequest;
 using FloodRescue.Services.DTO.Response.Warehouse;
 using FloodRescue.Services.Implements;
-using FloodRescue.Services.Interface;
+using FloodRescue.Services.Interface.Warehouse;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
