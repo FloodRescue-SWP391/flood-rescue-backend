@@ -1,7 +1,7 @@
 using FloodRescue.Services.DTO.Request.ReliefItem;
 using FloodRescue.Services.DTO.Response.ReliefItem;
 
-namespace FloodRescue.Services.Interface
+namespace FloodRescue.Services.Interface.ReliefItem
 {
     public interface IReliefItemService
     {

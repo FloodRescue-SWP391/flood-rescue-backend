@@ -1,7 +1,7 @@
 using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.ReliefItem;
 using FloodRescue.Services.DTO.Response.ReliefItem;
-using FloodRescue.Services.Interface;
+using FloodRescue.Services.Interface.ReliefItem;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
