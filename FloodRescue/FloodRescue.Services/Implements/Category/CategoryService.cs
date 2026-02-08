@@ -31,12 +31,14 @@ namespace FloodRescue.Services.Implements.Category
 
         public async Task<CategoryResponseDTO> CreateAsync(CreateCategoryRequestDTO request)
         {
+            _logger.LogInformation("Request to create new Category. Name: {CategoryName}", request.CategoryName);
             var category = _mapper.Map<CategoryEntity>(request);
             await _unitOfWork.Categories.AddAsync(category);
             await _unitOfWork.SaveChangesAsync();
+            _logger.LogInformation("Successfully created Category with ID: {CategoryId}", category.CategoryID);
             CategoryResponseDTO responseDTO = _mapper.Map<CategoryResponseDTO>(category);
             await _cacheService.RemoveAsync(ALL_CATEGORIES_KEY);
- 
+            _logger.LogInformation("Cleared cache for All Categories list.");
             return responseDTO;
         }
 
@@ -110,7 +112,7 @@ namespace FloodRescue.Services.Implements.Category
 
         public async Task<bool> UpdateAsync(int id, CreateCategoryRequestDTO request)
         {
-            _logger.LogInformation("Request to update Category ID: {CategoryId}. New Name: {CategoryName}", id, request.CategoryName);
+            _logger.LogInformation("Request to update Category ID: {CategoryId}", id);
             var category = await _unitOfWork.Categories.GetAsync(c => c.CategoryID == id && !c.IsDeleted);
             if (category == null)
             {

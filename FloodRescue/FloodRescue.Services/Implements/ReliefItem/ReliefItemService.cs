@@ -30,17 +30,20 @@ namespace FloodRescue.Services.Implements.ReliefItem
         private const string RELIEF_ITEM_KEY_PREFIX = "reliefitem:";
         public async Task<ReliefItemResponseDTO> CreateAsync(CreateReliefItemRequestDTO request)
         {
+            _logger.LogInformation("Request to create new ReliefItem. Name: {ReliefItemName}", request.ReliefItemName);
             var item = _mapper.Map<ReliefItemEntity>(request);
             await _unitOfWork.ReliefItems.AddAsync(item);
             await _unitOfWork.SaveChangesAsync();
+            _logger.LogInformation("Successfully created ReliefItem with ID: {ReliefItemId}", item.ReliefItemID);
             ReliefItemResponseDTO responseDTO = _mapper.Map<ReliefItemResponseDTO>(item);
             await _cacheService.RemoveAsync(ALL_RELIEF_ITEMS_KEY);
+            _logger.LogInformation("Cleared cache for All ReliefItems list.");
             return responseDTO;
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
-            _logger.LogInformation("Attempting to delete ReliefItem with ID: {ReliefItemId}", id);
+            _logger.LogInformation("Request to delete ReliefItem with ID: {ReliefItemId}", id);
             var item = await _unitOfWork.ReliefItems.GetAsync(r => r.ReliefItemID == id);
             if (item == null)
             {
@@ -51,7 +54,7 @@ namespace FloodRescue.Services.Implements.ReliefItem
             {
                 item.IsDeleted = true;
                 await _unitOfWork.SaveChangesAsync();
-                _logger.LogInformation("Soft deleted ReliefItem ID: {ReliefItemId} in database.", id);
+                _logger.LogInformation("Successfully soft-deleted ReliefItem ID: {ReliefItemId} in database.", id);
                 // xóa 2 cache song song
                 await Task.WhenAll(
                      _cacheService.RemoveAsync(ALL_RELIEF_ITEMS_KEY),
@@ -61,7 +64,7 @@ namespace FloodRescue.Services.Implements.ReliefItem
 
                 return true;
             }
-            _logger.LogInformation("ReliefItem ID: {ReliefItemId} was already deleted.", id);
+            _logger.LogInformation("ReliefItem ID: {ReliefItemId} was already marked as deleted. No changes made.", id);
             return false;
         }
 
@@ -91,9 +94,10 @@ namespace FloodRescue.Services.Implements.ReliefItem
             var cache = await _cacheService.GetAsync<ReliefItemResponseDTO>(RELIEF_ITEM_KEY_PREFIX + id);
             if (cache != null)
             {
-                _logger.LogInformation("Retrieved ReliefItem ID: {ReliefItemId} from cache.", id);
+                _logger.LogInformation("Found ReliefItem in cache: {ReliefItemId}", id);
                 return cache;
             }
+            _logger.LogInformation("Cache miss. Querying database for ReliefItem ID: {ReliefItemId}", id);
             var item = await _unitOfWork.ReliefItems.GetAsync(r => r.ReliefItemID == id && !r.IsDeleted, r => r.Category!);
             if (item != null)
             {
@@ -102,6 +106,7 @@ namespace FloodRescue.Services.Implements.ReliefItem
                 _logger.LogInformation("Added ReliefItem ID: {ReliefItemId} to cache.", id);
                 return responseDTO;
             }
+            _logger.LogWarning("ReliefItem with ID: {ReliefItemId} not found in database.", id);
             return null;
         }
 

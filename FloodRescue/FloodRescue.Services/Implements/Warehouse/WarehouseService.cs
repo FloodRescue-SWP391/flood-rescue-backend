@@ -42,14 +42,15 @@ namespace FloodRescue.Services.Implements.Warehouse
 
         public async Task<CreateWarehouseResponseDTO> CreateWarehouseAsync(CreateWarehouseRequestDTO request)
         {
+            _logger.LogInformation("Request to create new Warehouse. Name: {WarehouseName}", request.Name);
             WarehouseEntity warehouse = _mapper.Map<WarehouseEntity>(request);
             await _unitOfWork.Warehouses.AddAsync(warehouse);
             await _unitOfWork.SaveChangesAsync();
-
+            _logger.LogInformation("Successfully created Warehouse with ID: {WarehouseId}", warehouse.WarehouseID);
             CreateWarehouseResponseDTO responseDTO = _mapper.Map<CreateWarehouseResponseDTO>(warehouse);
 
             await _cacheService.RemoveAsync(ALL_WAREHOUSES_KEY);
-
+            _logger.LogInformation("Cleared cache for All Warehouses list.");
             return responseDTO;
         }
 
@@ -113,6 +114,7 @@ namespace FloodRescue.Services.Implements.Warehouse
                 await _cacheService.SetAsync($"{WAREHOUSE_KEY_PREFIX}{id}", responseDTO, TimeSpan.FromMinutes(5));
                 _logger.LogInformation("Added Warehouse to cache: {WarehouseID}", id);
             }
+            _logger.LogWarning("Warehouse with ID: {WarehouseId} not found in database.", id);
             return responseDTO;
         }
 
@@ -124,7 +126,6 @@ namespace FloodRescue.Services.Implements.Warehouse
 
             if (cached != null)
             {
-
                 return cached;
             }
 
