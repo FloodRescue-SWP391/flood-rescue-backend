@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Confluent.Kafka;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
@@ -35,7 +36,7 @@ namespace FloodRescue.Services.Hubs
                 {
                     await Groups.AddToGroupAsync(Context.ConnectionId, roleName);
 
-                    _logger.LogInformation("User {UserId} added to group {GroupName}", Context.UserIdentifier, roleName);
+                    _logger.LogInformation("User {UserId} added to group {GroupName}", Context.ConnectionId, roleName);
                 }
             }
 
@@ -48,7 +49,7 @@ namespace FloodRescue.Services.Hubs
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            _logger.LogInformation("User disconnected from NotificationHub. UserID: {UserId}", Context.UserIdentifier);
+            _logger.LogInformation("User disconnected from NotificationHub. UserID: {UserId}", Context.ConnectionId);
 
             await base.OnDisconnectedAsync(exception);
         }
@@ -61,7 +62,29 @@ namespace FloodRescue.Services.Hubs
         public async Task JoinGroup(string groupName)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);  
-            _logger.LogInformation("User {UserId} joined group {GroupName}", Context.UserIdentifier, groupName);
+            _logger.LogInformation("User {UserId} joined group {GroupName}", Context.ConnectionId, groupName);
+
+            
+        }
+
+
+        public async Task JoinTeamGroup(string teamID)
+        {
+            if (string.IsNullOrWhiteSpace(teamID))
+            {
+                _logger.LogWarning("JoinTeamGroup called with empty teamID");
+                return;
+            }
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, teamID);
+
+            _logger.LogInformation("User {UserId} joined team group {TeamID}", Context.ConnectionId, teamID);
+
+            await Clients.Caller.SendAsync("JoinedTeamGroup", new { 
+                TeamID = teamID,
+                Message = $"You have successfully joined the team group {teamID}."
+            });
+
         }
 
         /// <summary>
@@ -70,7 +93,7 @@ namespace FloodRescue.Services.Hubs
         public async Task LeaveGroup(string groupName)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
-            _logger.LogInformation("User {UserId} left group {Group}", Context.UserIdentifier, groupName);
+            _logger.LogInformation("User {UserId} left group {Group}", Context.ConnectionId, groupName);
         }
     }
 }

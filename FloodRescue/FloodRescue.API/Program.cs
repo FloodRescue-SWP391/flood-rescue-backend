@@ -32,6 +32,8 @@ using Hangfire;
 using Hangfire.Redis.StackExchange;
 using FloodRescue.Services.Implements.BackgroundJob;
 using Hangfire.Dashboard;
+using FloodRescue.Services.Interface.RescueMission;
+using FloodRescue.Services.Implements.RescueMission;
 
 namespace FloodRescue.API
 {
@@ -132,6 +134,7 @@ namespace FloodRescue.API
             builder.Services.AddScoped<ICacheService, CacheService>();
             builder.Services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
             builder.Services.AddScoped<IBackgroundJobService, BackgroundJobService>();
+            builder.Services.AddScoped<IRescueMissionService, RescueMissionService>();
 
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
