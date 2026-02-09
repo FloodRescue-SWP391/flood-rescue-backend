@@ -4,7 +4,9 @@ using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.DTO.Request.RescueRequest;
 using FloodRescue.Services.DTO.Response.RescueRequestResponse;
+using FloodRescue.Services.Implements.Kafka;
 using FloodRescue.Services.Interface.Cache;
+using FloodRescue.Services.Interface.Kafka;
 using FloodRescue.Services.Interface.RescueRequest;
 using FloodRescue.Services.SharedSetting;
 using Microsoft.Extensions.Logging;
@@ -13,6 +15,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using RescueRequestEntity = FloodRescue.Repositories.Entites.RescueRequest;
 namespace FloodRescue.Services.Implements.RescueRequest
 {
@@ -22,6 +25,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ILogger<RescueRequestService> _logger;
+        private readonly IKafkaProducerService _kafkaProducerService;
         private readonly ICacheService _cacheService;
         // Cache keys
         private const string ALL_RESCUE_REQUESTS_KEY = "rescuerequest:all";
@@ -32,11 +36,12 @@ namespace FloodRescue.Services.Implements.RescueRequest
             RescueRequestType.RESCUE_TYPE,
             RescueRequestType.SUPPLY_TYPE
         };
-        public RescueRequestService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<RescueRequestService> logger, ICacheService cacheService)
+        public RescueRequestService(IUnitOfWork unitOfWork, IMapper mapper, ILogger<RescueRequestService> logger, ICacheService cacheService, IKafkaProducerService kafkaProducerService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _logger = logger;
+            _kafkaProducerService = kafkaProducerService;
             _cacheService = cacheService;
 
         }
@@ -121,6 +126,38 @@ namespace FloodRescue.Services.Implements.RescueRequest
             // 11. Cache luôn request mới theo ShortCode (citizen sẽ tra cứu ngay)
             await _cacheService.SetAsync($"{RESCUE_REQUEST_KEY_PREFIX}{shortCode}", responseDTO, TimeSpan.FromMinutes(10));
             _logger.LogInformation("Cached new RescueRequest with ShortCode: {ShortCode}", shortCode);
+
+            // 12. Kafka Produce - bắn message lên topic để consumer xử lí (SMS, notification, ...)
+            try
+            {
+                RescueRequestKafkaMessage kafkaMessage = _mapper.Map<RescueRequestKafkaMessage>(rescueRequest);
+                //new RescueRequestKafkaMessage
+                //{
+                //    RescueRequestID = data.RescueRequestID,
+                //    ShortCode = data.ShortCode,
+                //    CitizenPhone = data.CitizenPhone,
+                //    RequestType = data.RequestType,
+                //    LocationLatitude = data.LocationLatitude,
+                //    LocationLongitude = data.LocationLongitude,
+                //    CreatedTime = data.CreatedTime
+                //};
+
+                // Key = RescueRequestID để Kafka partition theo request
+                await _kafkaProducerService.ProduceAsync(
+                    KafkaSettings.RESCUE_REQUEST_TOPIC, // topic
+                    rescueRequest.RescueRequestID.ToString(), // key
+                    kafkaMessage // event/message(object)
+                );
+
+                _logger.LogInformation("Kafka message produced to topic: {Topic} for RescueRequest ID: {Id}",
+                    KafkaSettings.RESCUE_REQUEST_TOPIC, rescueRequest.RescueRequestID);
+            }
+            catch (Exception ex)
+            {
+                // Kafka fail không nên block response - request đã được lưu DB thành công
+                _logger.LogError(ex, "Failed to produce Kafka message for RescueRequest ID: {Id}. Request was saved successfully.",
+                    rescueRequest.RescueRequestID);
+            }
 
             return (responseDTO, null);
         }

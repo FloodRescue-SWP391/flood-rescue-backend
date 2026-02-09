@@ -1,4 +1,5 @@
-﻿using FloodRescue.Services.BusinessModels;
+﻿using AutoMapper;
+using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.RescueRequest;
 using FloodRescue.Services.DTO.Response.RescueRequestResponse;
 using FloodRescue.Services.Interface.Kafka;
@@ -15,12 +16,11 @@ namespace FloodRescue.API.Controllers
     {
         private readonly IRescueRequestService _rescueRequestService;
         private readonly ILogger<RescueRequestsController> _logger;
-        private readonly IKafkaProducerService _kafkaProducerService;
+
 
         public RescueRequestsController(IRescueRequestService rescueRequestService,IKafkaProducerService kafkaProducerService,ILogger<RescueRequestsController> logger)
         {
             _rescueRequestService = rescueRequestService;
-            _kafkaProducerService = kafkaProducerService;
             _logger = logger;
         }
         /// <summary>
@@ -41,39 +41,7 @@ namespace FloodRescue.API.Controllers
                 _logger.LogWarning("CreateRescueRequest failed: {Error}", errorMessage);
                 return BadRequest(ApiResponse<CreateRescueRequestResponseDTO>.Fail(errorMessage ?? "Create rescue request failed"));
             }
-
-            // 2. Kafka Produce - bắn message lên topic để consumer xử lí (SMS, notification, ...)
-            try
-            {
-                var kafkaMessage = new RescueRequestKafkaMessage
-                {
-                    RescueRequestID = data.RescueRequestID,
-                    ShortCode = data.ShortCode,
-                    CitizenPhone = data.CitizenPhone,
-                    RequestType = data.RequestType,
-                    LocationLatitude = data.LocationLatitude,
-                    LocationLongitude = data.LocationLongitude,
-                    CreatedTime = data.CreatedTime
-                };
-
-                // Key = RescueRequestID để Kafka partition theo request
-                await _kafkaProducerService.ProduceAsync(
-                    KafkaSettings.RESCUE_REQUEST_TOPIC,
-                    data.RescueRequestID.ToString(),
-                    kafkaMessage
-                );
-
-                _logger.LogInformation("Kafka message produced to topic: {Topic} for RescueRequest ID: {Id}",
-                    KafkaSettings.RESCUE_REQUEST_TOPIC, data.RescueRequestID);
-            }
-            catch (Exception ex)
-            {
-                // Kafka fail không nên block response - request đã được lưu DB thành công
-                _logger.LogError(ex, "Failed to produce Kafka message for RescueRequest ID: {Id}. Request was saved successfully.",
-                    data.RescueRequestID);
-            }
-
-            // 3. Trả về response với ShortCode
+            // 2. Trả về response với ShortCode
             _logger.LogInformation("CreateRescueRequest success. ShortCode: {ShortCode}", data.ShortCode);
             return Ok(ApiResponse<CreateRescueRequestResponseDTO>.Ok(data, "Create rescue request successfully", 201));
         }
