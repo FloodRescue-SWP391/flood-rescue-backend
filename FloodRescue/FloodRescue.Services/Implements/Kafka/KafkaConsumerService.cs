@@ -94,6 +94,13 @@ namespace FloodRescue.Services.Implements.Kafka
                 catch (ConsumeException ex)
                 {
                     _logger.LogError(ex, "Kafka Consumer Error with Error Details {Error}", ex.Error.Reason);
+                    await Task.Delay(5000, stoppingToken);
+                }
+                catch(Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing message in Kafka Handler {Error}", ex.Message);
+
+                    await Task.Delay(2000, stoppingToken);
                 }
             }
 

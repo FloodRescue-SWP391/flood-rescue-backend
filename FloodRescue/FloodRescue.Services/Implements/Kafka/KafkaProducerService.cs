@@ -53,9 +53,7 @@ namespace FloodRescue.Services.Implements.Kafka
                 {
                     Key = key,
                     Value = jsonMessage
-
                 });
-
 
                 //Bên trong kafka có nhiều topic
                 //Bên topic có nhiều partition

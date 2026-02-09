@@ -11,7 +11,7 @@ namespace FloodRescue.Services.DTO.Kafka
         //Thông tin Mission
         public Guid MissionID { get; set; }
         public DateTime AssignedAt { get; set; }
-
+        public string MissionStatus {get; set;} = string.Empty;
 
         //Thông tin Request
         public Guid RescueRequestID { get; set; }
@@ -22,6 +22,7 @@ namespace FloodRescue.Services.DTO.Kafka
         public double LocationLatitude { get; set; }    
         public double LocationLongitude { get; set; }
         public double PeopleCount { get; set; }
+        public string? Description {get; set;} = string.Empty;
 
         //Thông tin Team
         public Guid RescueTeamID { get; set; }

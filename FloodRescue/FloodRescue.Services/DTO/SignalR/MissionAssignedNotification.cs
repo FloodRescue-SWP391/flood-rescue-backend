@@ -11,8 +11,8 @@ namespace FloodRescue.Services.DTO.SignalR
     public class MissionAssignedNotification
     {
         //Header
-        public string Title { get; set; } = "New Mission Assigned";
-        public string NotificationType { get; set; } = "MissionAssigned";
+        public string Title { get; set; } = string.Empty;
+        public string NotificationType { get; set; } = string.Empty;
 
         //Thông tin Mission
         public Guid MissionID { get; set; }
@@ -30,7 +30,7 @@ namespace FloodRescue.Services.DTO.SignalR
         public string? Description { get; set; } = string.Empty;    
 
         //Action Required
-        public string ActionMessage { get; set; } = "Please respond to the mission assignment in 5 minutes";    
+        public string ActionMessage { get; set; } = string.Empty;    
 
     }
 }
