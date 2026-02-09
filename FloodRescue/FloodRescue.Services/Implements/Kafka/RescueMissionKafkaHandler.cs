@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using AutoMapper;
 using FloodRescue.Services.DTO.Kafka;
 using FloodRescue.Services.DTO.SignalR;
 using FloodRescue.Services.Interface.Kafka;
@@ -11,11 +12,13 @@ public class DispatchMissionKafkaHandler : IKafkaHandler
 {
     private readonly IRealtimeNotificationService _realtimeNotificationService;
     private readonly ILogger<DispatchMissionKafkaHandler> _logger;
+    private readonly IMapper _mapper;
   
-    public DispatchMissionKafkaHandler(IRealtimeNotificationService realtimeNotificationService, ILogger<DispatchMissionKafkaHandler> logger)
+    public DispatchMissionKafkaHandler(IRealtimeNotificationService realtimeNotificationService, ILogger<DispatchMissionKafkaHandler> logger, IMapper mapper)
     {
         _realtimeNotificationService = realtimeNotificationService;
         _logger = logger;
+        _mapper = mapper;
     }
    
     public string Topic => KafkaSettings.MISSION_ASSIGN_TOPIC;
@@ -34,23 +37,8 @@ public class DispatchMissionKafkaHandler : IKafkaHandler
                 return;   
             }
 
-            MissionAssignedNotification notification = new MissionAssignedNotification
-            {
-                    Title = "New Rescue Mission Assigned",
-                    NotificationType = "MissionAssigned", //1 cái label để front end dựa vào đây thao tác khi nhận thông báo từ SignalR
-                    MissionID = missionAssigned.MissionID,
-                    MissionStatus = missionAssigned.MissionStatus,
-                    AssignedAt = missionAssigned.AssignedAt,
-                    RequestShortCode = missionAssigned.RequestShortCode,
-                    CitizenName = missionAssigned.CitizenName,
-                    CitizenPhone = missionAssigned.CitizenPhone,
-                    Address = missionAssigned.Address,
-                    LocationLatitude = missionAssigned.LocationLatitude,
-                    LocationLongitude = missionAssigned.LocationLongitude,
-                    PeopleCount = missionAssigned.PeopleCount,
-                    Description = missionAssigned.Description,
-                    ActionMessage = "Please proceed to the rescue location immediately in 5 minutes."
-            };
+            //xài auto mapper
+            MissionAssignedNotification notification = _mapper.Map<MissionAssignedNotification>(missionAssigned);         
 
             //Gửi notification qua SignalR
             //xíu hồi tạo connection on riêng biệt bên fe để lắng nghe

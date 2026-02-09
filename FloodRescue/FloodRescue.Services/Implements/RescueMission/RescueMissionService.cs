@@ -1,4 +1,6 @@
-﻿using FloodRescue.Repositories.Entites;
+﻿using AutoMapper;
+using Azure;
+using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.DTO.Kafka;
 using FloodRescue.Services.DTO.Request.RescueMissionRequest;
@@ -28,16 +30,18 @@ namespace FloodRescue.Services.Implements.RescueMission
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<RescueMissionService> _logger;
         private readonly IKafkaProducerService _kafkaProducer;
+        private readonly IMapper _mapper;
         
 
         public RescueMissionService(IUnitOfWork unitOfWork,
             ILogger<RescueMissionService> logger,
             IKafkaProducerService kafkaProducer,
-            IRealtimeNotificationService realtimeNotificationService)
+           IMapper mapper)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
             _kafkaProducer = kafkaProducer;
+            _mapper = mapper;
             
         }
 
@@ -101,23 +105,11 @@ namespace FloodRescue.Services.Implements.RescueMission
                 }
 
                 //gửi mesage qua kafka
-                MissionAssignedMessage kafkaMessage = new MissionAssignedMessage
-                {
-                    MissionID = newMission.RescueMissionID,
-                    AssignedAt = newMission.AssignedAt,
-                    MissionStatus = newMission.Status,
-                    RescueRequestID = rescueRequest.RescueRequestID,
-                    RequestShortCode = rescueRequest.ShortCode,
-                    CitizenPhone = rescueRequest.CitizenPhone,
-                    CitizenName = rescueRequest.CitizenName,
-                    Address = rescueRequest.Address,
-                    LocationLatitude = rescueRequest.LocationLatitude,
-                    LocationLongitude = rescueRequest.LocationLongitude,
-                    PeopleCount = rescueRequest.PeopleCount,
-                    RescueTeamID = rescueTeam.RescueTeamID,
-                    TeamName = rescueTeam.TeamName,
-                    Description = rescueRequest.Description
-                };
+                MissionAssignedMessage kafkaMessage = _mapper.Map<MissionAssignedMessage>(rescueRequest);
+
+                _mapper.Map(rescueTeam, kafkaMessage);
+
+                _mapper.Map(newMission, kafkaMessage);
 
                 await _kafkaProducer.ProduceAsync(topic: KafkaSettings.MISSION_ASSIGN_TOPIC, key: newMission.RescueMissionID.ToString(), message: kafkaMessage);
 
@@ -127,18 +119,18 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 _logger.LogInformation("Successfully dispatched mission with ID: {MissionID} for Request ID: {RequestID} and Team ID: {TeamID}", newMission.RescueMissionID, request.RescueRequestID, request.RescueTeamID);
 
-                return new DispatchMissionResponseDTO
-                {
-                    RescueMissionID = newMission.RescueMissionID,
-                    RescueRequestID = rescueRequest.RescueRequestID,
-                    RequestShortCode = rescueRequest.ShortCode,
-                    RescueTeamID = rescueTeam.RescueTeamID,
-                    TeamName = rescueTeam.TeamName,
-                    MissionStatus = newMission.Status,
-                    AssignedAt = newMission.AssignedAt,
-                    Message = $"Rescue mission dispatched successfully for Team {rescueTeam.RescueTeamID} - Team Name {rescueTeam.TeamName}."
-                };
-            }catch(Exception ex)
+                DispatchMissionResponseDTO response = _mapper.Map<DispatchMissionResponseDTO>(newMission);
+
+                _mapper.Map(rescueRequest, response);
+
+                _mapper.Map(rescueTeam, response);
+
+                response.Message = $"Rescue mission dispatched successfully for Team {rescueTeam.RescueTeamID} - Team Name {rescueTeam.TeamName}.";
+
+                return response;
+                
+            }
+            catch(Exception ex)
             {
                 await transaction.RollbackAsync();
 

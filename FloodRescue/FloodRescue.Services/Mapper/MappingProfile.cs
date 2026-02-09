@@ -15,6 +15,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FloodRescue.Services.DTO.Kafka;
+using FloodRescue.Services.DTO.SignalR;
+using FloodRescue.Services.DTO.Response.RescueMissionResponse;
 
 namespace FloodRescue.Services.Mapper
 {
@@ -77,6 +80,40 @@ namespace FloodRescue.Services.Mapper
             CreateMap<ReliefItem, ReliefItemResponseDTO>();
             // Mapping UpdateUserRequestDTO -> Warehouse
             CreateMap<UpdateUserRequestDTO, Warehouse>();
+
+            CreateMap<MissionAssignedMessage, MissionAssignedNotification>()
+                .ForMember(
+                    destinationMember: destination => destination.Title,
+                    opt => opt.MapFrom(src => "New Rescue Mission Assigned"))
+                .ForMember(
+                    destinationMember: destination => destination.NotificationType,
+                    opt => opt.MapFrom(src => "MissionAssigned")
+                )
+                .ForMember(
+                    destinationMember: destination => destination.ActionMessage,
+                    opt => opt.MapFrom(src => "Please proceed to the rescue location immediately in 5 minutes.")
+                );
+            
+            
+        CreateMap<RescueRequest, MissionAssignedMessage>()
+            .ForMember(dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
+
+
+        CreateMap<RescueTeam, MissionAssignedMessage>();
+  
+        CreateMap<RescueMission, MissionAssignedMessage>()
+            .ForMember(dest => dest.MissionID, opt => opt.MapFrom(src => src.RescueMissionID))
+            .ForMember(dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
+
+
+        CreateMap<RescueMission, DispatchMissionResponseDTO>()
+            .ForMember(dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
+
+        CreateMap<RescueRequest, DispatchMissionResponseDTO>()
+            .ForMember(dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
+
+        CreateMap<RescueTeam, DispatchMissionResponseDTO>();
+            
         }
     }
 }
