@@ -102,5 +102,6 @@ namespace FloodRescue.Services.Implements.Cache
 
             await _cache.SetStringAsync(key, jsonData, options);
         }
+
     }
 }

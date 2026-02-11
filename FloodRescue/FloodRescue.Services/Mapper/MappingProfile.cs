@@ -1,15 +1,19 @@
 ﻿using AutoMapper;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Services.DTO.Request.Auth;
+using FloodRescue.Services.DTO.Request.Category;
+using FloodRescue.Services.DTO.Request.ReliefItem;
+using FloodRescue.Services.DTO.Request.RescueRequest;
+using FloodRescue.Services.DTO.Request.RescueTeamRequest;
 using FloodRescue.Services.DTO.Request.User;
 using FloodRescue.Services.DTO.Request.Warehouse;
 using FloodRescue.Services.DTO.Response.AuthResponse;
-using FloodRescue.Services.DTO.Response.RegisterResponse;
-using FloodRescue.Services.DTO.Response.Warehouse;
-using FloodRescue.Services.DTO.Request.Category;
 using FloodRescue.Services.DTO.Response.Category;
-using FloodRescue.Services.DTO.Request.ReliefItem;
+using FloodRescue.Services.DTO.Response.RegisterResponse;
 using FloodRescue.Services.DTO.Response.ReliefItem;
+using FloodRescue.Services.DTO.Response.RescueRequestResponse;
+using FloodRescue.Services.DTO.Response.RescueTeamResponse;
+using FloodRescue.Services.DTO.Response.Warehouse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -77,6 +81,30 @@ namespace FloodRescue.Services.Mapper
             CreateMap<ReliefItem, ReliefItemResponseDTO>();
             // Mapping UpdateUserRequestDTO -> Warehouse
             CreateMap<UpdateUserRequestDTO, Warehouse>();
+
+            // Mapping RescueTeamRequestDTO -> RescueTeam
+            CreateMap<RescueTeamRequestDTO, RescueTeam>();
+
+            // Mapping RescueTeam -> RescueTeamResponseDTO
+            CreateMap<RescueTeam, RescueTeamResponseDTO>();
+
+            // CreateRescueRequestDTO -> RescueRequest
+            // PhoneNumber (DTO) != CitizenPhone (Entity) → ForMember
+            // ShortCode, Status, CreatedTime → service tự set nên Ignore
+            CreateMap<CreateRescueRequestDTO, RescueRequest>()
+                .ForMember(dest => dest.CitizenPhone, opt => opt.MapFrom(src => src.PhoneNumber))
+                .ForMember(dest => dest.ShortCode, opt => opt.Ignore())
+                .ForMember(dest => dest.Status, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
+                .ForMember(dest => dest.RescueRequestID, opt => opt.Ignore());
+
+            // RescueRequest -> CreateRescueRequestResponseDTO
+            // ImageUrls không có trong entity → service sẽ set thủ công
+            CreateMap<RescueRequest, CreateRescueRequestResponseDTO>()
+                .ForMember(dest => dest.ImageUrls, opt => opt.Ignore());
+
+            // Mapping CreateRescueRequestResponseDTO -> RescueRequestKafkaMessage
+            CreateMap<CreateRescueRequestResponseDTO, RescueRequestKafkaMessage>(); 
         }
     }
 }
