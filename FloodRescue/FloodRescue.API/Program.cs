@@ -32,6 +32,8 @@ using Hangfire;
 using Hangfire.Redis.StackExchange;
 using FloodRescue.Services.Implements.BackgroundJob;
 using Hangfire.Dashboard;
+using FloodRescue.Services.Interface.RescueMission;
+using FloodRescue.Services.Implements.RescueMission;
 using FloodRescue.Services.Interface.RescueTeam;
 using FloodRescue.Services.Implements.RescueTeam;
 using FloodRescue.Services.Interface.RescueRequest;
@@ -136,6 +138,8 @@ namespace FloodRescue.API
             builder.Services.AddScoped<ICacheService, CacheService>();
             builder.Services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
             builder.Services.AddScoped<IBackgroundJobService, BackgroundJobService>();
+            builder.Services.AddScoped<IRescueMissionService, RescueMissionService>();
+
             builder.Services.AddScoped<IRescueTeamService, RescueTeamService>();
             builder.Services.AddScoped<IRescueRequestService, RescueRequestService>();
             builder.Services.AddScoped<IKafkaHandler, RescueRequestKafkaHandler>();
@@ -151,6 +155,9 @@ namespace FloodRescue.API
             builder.Services.AddHostedService<KafkaConsumerService>();
 
             //Chỗ này sau này để đăng ký các IKafkaHandler implementation - hiện giờ chưa tạo - addScoped
+            builder.Services.AddScoped<IKafkaHandler, DispatchMissionKafkaHandler>();
+            builder.Services.AddScoped<IKafkaHandler, TeamAcceptedHandler>();
+            builder.Services.AddScoped<IKafkaHandler, TeamRejectedHandler>();
 
 
             // Đăng ký Redis Cache để inject được vào Cache Service

@@ -29,7 +29,6 @@ namespace FloodRescue.Services.Implements.Auth
         {
             _configuration = configuration; 
             _unitOfWork =  unitOfWork;
-
             _secretKey = _configuration.GetSection("JwtSettings")["SecretKey"]!;
             _issuer = _configuration.GetSection("JwtSettings")["Issuer"]!;
             _audience = _configuration.GetSection("JwtSettings")["Audience"]!;

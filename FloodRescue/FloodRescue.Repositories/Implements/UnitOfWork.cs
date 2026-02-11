@@ -1,6 +1,7 @@
 ﻿using FloodRescue.Repositories.Context;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
+using Microsoft.EntityFrameworkCore.Storage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -74,6 +75,12 @@ namespace FloodRescue.Repositories.Implements
         public IBaseRepository<Warehouse> Warehouses => _warehouses ??= new BaseRepository<Warehouse>(_context);
 
         public IBaseRepository<RefreshToken> RefreshTokens => _refreshTokens ??= new BaseRepository<RefreshToken>(_context);
+
+
+        public async Task<IDbContextTransaction> BeginTransactionAsync()
+        {
+            return await _context.Database.BeginTransactionAsync();
+        }
 
         public void Dispose()
         {
