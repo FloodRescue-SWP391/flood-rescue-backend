@@ -144,7 +144,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
 
                 // Key = RescueRequestID để Kafka partition theo request
                 await _kafkaProducerService.ProduceAsync(
-                    KafkaSettings.RESCUE_REQUEST_TOPIC, // topic
+                    KafkaSettings.RESCUE_REQUEST_CREATED_TOPIC, // topic
                     rescueRequest.RescueRequestID.ToString(), // key
                     kafkaMessage // event/message(object)
                 );

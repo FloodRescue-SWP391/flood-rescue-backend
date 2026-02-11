@@ -21,7 +21,7 @@ namespace FloodRescue.Services.Interface.Warehouse
 
         public Task<bool> DeleteWarehouseAsync(int warehouseId);
 
-        public Task<ShowWareHouseResponseDTO> SearchWarehouseAsync(int id);
+        public Task<ShowWareHouseResponseDTO?> SearchWarehouseAsync(int id);
 
         public Task<List<ShowWareHouseResponseDTO>> GetAllWarehousesAsync();
 

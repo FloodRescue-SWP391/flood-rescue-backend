@@ -1,5 +1,6 @@
 ﻿using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
+using FloodRescue.Services.Implements.RescueRequest;
 using FloodRescue.Services.Interface.BackgroundJob;
 using FloodRescue.Services.Interface.Cache;
 using FloodRescue.Services.Interface.RealTimeNoti;
@@ -10,7 +11,10 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-
+// Đặt Alias để tránh nhầm lẫn giữa Namespace/Service và Entity
+using RescueRequestEntity = FloodRescue.Repositories.Entites.RescueRequest;
+using InventoryEntity = FloodRescue.Repositories.Entites.Inventory;
+using RefreshTokenEntity = FloodRescue.Repositories.Entites.RefreshToken;
 namespace FloodRescue.Services.Implements.BackgroundJob
 {
     public class BackgroundJobService : IBackgroundJobService
@@ -44,7 +48,7 @@ namespace FloodRescue.Services.Implements.BackgroundJob
                 //query database để tìm các tokens được tính là không dùng được nữa
                 // thời gian hết hạn - đã qua sử dụng - đã bị thu hồi
 
-                IEnumerable<Repositories.Entites.RefreshToken> expiredTokens = await _unitOfWork.RefreshTokens.GetAllAsync((RefreshToken rt) => rt.ExpiredAt < DateTime.UtcNow || rt.IsUsed || rt.IsRevoked);
+                IEnumerable<RefreshTokenEntity> expiredTokens = await _unitOfWork.RefreshTokens.GetAllAsync((RefreshTokenEntity rt) => rt.ExpiredAt < DateTime.UtcNow || rt.IsUsed || rt.IsRevoked);
 
                 //Đếm token để ghi log
                 int tokenCount = expiredTokens.Count();
@@ -91,12 +95,15 @@ namespace FloodRescue.Services.Implements.BackgroundJob
                 var yesterday = DateTime.UtcNow.AddDays(-1);
 
                 //Thống kê các rescue request mới trong vòng 24 giờ qua
-                IEnumerable<RescueRequest> newRescueRequests = await _unitOfWork.RescueRequests.GetAllAsync((RescueRequest rr) => rr.CreatedTime >= yesterday);
+                //IEnumerable<RescueRequestService> newRescueRequests = await _unitOfWork.RescueRequests.GetAllAsync((RescueRequestService rr) => rr.CreatedTime >= yesterday);
+                IEnumerable<RescueRequestEntity> newRescueRequests = await _unitOfWork.RescueRequests
+                    .GetAllAsync((RescueRequestEntity rr) => rr.CreatedTime >= yesterday);
 
                 int newRescueRequestCount = newRescueRequests.Count();
 
                 //Kiểm tra các inventory có quantity thấp dưới 10
-                var lowInventoryItems = await _unitOfWork.Inventories.GetAllAsync((Inventory inv) => inv.Quantity < 10);
+                IEnumerable<InventoryEntity> lowInventoryItems = await _unitOfWork.Inventories
+                    .GetAllAsync((InventoryEntity inv) => inv.Quantity < 10);
 
                 int lowInventoryCount = lowInventoryItems.Count();
 

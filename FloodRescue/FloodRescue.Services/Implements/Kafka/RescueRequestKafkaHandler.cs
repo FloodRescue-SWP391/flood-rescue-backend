@@ -22,7 +22,7 @@ namespace FloodRescue.Services.Implements.Kafka
             _notificationService = notificationService;
         }
         // Topic lấy từ KafkaSettings đã tạo sẵn trong SharedSetting
-        public string Topic => KafkaSettings.RESCUE_REQUEST_TOPIC;
+        public string Topic => KafkaSettings.RESCUE_REQUEST_CREATED_TOPIC;
 
         public async Task HandleAsync(string message)
         {
@@ -47,7 +47,7 @@ namespace FloodRescue.Services.Implements.Kafka
 
                 // 3. Gửi realtime notification cho Coordinator qua SignalR (dùng IRealtimeNotificationService đã có)
                 await _notificationService.SendToGroupAsync(
-                    "Rescue Coordinator",
+                    Groups.RESCUE_COORDINATOR_GROUP,
                     "NewRescueRequest",
                     new
                     {

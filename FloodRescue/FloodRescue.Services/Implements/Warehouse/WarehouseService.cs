@@ -59,17 +59,18 @@ namespace FloodRescue.Services.Implements.Warehouse
             _logger.LogInformation("Request to delete Warehouse ID: {WarehouseId}", warehouseId);
             WarehouseEntity? warehouse = await _unitOfWork.Warehouses.GetAsync(w => w.WarehouseID == warehouseId);
             int result = 0;
-            if (warehouse != null)
+            if (warehouse == null)
             {
                 _logger.LogWarning("Delete failed. Warehouse ID: {WarehouseId} not found.", warehouseId);
                 return false;
             }
-            if (warehouse.IsDeleted)
+            if (warehouse?.IsDeleted == true)
             {
                 _logger.LogInformation("Warehouse ID: {WarehouseId} was already deleted. No changes made.", warehouseId);
                 return false;
             }
-            warehouse.IsDeleted = true;
+            // Dammit operator (!) đảm bảo với compiler rằng biến không phải là null tại thời điểm sử dụng
+            warehouse!.IsDeleted = true;
             result = await _unitOfWork.SaveChangesAsync();
             if (result > 0)
             {
@@ -145,7 +146,7 @@ namespace FloodRescue.Services.Implements.Warehouse
             return result;
         }
 
-        public async Task<UpdateWarehouseResponseDTO> UpdateWarehouseAsync(int id, UpdateWarehouseRequestDTO request)
+        public async Task<UpdateWarehouseResponseDTO?> UpdateWarehouseAsync(int id, UpdateWarehouseRequestDTO request)
         {
             _logger.LogInformation("Request to update Warehouse ID: {WarehouseId}", id);
             WarehouseEntity? _warehouse = await _unitOfWork.Warehouses.GetAsync(w => w.WarehouseID == id);
