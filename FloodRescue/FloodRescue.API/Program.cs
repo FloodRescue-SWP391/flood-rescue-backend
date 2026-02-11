@@ -34,6 +34,10 @@ using FloodRescue.Services.Implements.BackgroundJob;
 using Hangfire.Dashboard;
 using FloodRescue.Services.Interface.RescueMission;
 using FloodRescue.Services.Implements.RescueMission;
+using FloodRescue.Services.Interface.RescueTeam;
+using FloodRescue.Services.Implements.RescueTeam;
+using FloodRescue.Services.Interface.RescueRequest;
+using FloodRescue.Services.Implements.RescueRequest;
 
 namespace FloodRescue.API
 {
@@ -136,6 +140,9 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IBackgroundJobService, BackgroundJobService>();
             builder.Services.AddScoped<IRescueMissionService, RescueMissionService>();
 
+            builder.Services.AddScoped<IRescueTeamService, RescueTeamService>();
+            builder.Services.AddScoped<IRescueRequestService, RescueRequestService>();
+            builder.Services.AddScoped<IKafkaHandler, RescueRequestKafkaHandler>();
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
                 options.UseSqlServer(

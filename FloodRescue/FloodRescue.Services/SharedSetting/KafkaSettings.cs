@@ -18,5 +18,16 @@ namespace FloodRescue.Services.SharedSetting
         public const string TEAM_ACCEPTED_TOPIC = "team-accepted-topic";
 
         public const string TEAM_REJECTED_TOPIC = "team-rejected-topic";    
+        public const string RESCUE_REQUEST_TOPIC = "rescue-request-topic";
+        public const string RESCUE_REQUEST_CREATED_TOPIC = "rescue-request-created-topic";
+        public const string RESCUE_REQUEST_ACCEPTED_TOPIC = "rescue-request-accepted-topic";
+        public const string RESCUE_REQUEST_REJECTED_TOPIC = "rescue-request-rejected-topic";
+        public const string NOTIFICATION_TOPIC = "notification-topic";   
+    }
+
+    public static class Groups
+    {
+        public const string RESCUE_COORDINATOR_GROUP = "RescueCoordinator";
+        public const string RESCUE_TEAM_GROUP = "RescueTeam";
     }
 }
