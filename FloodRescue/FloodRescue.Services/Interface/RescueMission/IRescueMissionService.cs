@@ -10,6 +10,7 @@ namespace FloodRescue.Services.Interface.RescueMission
 {
     public interface IRescueMissionService
     {
-        Task<DispatchMissionResponseDTO?> DispatchMissionAsync(DispatchMissionRequestDTO request);   
+        Task<DispatchMissionResponseDTO?> DispatchMissionAsync(DispatchMissionRequestDTO request);
+        Task<RespondMissionResponseDTO?> RespondMissionAsync(RespondMessageRequestDTO request);
     }
 }

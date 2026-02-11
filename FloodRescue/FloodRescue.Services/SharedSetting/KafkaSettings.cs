@@ -14,5 +14,9 @@ namespace FloodRescue.Services.SharedSetting
 
         //topic mới dành cho Coordinator Dispatch - khi assign mission mới cho team
         public const string MISSION_ASSIGN_TOPIC = "mission-assigned-topic";
+
+        public const string TEAM_ACCEPTED_TOPIC = "team-accepted-topic";
+
+        public const string TEAM_REJECTED_TOPIC = "team-rejected-topic";    
     }
 }

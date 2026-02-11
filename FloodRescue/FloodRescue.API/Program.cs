@@ -148,6 +148,9 @@ namespace FloodRescue.API
             builder.Services.AddHostedService<KafkaConsumerService>();
 
             //Chỗ này sau này để đăng ký các IKafkaHandler implementation - hiện giờ chưa tạo - addScoped
+            builder.Services.AddScoped<IKafkaHandler, DispatchMissionKafkaHandler>();
+            builder.Services.AddScoped<IKafkaHandler, TeamAcceptedHandler>();
+            builder.Services.AddScoped<IKafkaHandler, TeamRejectedHandler>();
 
 
             // Đăng ký Redis Cache để inject được vào Cache Service

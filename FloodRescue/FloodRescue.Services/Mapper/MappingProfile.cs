@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using FloodRescue.Services.DTO.Kafka;
 using FloodRescue.Services.DTO.SignalR;
 using FloodRescue.Services.DTO.Response.RescueMissionResponse;
+using System.Net;
 
 namespace FloodRescue.Services.Mapper
 {
@@ -95,25 +96,71 @@ namespace FloodRescue.Services.Mapper
                 );
             
             
-        CreateMap<RescueRequest, MissionAssignedMessage>()
-            .ForMember(dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
+            CreateMap<RescueRequest, MissionAssignedMessage>()
+                .ForMember(dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
 
 
-        CreateMap<RescueTeam, MissionAssignedMessage>();
+            CreateMap<RescueTeam, MissionAssignedMessage>();
   
-        CreateMap<RescueMission, MissionAssignedMessage>()
-            .ForMember(dest => dest.MissionID, opt => opt.MapFrom(src => src.RescueMissionID))
-            .ForMember(dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
+            CreateMap<RescueMission, MissionAssignedMessage>()
+                .ForMember(dest => dest.MissionID, opt => opt.MapFrom(src => src.RescueMissionID))
+                .ForMember(dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
 
 
-        CreateMap<RescueMission, DispatchMissionResponseDTO>()
-            .ForMember(dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
+            CreateMap<RescueMission, DispatchMissionResponseDTO>()
+                .ForMember(dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
 
-        CreateMap<RescueRequest, DispatchMissionResponseDTO>()
-            .ForMember(dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
+            CreateMap<RescueRequest, DispatchMissionResponseDTO>()
+                .ForMember(dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
 
-        CreateMap<RescueTeam, DispatchMissionResponseDTO>();
-            
+            CreateMap<RescueTeam, DispatchMissionResponseDTO>();
+
+            // mappper rescue mission -> team accept message
+            // mapper rescue request -> team accept message 
+            // mapper rescue team -> team accept message    
+
+            CreateMap<RescueMission, TeamAcceptedMessage>()
+                .ForMember(destinationMember: dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
+
+            CreateMap<RescueRequest, TeamAcceptedMessage>()
+                .ForMember(destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode))
+                .ForMember(destinationMember: dest => dest.CoordinatorID, opt => opt.MapFrom(src => src.CoordinatorID));
+
+            CreateMap<RescueTeam, TeamAcceptedMessage>();
+
+            //mapper rescue mission -> team reject message  
+            //mapper rescue request -> team reject message  
+            //mapper rescue team -> team reject message
+
+            CreateMap<RescueMission, TeamRejectedMessage>()
+                .ForMember(destinationMember: dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
+
+            CreateMap<RescueRequest, TeamRejectedMessage>().ForMember(destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode))
+                                                            .ForMember(destinationMember: dest => dest.CoordinatorID, opt => opt.MapFrom(src => src.CoordinatorID));
+
+            CreateMap<RescueTeam, TeamRejectedMessage>();
+
+            //mapper rescue misson -> respond mission response dto
+            //mapper rescue request -> respond mission response dto 
+            //mapper rescue team -> respond mission response dto    
+            //mappper respond mission requesst dto -> respond mission response dto  - map tay
+
+            CreateMap<RescueMission, RespondMissionResponseDTO>().ForMember(
+                    destinationMember: dest => dest.NewMissionStatus, opt => opt.MapFrom(src => src.Status)
+            );
+
+            CreateMap<RescueRequest, RespondMissionResponseDTO>().ForMember(
+                destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
+
+            CreateMap<RescueTeam, RespondMissionResponseDTO>();
+
+
+            //mapper TeamAcceptedMessage -> TeamAcceptedNotification
+            CreateMap<TeamAcceptedMessage, TeamAcceptedNotification>();
+
+            //mapper TeamRejectedMessage -> TeamRejectedNotification
+            CreateMap<TeamRejectedMessage, TeamRejectedNotification>();
+
         }
     }
 }

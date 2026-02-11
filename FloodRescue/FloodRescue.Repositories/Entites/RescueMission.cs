@@ -1,4 +1,4 @@
-﻿using System;
+﻿ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -39,7 +39,7 @@ namespace FloodRescue.Repositories.Entites
         public RescueRequest? RescueRequest { get; set; }
 
         [Column("Status", TypeName = "varchar(20)")]
-        public string Status { get; set; }
+        public string Status { get; set; } = string.Empty;
 
 
         [Column("AssignedAt", TypeName = "datetime2(7)")]

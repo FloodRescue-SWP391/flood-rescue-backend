@@ -139,5 +139,105 @@ namespace FloodRescue.Services.Implements.RescueMission
                 throw;
             }
         }
+
+        public async Task<RespondMissionResponseDTO?> RespondMissionAsync(RespondMessageRequestDTO request)
+        {
+            _logger.LogInformation("Starting Respond with MissionID: {MissionID}, IsAccepted: {IsAccepted}", request.RescueMissionID, request.IsAccepted);
+
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+                //Tìm request đang pending
+                RescueMissionEntity? rescueMission = await _unitOfWork.RescueMissions.GetAsync((RescueMissionEntity rm) => rm.RescueMissionID == request.RescueMissionID && rm.Status == "Assigned" && !rm.IsDeleted, rm => rm.RescueTeam!, rm => rm.RescueRequest!);
+
+                if (rescueMission == null)
+                {
+                    _logger.LogWarning("Rescue Mission with ID: {MissionID} not found or not in Assigned status", request.RescueMissionID);
+                    return null;
+                }
+
+                RescueTeamEntity rescueTeam = rescueMission.RescueTeam!;    
+                RescueRequestEntity rescueRequest = rescueMission.RescueRequest!;   
+
+                DateTime respondedAt = DateTime.UtcNow;
+
+                if (request.IsAccepted)
+                {
+                    rescueMission.Status = "InProgress";    
+                    rescueMission.StartTime = respondedAt;  
+                    _logger.LogInformation("Rescue Mission with ID: {MissionID} accepted and set to InProgress - Team {TeamName}", request.RescueMissionID, rescueTeam.TeamName);
+
+                    // mappper rescue mission -> team accept message
+                    // mapper rescue request -> team accept message 
+                    // mapper rescue team -> team accept message    
+                    TeamAcceptedMessage kafkaMessage = _mapper.Map<TeamAcceptedMessage>(rescueMission);
+                    _mapper.Map(rescueRequest, kafkaMessage);
+                    _mapper.Map(rescueTeam, kafkaMessage);
+
+                    //gán field ngoài mapper
+                    kafkaMessage.AcceptedAt = respondedAt;  
+
+                    await _kafkaProducer.ProduceAsync(topic: KafkaSettings.TEAM_ACCEPTED_TOPIC, key: rescueMission.RescueMissionID.ToString(), message: kafkaMessage);
+                    
+                    _logger.LogInformation("Kafka message sent to topic {Topic}", KafkaSettings.TEAM_ACCEPTED_TOPIC);
+
+                }
+                else
+                {
+                    //mapper rescue mission -> team reject message  
+                    //mapper rescue request -> team reject message  
+                    //mapper rescue team -> team reject message
+                  
+                    rescueMission.Status = "Declined";
+                    rescueRequest.Status = "Pending";   
+                    rescueTeam.CurrentStatus = "Available";
+
+                    _logger.LogInformation("Rescue Mission with ID: {MissionID} declined - Team {TeamName} set to Available, Request set to Pending", request.RescueMissionID, rescueTeam.TeamName);
+
+                    TeamRejectedMessage kafkaMessage = _mapper.Map<TeamRejectedMessage>(rescueMission);
+                    _mapper.Map(rescueRequest, kafkaMessage);
+                    _mapper.Map(rescueTeam, kafkaMessage);
+
+                    await _kafkaProducer.ProduceAsync(topic: KafkaSettings.TEAM_REJECTED_TOPIC, key: rescueMission.RescueMissionID.ToString(), message: kafkaMessage);
+                    
+                    _logger.LogInformation("Kafka message sent to topic {Topic}", KafkaSettings.TEAM_REJECTED_TOPIC);
+                }
+
+                int saveResult = await _unitOfWork.SaveChangesAsync();
+
+                if (saveResult <= 0)
+                {
+                    _logger.LogError("Failed to respond to mission for Mission ID: {MissionID} - Could not Save Change", request.RescueMissionID);  
+                    await transaction.RollbackAsync();
+                    return null;
+                }
+
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Successfully responded to mission with ID: {MissionID}", request.RescueMissionID);
+
+                //mapper rescue misson -> respond mission response dto
+                //mapper rescue request -> respond mission response dto 
+                //mapper rescue team -> respond mission response dto    
+                //mappper respond mission requesst dto -> respond mission response dto - map tay 
+
+                RespondMissionResponseDTO response = _mapper.Map<RespondMissionResponseDTO>(rescueMission);
+                _mapper.Map(rescueRequest, response);
+                _mapper.Map(rescueTeam, response);
+
+                response.RespondedAt = respondedAt; 
+                response.Message = request.IsAccepted ? $"Rescue mission with ID {rescueMission.RescueMissionID} has been accepted by Team {rescueTeam.TeamName}." : $"Rescue mission with ID {rescueMission.RescueMissionID} has been declined by Team {rescueTeam.TeamName}.";
+
+                return response;
+
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error responding to mission. Transaction rolled back for Mission ID: {MissionID}", request.RescueMissionID);
+                throw;
+            }
+        }
     }
 }
