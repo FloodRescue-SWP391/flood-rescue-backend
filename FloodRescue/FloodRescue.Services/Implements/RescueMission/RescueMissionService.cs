@@ -101,6 +101,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                 if (saveResult <= 0)
                 {
                     _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during dispatch. RequestID: {RequestID}, TeamID: {TeamID}", request.RescueRequestID, request.RescueTeamID);
+                    await transaction.RollbackAsync();  
                     return null;
                 }
 
@@ -113,9 +114,7 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 await _kafkaProducer.ProduceAsync(topic: KafkaSettings.MISSION_ASSIGN_TOPIC, key: newMission.RescueMissionID.ToString(), message: kafkaMessage);
 
-                _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic}", KafkaSettings.MISSION_ASSIGN_TOPIC);
-
-                await transaction.CommitAsync();                
+                _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic}", KafkaSettings.MISSION_ASSIGN_TOPIC);               
 
                 _logger.LogInformation("[RescueMissionService] Successfully dispatched mission with ID: {MissionID} for Request ID: {RequestID} and Team ID: {TeamID}", newMission.RescueMissionID, request.RescueRequestID, request.RescueTeamID);
 
@@ -126,6 +125,8 @@ namespace FloodRescue.Services.Implements.RescueMission
                 _mapper.Map(rescueTeam, response);
 
                 response.Message = $"Rescue mission dispatched successfully for Team {rescueTeam.RescueTeamID} - Team Name {rescueTeam.TeamName}.";
+
+                await transaction.CommitAsync();
 
                 return response;
                 
@@ -213,7 +214,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                     return null;
                 }
 
-                await transaction.CommitAsync();
+               
 
                 _logger.LogInformation("[RescueMissionService] Successfully responded to mission with ID: {MissionID}", request.RescueMissionID);
 
@@ -228,6 +229,8 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 response.RespondedAt = respondedAt; 
                 response.Message = request.IsAccepted ? $"Rescue mission with ID {rescueMission.RescueMissionID} has been accepted by Team {rescueTeam.TeamName}." : $"Rescue mission with ID {rescueMission.RescueMissionID} has been declined by Team {rescueTeam.TeamName}.";
+
+                await transaction.CommitAsync();
 
                 return response;
 

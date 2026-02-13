@@ -121,6 +121,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
             if (result <= 0)
             {
                 _logger.LogError("[RescueRequestService - Sql Server] Failed to save RescueRequest to database. ID: {Id}", rescueRequest.RescueRequestID);
+                await transaction.RollbackAsync();
                 return (null, "Failed to create rescue request");
             }
 
