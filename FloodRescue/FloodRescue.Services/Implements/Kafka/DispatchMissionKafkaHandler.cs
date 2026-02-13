@@ -25,7 +25,7 @@ public class DispatchMissionKafkaHandler : IKafkaHandler
 
     public async Task HandleAsync(string message)
     {
-        _logger.LogInformation("Received message on topic {topic}", Topic);
+        _logger.LogInformation("[DispatchMissionKafkaHandler - Kafka Consumer] Received message on topic {topic}", Topic);
 
         try
         {
@@ -33,7 +33,7 @@ public class DispatchMissionKafkaHandler : IKafkaHandler
 
             if(missionAssigned == null || missionAssigned.MissionID == Guid.Empty || missionAssigned.RescueTeamID == Guid.Empty)
             {
-                _logger.LogWarning("Data invalid (Null or Empty IDs). Skipping processing.");
+                _logger.LogWarning("[DispatchMissionKafkaHandler - Kafka Consumer] Data invalid (Null or Empty IDs). Skipping processing.");
                 return;   
             }
 
@@ -45,15 +45,15 @@ public class DispatchMissionKafkaHandler : IKafkaHandler
             //còn hàm invoke để gửi xin gia nhập team id trong signalR hub là 1 hàm nữa - tổng cộng là 2 hàm là đủ
             await _realtimeNotificationService.SendToGroupAsync(groupName: missionAssigned.RescueTeamID.ToString(), method: "ReceiveMissionNotification", message: notification);
 
-            _logger.LogInformation("SignalR notification sent to group {GroupName}", missionAssigned.RescueTeamID.ToString());
+            _logger.LogInformation("[DispatchMissionKafkaHandler - SignalR] SignalR notification sent to group {GroupName}", missionAssigned.RescueTeamID.ToString());
 
         }catch(JsonException ex)
         {
-            _logger.LogError(ex, "JSON Format Error on Topic {Topic}. Skipping message.", Topic);
+            _logger.LogError(ex, "[DispatchMissionKafkaHandler - Error] Failed to deserialize JSON from topic {Topic}. Message skipped.", Topic);
         }
         catch(Exception ex)
         {
-            _logger.LogError(ex, "System Error processing message on Topic {Topic}. Consumer will retry...", Topic);
+            _logger.LogError(ex, "[DispatchMissionKafkaHandler - Error] Unexpected error processing message on topic {Topic}. Consumer will retry.", Topic);
             throw;
         }
       

@@ -11,6 +11,7 @@ using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using FloodRescue.Services.Interface.Auth;
+using Microsoft.Extensions.Logging;
 
 namespace FloodRescue.Services.Implements.Auth
 {
@@ -18,6 +19,7 @@ namespace FloodRescue.Services.Implements.Auth
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<TokenService> _logger;
 
         private readonly string _secretKey;
         private readonly string _issuer;
@@ -25,10 +27,11 @@ namespace FloodRescue.Services.Implements.Auth
         private readonly int _accessTokenExpirationMinutes; //15 phút
         private readonly int _refreshTokenExpirationDays; //7 ngày
 
-        public TokenService(IConfiguration configuration, IUnitOfWork unitOfWork)
+        public TokenService(IConfiguration configuration, IUnitOfWork unitOfWork, ILogger<TokenService> logger)
         {
             _configuration = configuration; 
             _unitOfWork =  unitOfWork;
+            _logger = logger;
             _secretKey = _configuration.GetSection("JwtSettings")["SecretKey"]!;
             _issuer = _configuration.GetSection("JwtSettings")["Issuer"]!;
             _audience = _configuration.GetSection("JwtSettings")["Audience"]!;
@@ -45,7 +48,7 @@ namespace FloodRescue.Services.Implements.Auth
         /// <exception cref="NotImplementedException"></exception>
         public async Task<(string accessToken, string refreshToken)> GenerateTokenAsync(User user)
         {
-            // Mỗi lần login hay refresh token thì tạo một jwtID mới    
+            _logger.LogInformation("[TokenService] Generating token pair for UserID: {UserID}", user.UserID);
             string jwtID = Guid.NewGuid().ToString();
 
             string accessToken = GenerateAccessToken(user, jwtID); 
@@ -65,6 +68,7 @@ namespace FloodRescue.Services.Implements.Auth
             await _unitOfWork.RefreshTokens.AddAsync(refreshToken);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("[TokenService - Sql Server] Refresh token saved for UserID: {UserID}", user.UserID);
             return (accessToken, refreshTokenGenerated);
 
         }
@@ -176,6 +180,7 @@ namespace FloodRescue.Services.Implements.Auth
 
         public async Task RevokeAllTokensAsync(Guid userID)
         {
+            _logger.LogInformation("[TokenService] Revoking all tokens for UserID: {UserID}", userID);
             var tokens = await _unitOfWork.RefreshTokens.GetAllAsync(rt => rt.UserID == userID && !rt.IsRevoked);
 
             foreach (var token in tokens)
@@ -185,6 +190,7 @@ namespace FloodRescue.Services.Implements.Auth
             }
 
             await _unitOfWork.SaveChangesAsync();
+            _logger.LogInformation("[TokenService - Sql Server] Revoked {Count} tokens for UserID: {UserID}", tokens.Count(), userID);
         }
 
      
@@ -262,11 +268,13 @@ namespace FloodRescue.Services.Implements.Auth
 
         public async Task<(string accessToken, string refreshToken, User user)?> RefreshTokenFromAccessTokenAsync(string accessToken)
         {
+            _logger.LogInformation("[TokenService] Refreshing token from expired access token.");
             //Bước 1: parse token hết hạn ra để lấy claims
             ClaimsPrincipal? principal = GetPrincipalFromExpiredToken(accessToken);
 
             if(principal == null)
             {
+                _logger.LogWarning("[TokenService] Failed to parse expired access token. Invalid token format.");
                 return null;
             }
 
@@ -276,6 +284,7 @@ namespace FloodRescue.Services.Implements.Auth
 
             if(userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
             {
+                _logger.LogWarning("[TokenService] Missing or invalid UserID claim in access token.");
                 return null;
             }
 
@@ -283,6 +292,7 @@ namespace FloodRescue.Services.Implements.Auth
             string? jwtId = principal.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
             if (string.IsNullOrEmpty(jwtId))
             {
+                _logger.LogWarning("[TokenService] Missing JwtID claim in access token.");
                 return null;
             }
 
@@ -298,6 +308,7 @@ namespace FloodRescue.Services.Implements.Auth
 
             if (storedToken == null)
             {
+                _logger.LogWarning("[TokenService - Sql Server] No valid refresh token found for UserID: {UserID}, JwtID: {JwtID}", userId, jwtId);
                 return null;
             }
 
@@ -311,11 +322,13 @@ namespace FloodRescue.Services.Implements.Auth
 
             if (user == null)
             {
+                _logger.LogWarning("[TokenService - Sql Server] User not found or deleted. UserID: {UserID}", userId);
                 return null;
             }
 
             var (newAccessToken, newRefreshToken) = await GenerateTokenAsync(user); 
 
+            _logger.LogInformation("[TokenService] Token refreshed successfully for UserID: {UserID}", userId);
             return (newAccessToken, newRefreshToken, user); 
 
         }

@@ -32,7 +32,7 @@ namespace FloodRescue.Services.Implements.Kafka
 
         public async Task HandleAsync(string message)
         {
-            _logger.LogInformation("Received message on topic {topic}", Topic);
+            _logger.LogInformation("[TeamAcceptedHandler - Kafka Consumer] Received message on topic {topic}", Topic);
 
             try
             {
@@ -42,7 +42,7 @@ namespace FloodRescue.Services.Implements.Kafka
 
                 if (acceptedMessage == null || acceptedMessage.RescueMissionID == Guid.Empty)
                 {
-                    _logger.LogWarning("Invalid message received on Topic {Topic}. Skipping message.", Topic);
+                    _logger.LogWarning("[TeamAcceptedHandler - Kafka Consumer] Invalid message received on Topic {Topic}. Skipping message.", Topic);
                     return;
                 }
 
@@ -56,23 +56,23 @@ namespace FloodRescue.Services.Implements.Kafka
                 {
                     await _realtimeNotificationService.SendToUserAsync(userId: acceptedMessage.CoordinatorID.Value.ToString(), method: "ReceiveTeamResponse", message: notification);
 
-                    _logger.LogInformation("Sent TeamAcceptedNotification to Coordinator {CoordinatorID} for RescueRequest {RescueRequestID}", acceptedMessage.CoordinatorID, acceptedMessage.RescueRequestID);
+                    _logger.LogInformation("[TeamAcceptedHandler - SignalR] Sent TeamAcceptedNotification to Coordinator {CoordinatorID} for RescueRequest {RescueRequestID}", acceptedMessage.CoordinatorID, acceptedMessage.RescueRequestID);
                 }
 
 
-                await _realtimeNotificationService.SendToGroupAsync(groupName: "Coordinator", method: "ReceiveTeamResponse", message: notification);
+                await _realtimeNotificationService.SendToGroupAsync(groupName: GroupSettings.RESCUE_COORDINATOR_GROUP, method: "ReceiveTeamResponse", message: notification);
 
-                _logger.LogInformation("Sent TeamAcceptedNotification to Coordinator group for RescueRequest {RescueRequestID}", acceptedMessage.RescueRequestID);  
+                _logger.LogInformation("[TeamAcceptedHandler - SignalR] Sent TeamAcceptedNotification to Coordinator group for RescueRequest {RescueRequestID}", acceptedMessage.RescueRequestID);  
 
 
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "JSON Format Error on Topic {Topic}. Skipping message.", Topic);
+                _logger.LogError(ex, "[TeamAcceptedHandler - Error] Failed to deserialize JSON from topic {Topic}. Message skipped.", Topic);
             }
             catch(Exception ex)
             {
-                _logger.LogError(ex, "System Error processing message on Topic {Topic}. Consumer will retry...", Topic);
+                _logger.LogError(ex, "[TeamAcceptedHandler - Error] Unexpected error processing message on topic {Topic}. Consumer will retry.", Topic);
                 throw;
 
             }

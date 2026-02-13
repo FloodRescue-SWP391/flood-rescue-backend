@@ -186,8 +186,8 @@ namespace FloodRescue.Services.Mapper
             CreateMap<RescueRequest, CreateRescueRequestResponseDTO>()
                 .ForMember(dest => dest.ImageUrls, opt => opt.Ignore());
 
-            // Mapping CreateRescueRequestResponseDTO -> RescueRequestKafkaMessage
-            CreateMap<CreateRescueRequestResponseDTO, RescueRequestKafkaMessage>(); 
+            // Mapping RescueRequest -> RescueRequestKafkaMessage
+            CreateMap<RescueRequest, RescueRequestKafkaMessage>(); 
         }
     }
 }

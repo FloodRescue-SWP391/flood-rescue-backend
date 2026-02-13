@@ -9,6 +9,7 @@ using FloodRescue.Services.DTO.Response.AuthResponse;
 using FloodRescue.Services.DTO.Response.RegisterResponse;
 using FloodRescue.Services.Interface.Auth;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,20 +25,24 @@ namespace FloodRescue.Services.Implements.Auth
         private readonly IMapper _mapper;
         private readonly ITokenService _tokenService;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<AuthService> _logger;
 
-        public AuthService(IUnitOfWork unitOfWork, IMapper mapper, IConfiguration configuration, ITokenService tokenService) {
+        public AuthService(IUnitOfWork unitOfWork, IMapper mapper, IConfiguration configuration, ITokenService tokenService, ILogger<AuthService> logger) {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _configuration = configuration;
             _tokenService = tokenService;
+            _logger = logger;
         }
 
         public async Task<(AuthResponseDTO? Data, string? ErrorMessage)> RefeshTokenAsync(RefreshTokenRequest request)
         {
+            _logger.LogInformation("[AuthService] Refreshing token for user.");
             var result = await _tokenService.RefreshTokenFromAccessTokenAsync(request.AccessToken);
 
             if(result == null)
             {
+                _logger.LogWarning("[AuthService] Refresh token failed. Token invalid or expired.");
                 return (null, "Invalid or expired token. Please login again");            
             
             }
@@ -58,16 +63,19 @@ namespace FloodRescue.Services.Implements.Auth
                 Role = user.Role?.RoleName ?? ""
             };
 
+            _logger.LogInformation("[AuthService] Token refreshed successfully for UserID: {UserID}", user.UserID);
             return (response, null);
 
         }
 
         public async Task<(RegisterResponseDTO? Data,string? ErrorMessage)> RegisterAsync(RegisterRequestDTO request)
         {
+            _logger.LogInformation("[AuthService] Registering new user. Username: {Username}", request.Username);
             // 1. Check if username already exists
             var existingUserName = await _unitOfWork.Users.GetAsync(u => u.Username == request.Username && !u.IsDeleted);
             if (existingUserName != null)
             {
+                _logger.LogWarning("[AuthService - Sql Server] Register failed. Username '{Username}' already exists.", request.Username);
                 return (null, "Username already exists");
             }
 
@@ -75,6 +83,7 @@ namespace FloodRescue.Services.Implements.Auth
             var existingPhone = await _unitOfWork.Users.GetAsync(u => u.Phone == request.Phone && !u.IsDeleted);
             if (existingPhone != null)
             {
+                _logger.LogWarning("[AuthService - Sql Server] Register failed. Phone '{Phone}' already exists.", request.Phone);
                 return (null, "Phone number already exists");
             }
             // 3. Check if role exists in Roles table
@@ -82,6 +91,7 @@ namespace FloodRescue.Services.Implements.Auth
 
             if (role == null)
             {
+                _logger.LogWarning("[AuthService - Sql Server] Register failed. Invalid RoleID: {RoleID}", request.RoleID);
                 return (null, "Invalid RoleID");
             }
 
@@ -115,19 +125,23 @@ namespace FloodRescue.Services.Implements.Auth
             // 8. Check if save was successful
             if (result <= 0) 
             {
+                _logger.LogError("[AuthService - Error] Failed to save new user to database. Username: {Username}", request.Username);
                 return (null, "Failed to create user");
             }
             
             var responseDTO = _mapper.Map<RegisterResponseDTO>(newUser);
+            _logger.LogInformation("[AuthService - Sql Server] User registered successfully. UserID: {UserID}, Username: {Username}", newUser.UserID, newUser.Username);
             return (responseDTO, null);
         }
 
         public async Task<(AuthResponseDTO? Data, string? ErrorMessage)> LoginAsync(LoginRequestDTO request)
         {
+            _logger.LogInformation("[AuthService] Login attempt for Username: {Username}", request.Username);
             // 1. Tìm user theo username (không lấy user đã xóa)
             var user = await _unitOfWork.Users.GetAsync(u => u.Username == request.Username && !u.IsDeleted, u => u.Role!);
             if (user == null)
             {
+                _logger.LogWarning("[AuthService - Sql Server] Login failed. Username '{Username}' not found.", request.Username);
                 return (null, "Invalid username or password");
             }
 
@@ -135,6 +149,7 @@ namespace FloodRescue.Services.Implements.Auth
             var isPasswordValid = VerifyPasswordHash(request.Password, user.Password, user.Salt);
             if (!isPasswordValid)
             {
+                _logger.LogWarning("[AuthService] Login failed. Invalid password for Username: {Username}", request.Username);
                 return (null, "Invalid username or password");
             }
 
@@ -155,6 +170,7 @@ namespace FloodRescue.Services.Implements.Auth
                 Role = user.Role?.RoleName ?? string.Empty
             };
 
+            _logger.LogInformation("[AuthService] Login successful. UserID: {UserID}, Username: {Username}, Role: {Role}", user.UserID, user.Username, user.Role?.RoleName);
             return (response, null);
         }
         private static void CreatePasswordHash(string password, out byte[] hash, out byte[] salt)

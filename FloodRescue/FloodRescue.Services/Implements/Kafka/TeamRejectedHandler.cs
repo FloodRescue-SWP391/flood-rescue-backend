@@ -32,7 +32,7 @@ namespace FloodRescue.Services.Implements.Kafka
 
         public async Task HandleAsync(string message)
         {
-            _logger.LogInformation("Received message on topic {topic}", Topic);
+            _logger.LogInformation("[TeamRejectedHandler - Kafka Consumer] Received message on topic {topic}", Topic);
 
             try
             {
@@ -41,7 +41,7 @@ namespace FloodRescue.Services.Implements.Kafka
 
                 if (rejectedMessage == null || rejectedMessage.RescueMissionID == Guid.Empty)
                 {
-                    _logger.LogWarning("Invalid message format or missing RescueMissionID on Topic {Topic}. Skipping message.", Topic);
+                    _logger.LogWarning("[TeamRejectedHandler - Kafka Consumer] Invalid message format or missing RescueMissionID on Topic {Topic}. Skipping message.", Topic);
                     return;
                 }
 
@@ -57,18 +57,18 @@ namespace FloodRescue.Services.Implements.Kafka
                 }
 
 
-                await _realtimeNotificationService.SendToGroupAsync(groupName: "Coordinator", method: "ReceiveTeamResponse", message: notification);
+                await _realtimeNotificationService.SendToGroupAsync(groupName: GroupSettings.RESCUE_COORDINATOR_GROUP, method: "ReceiveTeamResponse", message: notification);
 
-                _logger.LogInformation("Processed TeamRejected message for RescueMissionID {RescueMissionID} with Reason {Reason}", rejectedMessage.RescueMissionID, notification.RejectReason);
+                _logger.LogInformation("[TeamRejectedHandler - SignalR] Processed TeamRejected message for RescueMissionID {RescueMissionID} with Reason {Reason}", rejectedMessage.RescueMissionID, notification.RejectReason);
 
             }
             catch(JsonException ex)
             {
-                _logger.LogError(ex, "JSON Format Error on Topic {Topic}. Skipping message.", Topic);   
+                _logger.LogError(ex, "[TeamRejectedHandler - Error] Failed to deserialize JSON from topic {Topic}. Message skipped.", Topic);   
             }
             catch(Exception ex)
             {
-                _logger.LogError(ex, "System Error processing message on Topic {Topic}. Consumer will retry...", Topic);    
+                _logger.LogError(ex, "[TeamRejectedHandler - Error] Unexpected error processing message on topic {Topic}. Consumer will retry.", Topic);    
                 throw;
             }
         }

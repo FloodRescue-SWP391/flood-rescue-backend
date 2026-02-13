@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace FloodRescue.Services.SharedSetting
 {
-    public static class RescueRequest_Status 
+    public static class RescueRequestSettings 
     {
         public const string PENDING_STATUS = "Pending";
         public const string PROCESSING_STATUS = "Processing";

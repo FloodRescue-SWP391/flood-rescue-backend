@@ -47,11 +47,17 @@ namespace FloodRescue.Services.Implements.RescueRequest
         }
         public async Task<(CreateRescueRequestResponseDTO? Data, string? ErrorMessage)> CreateRescueRequestAsync(CreateRescueRequestDTO request)
         {
-            _logger.LogInformation("Request to create new RescueRequest. Phone: {Phone}, Type: {Type}", request.PhoneNumber, request.RequestType);
+            _logger.LogInformation("[RescueRequestService] Creating new RescueRequest. Phone: {Phone}, Type: {Type}", request.PhoneNumber, request.RequestType);
+
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+
             // 1. Kiểm tra tính hợp lệ của RequestType (Rescue hoặc Supply)
             if (!ValidRequestTypes.Contains(request.RequestType))
             {
-                _logger.LogWarning("Invalid RequestType: {Type}. Valid types: {ValidTypes}",
+                _logger.LogWarning("[RescueRequestService] Invalid RequestType: {Type}. Valid types: {ValidTypes}",
                     request.RequestType, string.Join(", ", ValidRequestTypes));
                 return (null, $"Invalid RequestType. Must be '{RescueRequestType.RESCUE_TYPE}' or '{RescueRequestType.SUPPLY_TYPE}'");
             }
@@ -59,36 +65,36 @@ namespace FloodRescue.Services.Implements.RescueRequest
             // 2. Kiêm tọa độ hợp lệ
             if (request.LocationLatitude < -90 || request.LocationLatitude > 90)
             {
-                _logger.LogWarning("Invalid Latitude: {Lat}", request.LocationLatitude);
+                _logger.LogWarning("[RescueRequestService] Invalid Latitude: {Lat}", request.LocationLatitude);
                 return (null, "Latitude must be between -90 and 90");
             }
 
             if (request.LocationLongitude < -180 || request.LocationLongitude > 180)
             {
-                _logger.LogWarning("Invalid Longitude: {Long}", request.LocationLongitude);
+                _logger.LogWarning("[RescueRequestService] Invalid Longitude: {Long}", request.LocationLongitude);
                 return (null, "Longitude must be between -180 and 180");
             }
             // 3. Kiểm tra số điện thoại không được để trống
             if (string.IsNullOrWhiteSpace(request.PhoneNumber))
             {
-                _logger.LogWarning("Phone number is empty");
+                _logger.LogWarning("[RescueRequestService] Phone number is empty");
                 return (null, "Phone number is required");
             }
             // ===== TẠO RESCUE REQUEST =====
             // 4. Tạo short code duy nhất (random + 4 số cuối SĐT)
             string shortCode = await GenerateUniqueShortCodeAsync();
-            _logger.LogInformation("Generated ShortCode: {ShortCode}", shortCode);
+            _logger.LogInformation("[RescueRequestService] Generated ShortCode: {ShortCode}", shortCode);
 
             // 5. Dùng AutoMapper map DTO -> Entity
             //    PhoneNumber -> CitizenPhone (đã config ForMember trong MappingProfile)
             //    ShortCode, Status, CreatedTime đã Ignore → service tự set
             RescueRequestEntity rescueRequest = _mapper.Map<RescueRequestEntity>(request);
             rescueRequest.ShortCode = shortCode;
-            rescueRequest.Status = RescueRequest_Status.PENDING_STATUS;
+            rescueRequest.Status = RescueRequestSettings.PENDING_STATUS;
             rescueRequest.CreatedTime = DateTime.UtcNow;
             // 6. Lưu rescueRequést vào DB
             await _unitOfWork.RescueRequests.AddAsync(rescueRequest);
-            _logger.LogInformation("Added RescueRequest to context. ID: {Id}", rescueRequest.RescueRequestID);
+            _logger.LogInformation("[RescueRequestService - Sql Server] Added RescueRequest to context. ID: {Id}", rescueRequest.RescueRequestID);
 
             // 7. Tạo và add các RescueRequestImage (xử lý collection ảnh nối bảng con)
             //    Mỗi URL tạo 1 row RescueRequestImage với FK trỏ về RescueRequest vừa tạo
@@ -106,31 +112,33 @@ namespace FloodRescue.Services.Implements.RescueRequest
                     await _unitOfWork.RescueRequestImages.AddAsync(image);
                     savedImageUrls.Add(imageUrl);
                 }
-                _logger.LogInformation("Added {Count} images for RescueRequest ID: {Id}",
+                _logger.LogInformation("[RescueRequestService - Sql Server] Added {Count} images for RescueRequest ID: {Id}",
                 savedImageUrls.Count, rescueRequest.RescueRequestID);
             }
             // 8. SaveChanges — Unit of Work transaction (request + images save 1 lượt)
             int result = await _unitOfWork.SaveChangesAsync();
+
             if (result <= 0)
             {
-                _logger.LogError("Failed to save RescueRequest to database. ID: {Id}", rescueRequest.RescueRequestID);
+                _logger.LogError("[RescueRequestService - Sql Server] Failed to save RescueRequest to database. ID: {Id}", rescueRequest.RescueRequestID);
                 return (null, "Failed to create rescue request");
             }
+
             // 9. Map Entity -> Response DTO (ImageUrls ignored trong profile → set thủ công)
             CreateRescueRequestResponseDTO responseDTO = _mapper.Map<CreateRescueRequestResponseDTO>(rescueRequest);
             responseDTO.ImageUrls = savedImageUrls;
+
             // 10. Invalidate cache list vì có data mới
             await _cacheService.RemoveAsync(ALL_RESCUE_REQUESTS_KEY);
-            _logger.LogInformation("Cleared cache for All RescueRequests list.");
+            _logger.LogInformation("[RescueRequestService - Redis] Cleared cache for All RescueRequests list.");
 
             // 11. Cache luôn request mới theo ShortCode (citizen sẽ tra cứu ngay)
             await _cacheService.SetAsync($"{RESCUE_REQUEST_KEY_PREFIX}{shortCode}", responseDTO, TimeSpan.FromMinutes(10));
-            _logger.LogInformation("Cached new RescueRequest with ShortCode: {ShortCode}", shortCode);
+            _logger.LogInformation("[RescueRequestService - Redis] Cached new RescueRequest with ShortCode: {ShortCode}", shortCode);
 
             // 12. Kafka Produce - bắn message lên topic để consumer xử lí (SMS, notification, ...)
-            try
-            {
-                RescueRequestKafkaMessage kafkaMessage = _mapper.Map<RescueRequestKafkaMessage>(rescueRequest);
+          
+              
                 //new RescueRequestKafkaMessage
                 //{
                 //    RescueRequestID = data.RescueRequestID,
@@ -143,43 +151,50 @@ namespace FloodRescue.Services.Implements.RescueRequest
                 //};
 
                 // Key = RescueRequestID để Kafka partition theo request
+            
+                RescueRequestKafkaMessage kafkaMessage = _mapper.Map<RescueRequestKafkaMessage>(rescueRequest);
+
                 await _kafkaProducerService.ProduceAsync(
                     KafkaSettings.RESCUE_REQUEST_CREATED_TOPIC, // topic
                     rescueRequest.RescueRequestID.ToString(), // key
                     kafkaMessage // event/message(object)
                 );
 
-                _logger.LogInformation("Kafka message produced to topic: {Topic} for RescueRequest ID: {Id}",
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("[RescueRequestService - Kafka Producer] Message produced to topic: {Topic} for RescueRequest ID: {Id}",
                     KafkaSettings.RESCUE_REQUEST_TOPIC, rescueRequest.RescueRequestID);
+
+                return (responseDTO, null);
             }
             catch (Exception ex)
             {
                 // Kafka fail không nên block response - request đã được lưu DB thành công
-                _logger.LogError(ex, "Failed to produce Kafka message for RescueRequest ID: {Id}. Request was saved successfully.",
-                    rescueRequest.RescueRequestID);
+                await transaction.RollbackAsync();
+                _logger.LogError("[RescueRequestService - Error] Transaction rolled back. Failed to create RescueRequest: {Error}", ex.Message);
+                throw;
             }
-
-            return (responseDTO, null);
+           
         }
 
 
 
         public async Task<CreateRescueRequestResponseDTO?> GetByShortCodeAsync(string shortCode)
         {
-            _logger.LogInformation("Searching for RescueRequest with ShortCode: {ShortCode}", shortCode);
+            _logger.LogInformation("[RescueRequestService] Searching for RescueRequest with ShortCode: {ShortCode}", shortCode);
             // 1. Kiểm tra cache trước
             var cached = await _cacheService.GetAsync<CreateRescueRequestResponseDTO>($"{RESCUE_REQUEST_KEY_PREFIX}{shortCode}");
             if (cached != null)
             {
-                _logger.LogInformation("Found RescueRequest in cache: {ShortCode}", shortCode);
+                _logger.LogInformation("[RescueRequestService - Redis] Cache hit for RescueRequest ShortCode: {ShortCode}", shortCode);
                 return cached;
             }
             // 2. Nếu không có trong cache, truy vấn DB
-            _logger.LogInformation("Cache miss. Searching DB for RescueRequest with ShortCode: {ShortCode}", shortCode);
+            _logger.LogInformation("[RescueRequestService - Redis] Cache miss. Querying DB for RescueRequest ShortCode: {ShortCode}", shortCode);
             RescueRequestEntity? entity = await _unitOfWork.RescueRequests.GetAsync(r => r.ShortCode == shortCode && !r.IsDeleted);
             if (entity == null)
             {
-                _logger.LogWarning("RescueRequest with ShortCode: {ShortCode} not found in database.", shortCode);
+                _logger.LogWarning("[RescueRequestService - Sql Server] RescueRequest with ShortCode: {ShortCode} not found in database.", shortCode);
                 return null;
             }
             // 3. Lấy danh sách ảnh từ bảng con
@@ -190,22 +205,22 @@ namespace FloodRescue.Services.Implements.RescueRequest
             responseDTO.ImageUrls = images.Select(img => img.ImageUrl).ToList();
             // 5. Lưu vào cache
             await _cacheService.SetAsync($"{RESCUE_REQUEST_KEY_PREFIX}{shortCode}", responseDTO, TimeSpan.FromMinutes(10));
-            _logger.LogInformation("Added RescueRequest to cache: {ShortCode}", shortCode);
+            _logger.LogInformation("[RescueRequestService - Redis] Cached RescueRequest ShortCode: {ShortCode}", shortCode);
 
             return responseDTO;
         }
 
         public async Task<List<CreateRescueRequestResponseDTO>> GetAllRescueRequestsAsync()
         {
-            _logger.LogInformation("Getting all RescueRequests");
+            _logger.LogInformation("[RescueRequestService] Getting all RescueRequests");
             var cached = await _cacheService.GetAsync<List<CreateRescueRequestResponseDTO>>(ALL_RESCUE_REQUESTS_KEY);
             if (cached != null) 
             {
-                _logger.LogInformation("Cache hit for all RescueRequests. Count: {Count}", cached.Count);
+                _logger.LogInformation("[RescueRequestService - Redis] Cache hit for all RescueRequests. Count: {Count}", cached.Count);
                 return cached;
             }
             // 2. Cache miss → tìm trong DB
-            _logger.LogInformation("Cache miss for all RescueRequests. Fetching from database.");
+            _logger.LogInformation("[RescueRequestService - Redis] Cache miss for all RescueRequests. Fetching from database.");
             List<RescueRequestEntity> entities = await _unitOfWork.RescueRequests.GetAllAsync(r => !r.IsDeleted);
             // 3. Map từng entity + lấy ảnh từ bảng con
             List<CreateRescueRequestResponseDTO> responseDTOs = new();
@@ -217,11 +232,11 @@ namespace FloodRescue.Services.Implements.RescueRequest
                 dto.ImageUrls = images.Select(img => img.ImageUrl).ToList();
                 responseDTOs.Add(dto);
             }
-            _logger.LogInformation("Retrieved {Count} rescue requests from database", responseDTOs.Count);
+            _logger.LogInformation("[RescueRequestService - Sql Server] Retrieved {Count} rescue requests from database", responseDTOs.Count);
 
             // 4. Lưu vào cache
             await _cacheService.SetAsync(ALL_RESCUE_REQUESTS_KEY, responseDTOs, TimeSpan.FromMinutes(5));
-            _logger.LogInformation("Cached {Count} rescue requests", responseDTOs.Count);
+            _logger.LogInformation("[RescueRequestService - Redis] Cached {Count} rescue requests", responseDTOs.Count);
 
             return responseDTOs;
         }
@@ -258,7 +273,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
                     return shortCode;
                 }
 
-                _logger.LogWarning("ShortCode collision: {ShortCode}, retrying... (attempt {Attempt})", shortCode, attempt);
+                _logger.LogWarning("[RescueRequestService - Sql Server] ShortCode collision: {ShortCode}, retrying... (attempt {Attempt})", shortCode, attempt);
 
             } while (attempt < maxRetries);
             // Fallback: Nếu random 10 lần vẫn trùng (xác suất cực thấp), dùng Timestamp
@@ -267,7 +282,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
             shortCode = shortCode.Length > codeLength 
                 ? shortCode[^codeLength..]  // Lấy 10 số cuối của Ticks
                 : shortCode.PadRight(codeLength, '0');
-            _logger.LogWarning("Max retries reached. Using timestamp-based ShortCode: {ShortCode}", shortCode);
+            _logger.LogWarning("[RescueRequestService] Max retries reached. Using timestamp-based ShortCode: {ShortCode}", shortCode);
             return shortCode;
         }
     }

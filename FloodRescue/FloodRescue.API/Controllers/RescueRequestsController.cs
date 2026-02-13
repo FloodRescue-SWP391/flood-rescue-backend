@@ -23,57 +23,71 @@ namespace FloodRescue.API.Controllers
             _rescueRequestService = rescueRequestService;
             _logger = logger;
         }
-        /// <summary>
-        /// Tạo yêu cầu cứu hộ mới
-        /// Flow: Validate -> Save DB -> Kafka Produce -> Return ShortCode
-        /// </summary>
+
         [HttpPost]
         public async Task<ActionResult<ApiResponse<CreateRescueRequestResponseDTO>>> CreateRescueRequest(CreateRescueRequestDTO request)
         {
-            _logger.LogInformation("API CreateRescueRequest called. Phone: {Phone}, Type: {Type}",
+            _logger.LogInformation("[RescueRequestsController] POST create rescue request called. Phone: {Phone}, Type: {Type}",
                 request.PhoneNumber, request.RequestType);
-
-            // 1. Gọi service tạo rescue request (validate + save DB trong transaction)
-            var (data, errorMessage) = await _rescueRequestService.CreateRescueRequestAsync(request);
-
-            if (data == null)
+            try
             {
-                _logger.LogWarning("CreateRescueRequest failed: {Error}", errorMessage);
-                return BadRequest(ApiResponse<CreateRescueRequestResponseDTO>.Fail(errorMessage ?? "Create rescue request failed"));
+                var (data, errorMessage) = await _rescueRequestService.CreateRescueRequestAsync(request);
+
+                if (data == null)
+                {
+                    _logger.LogWarning("[RescueRequestsController] Create rescue request failed. Error: {Error}", errorMessage);
+                    return BadRequest(ApiResponse<CreateRescueRequestResponseDTO>.Fail(errorMessage ?? "Create rescue request failed"));
+                }
+
+                _logger.LogInformation("[RescueRequestsController] Rescue request created. ShortCode: {ShortCode}, ID: {Id}", data.ShortCode, data.RescueRequestID);
+                return Ok(ApiResponse<CreateRescueRequestResponseDTO>.Ok(data, "Create rescue request successfully", 201));
+                
             }
-            // 2. Trả về response với ShortCode
-            _logger.LogInformation("CreateRescueRequest success. ShortCode: {ShortCode}", data.ShortCode);
-            return Ok(ApiResponse<CreateRescueRequestResponseDTO>.Ok(data, "Create rescue request successfully", 201));
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, "[RescueRequestsController - Error] Create rescue request failed. Phone: {Phone}, Type: {Type}", request.PhoneNumber, request.RequestType);
+                return StatusCode(500, ApiResponse<CreateRescueRequestResponseDTO>.Fail("Internal server error", 500));
+            }
         }
 
-        /// <summary>
-        /// Citizen tra cứu trạng thái request bằng ShortCode
-        /// </summary>
         [HttpGet("track/{shortCode}")]
         public async Task<ActionResult<ApiResponse<CreateRescueRequestResponseDTO>>> GetByShortCode(string shortCode)
         {
-            _logger.LogInformation("API GetByShortCode called. ShortCode: {ShortCode}", shortCode);
-
-            CreateRescueRequestResponseDTO? result = await _rescueRequestService.GetByShortCodeAsync(shortCode);
-            if (result == null)
+            _logger.LogInformation("[RescueRequestsController] GET track called. ShortCode: {ShortCode}", shortCode);
+            try
             {
-                return NotFound(ApiResponse<CreateRescueRequestResponseDTO>.Fail("Rescue request not found", 404));
-            }
+                CreateRescueRequestResponseDTO? result = await _rescueRequestService.GetByShortCodeAsync(shortCode);
+                if (result == null)
+                {
+                    _logger.LogWarning("[RescueRequestsController] Rescue request not found. ShortCode: {ShortCode}", shortCode);
+                    return NotFound(ApiResponse<CreateRescueRequestResponseDTO>.Fail("Rescue request not found", 404));
+                }
 
-            return Ok(ApiResponse<CreateRescueRequestResponseDTO>.Ok(result, "Get rescue request successfully", 200));
+                _logger.LogInformation("[RescueRequestsController] Rescue request found. ShortCode: {ShortCode}", shortCode);
+                return Ok(ApiResponse<CreateRescueRequestResponseDTO>.Ok(result, "Get rescue request successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueRequestsController - Error] GET track failed. ShortCode: {ShortCode}", shortCode);
+                return StatusCode(500, ApiResponse<CreateRescueRequestResponseDTO>.Fail("Internal server error", 500));
+            }
         }
 
-        /// <summary>
-        /// Coordinator xem danh sách tất cả rescue requests
-        /// </summary>
         [HttpGet]
         public async Task<ActionResult<ApiResponse<List<CreateRescueRequestResponseDTO>>>> GetAllRescueRequests()
         {
-            _logger.LogInformation("API GetAllRescueRequests called.");
-
-            List<CreateRescueRequestResponseDTO> result = await _rescueRequestService.GetAllRescueRequestsAsync();
-
-            return Ok(ApiResponse<List<CreateRescueRequestResponseDTO>>.Ok(result, "Get all rescue requests successfully", 200));
+            _logger.LogInformation("[RescueRequestsController] GET all rescue requests called.");
+            try
+            {
+                List<CreateRescueRequestResponseDTO> result = await _rescueRequestService.GetAllRescueRequestsAsync();
+                _logger.LogInformation("[RescueRequestsController] Returned {Count} rescue requests.", result.Count);
+                return Ok(ApiResponse<List<CreateRescueRequestResponseDTO>>.Ok(result, "Get all rescue requests successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueRequestsController - Error] GET all rescue requests failed.");
+                return StatusCode(500, ApiResponse<List<CreateRescueRequestResponseDTO>>.Fail("Internal server error", 500));
+            }
         }
     }
 }

@@ -18,6 +18,7 @@ namespace FloodRescue.Services.DTO.Request.RescueRequest
         public string RequestType { get; set; } = string.Empty;
         public double LocationLatitude { get; set; }
         public double LocationLongitude { get; set; }
+        public int PeopleCount { get; set; }    
         public DateTime CreatedTime { get; set; }
     }
 }

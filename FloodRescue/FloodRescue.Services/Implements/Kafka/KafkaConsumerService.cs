@@ -52,11 +52,11 @@ namespace FloodRescue.Services.Implements.Kafka
 
             if (_topics.Any())
             {
-                _logger.LogInformation("Found Topic from handle with {Topics}", string.Join(", ", _topics));
+                _logger.LogInformation("[KafkaConsumerService - Kafka Consumer] Topics discovered from handlers: {Topics}", string.Join(", ", _topics));
             }
             else
             {
-                _logger.LogWarning("No Topic found from any handle implementations.");  
+                _logger.LogWarning("[KafkaConsumerService - Kafka Consumer] No topics found from any IKafkaHandler implementations. Consumer will have nothing to subscribe.");  
             }
         }
 
@@ -64,12 +64,12 @@ namespace FloodRescue.Services.Implements.Kafka
         {
             if (_topics == null || _topics.Count == 0)
             {
-                _logger.LogError("No topic to use for Subscribing. Stop Consumer");
+                _logger.LogError("[KafkaConsumerService - Kafka Consumer] No topics available for subscribing. Consumer stopped.");
                 return;
             }
 
             _consumer.Subscribe(_topics);
-            _logger.LogInformation("Kafka Consumer started, subcribed to: {Topic}", string.Join(", ", _topics));
+            _logger.LogInformation("[KafkaConsumerService - Kafka Consumer] Consumer started. Subscribed to: {Topic}", string.Join(", ", _topics));
 
             //lặp đến khi nào server tắt và không còn request nào nữa
             while (!stoppingToken.IsCancellationRequested)
@@ -81,7 +81,7 @@ namespace FloodRescue.Services.Implements.Kafka
 
 
                     //ghi log theo dõi
-                    _logger.LogInformation("Received message from {Topic}: {Key} = {Value}", result.Topic, result.Message.Key, result.Message.Value);
+                    _logger.LogInformation("[KafkaConsumerService - Kafka Consumer] Received message from topic {Topic}: Key={Key}, Value={Value}", result.Topic, result.Message.Key, result.Message.Value);
 
                     // xử lí message nhận được các topic 
                     // value lúc này đã chuyển thành json nên để string nhưng thực chất là object dto
@@ -93,12 +93,12 @@ namespace FloodRescue.Services.Implements.Kafka
                 }
                 catch (ConsumeException ex)
                 {
-                    _logger.LogError(ex, "Kafka Consumer Error with Error Details {Error}", ex.Error.Reason);
+                    _logger.LogError(ex, "[KafkaConsumerService - Error] Kafka consume failed. Reason: {Error}. Retrying in 5s.", ex.Error.Reason);
                     await Task.Delay(5000, stoppingToken);
                 }
                 catch(Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing message in Kafka Handler {Error}", ex.Message);
+                    _logger.LogError(ex, "[KafkaConsumerService - Error] Handler threw exception while processing message: {Error}. Retrying in 2s.", ex.Message);
 
                     await Task.Delay(2000, stoppingToken);
                 }
@@ -126,7 +126,7 @@ namespace FloodRescue.Services.Implements.Kafka
 
             if (handler != null)
             {
-                _logger.LogInformation("Implementation Class Handler found with topic {Topic}", handler.Topic);
+                _logger.LogInformation("[KafkaConsumerService - Kafka Consumer] Routing message to handler for topic {Topic}", handler.Topic);
 
                 //gọi hàm xử lí service của request đó - thay vì gọi service trong controller thì gọi ở đây
                 //nhưng vẫn phải viết service như bình thường
@@ -134,7 +134,7 @@ namespace FloodRescue.Services.Implements.Kafka
             }
             else
             {
-                _logger.LogWarning("No Implementation Class Handler found for topic {Topic}", topic);
+                _logger.LogWarning("[KafkaConsumerService - Kafka Consumer] No handler registered for topic {Topic}. Message discarded.", topic);
             }
         }
     }

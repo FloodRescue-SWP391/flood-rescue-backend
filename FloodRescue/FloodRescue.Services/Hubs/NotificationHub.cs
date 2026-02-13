@@ -22,7 +22,7 @@ namespace FloodRescue.Services.Hubs
       public override async Task OnConnectedAsync()
         {
             var user = Context.User;
-            _logger.LogInformation("User connected to NotificationHub. UserID: {UserId}", user);
+            _logger.LogInformation("[NotificationHub - SignalR] Client connected. ConnectionId: {UserId}", user);
 
             //add user vào group sau
             //......
@@ -36,7 +36,7 @@ namespace FloodRescue.Services.Hubs
                 {
                     await Groups.AddToGroupAsync(Context.ConnectionId, roleName);
 
-                    _logger.LogInformation("User {UserId} added to group {GroupName}", Context.ConnectionId, roleName);
+                    _logger.LogInformation("[NotificationHub - SignalR] Connection {UserId} added to role group {GroupName}", Context.ConnectionId, roleName);
                 }
             }
 
@@ -49,7 +49,7 @@ namespace FloodRescue.Services.Hubs
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            _logger.LogInformation("User disconnected from NotificationHub. UserID: {UserId}", Context.ConnectionId);
+            _logger.LogInformation("[NotificationHub - SignalR] Client disconnected. ConnectionId: {UserId}", Context.ConnectionId);
 
             await base.OnDisconnectedAsync(exception);
         }
@@ -62,7 +62,7 @@ namespace FloodRescue.Services.Hubs
         public async Task JoinGroup(string groupName)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);  
-            _logger.LogInformation("User {UserId} joined group {GroupName}", Context.ConnectionId, groupName);
+            _logger.LogInformation("[NotificationHub - SignalR] Connection {UserId} joined group {GroupName}", Context.ConnectionId, groupName);
 
             
         }
@@ -72,13 +72,13 @@ namespace FloodRescue.Services.Hubs
         {
             if (string.IsNullOrWhiteSpace(teamID))
             {
-                _logger.LogWarning("JoinTeamGroup called with empty teamID");
+                _logger.LogWarning("[NotificationHub - SignalR] JoinTeamGroup called with empty teamID. ConnectionId: {ConnectionId}", Context.ConnectionId);
                 return;
             }
 
             await Groups.AddToGroupAsync(Context.ConnectionId, teamID);
 
-            _logger.LogInformation("User {UserId} joined team group {TeamID}", Context.ConnectionId, teamID);
+            _logger.LogInformation("[NotificationHub - SignalR] Connection {UserId} joined team group {TeamID}", Context.ConnectionId, teamID);
 
             await Clients.Caller.SendAsync("JoinedTeamGroup", new { 
                 TeamID = teamID,
@@ -93,7 +93,7 @@ namespace FloodRescue.Services.Hubs
         public async Task LeaveGroup(string groupName)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
-            _logger.LogInformation("User {UserId} left group {Group}", Context.ConnectionId, groupName);
+            _logger.LogInformation("[NotificationHub - SignalR] Connection {UserId} left group {Group}", Context.ConnectionId, groupName);
         }
     }
 }

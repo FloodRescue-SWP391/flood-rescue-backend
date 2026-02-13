@@ -37,113 +37,113 @@ namespace FloodRescue.Services.Implements.RescueTeam
         private const string RESCUETEAM_KEY_PREFIX = "RescueTeam:";
         public async Task<RescueTeamResponseDTO> CreateRescueTeamAsync(RescueTeamRequestDTO rescueTeamDTO)
         {
-            _logger.LogInformation("Request to create new Rescue Team. Name: {RescueTeamName}", rescueTeamDTO.TeamName);
+            _logger.LogInformation("[RescueTeamService] Request to create new Rescue Team. Name: {RescueTeamName}", rescueTeamDTO.TeamName);
             RescueTeamEntity rescueTeam = _mapper.Map<RescueTeamEntity>(rescueTeamDTO);
             await _unitOfWork.RescueTeams.AddAsync(rescueTeam);
             await _unitOfWork.SaveChangesAsync();
-            _logger.LogInformation("Successfully created Rescue Team with ID: {RescueTeamId}", rescueTeam.RescueTeamID);
+            _logger.LogInformation("[RescueTeamService - Sql Server] Successfully created Rescue Team with ID: {RescueTeamId}", rescueTeam.RescueTeamID);
             await _cacheService.RemoveAsync(ALL_RESCUETEAMS_KEY);
-            _logger.LogInformation("Cleared cache for All Rescue Teams list.");
+            _logger.LogInformation("[RescueTeamService - Redis] Cleared cache for All Rescue Teams list.");
             return _mapper.Map<RescueTeamResponseDTO>(rescueTeam);
         }
 
         public async Task<bool> DeleteRescueTeamAsync(Guid rescueTeamId)
         {
-            _logger.LogInformation("Request to delete Rescue Team ID: {RescueTeamId}", rescueTeamId);
+            _logger.LogInformation("[RescueTeamService] Request to delete Rescue Team ID: {RescueTeamId}", rescueTeamId);
             RescueTeamEntity? rescueTeam =  await _unitOfWork.RescueTeams.GetAsync(r => r.RescueTeamID == rescueTeamId);
             if (rescueTeam == null)
             {
-                _logger.LogWarning("Delete failed. Rescue Team with ID: {RescueTeamId} not found.", rescueTeamId);
+                _logger.LogWarning("[RescueTeamService - Sql Server] Delete failed. Rescue Team with ID: {RescueTeamId} not found.", rescueTeamId);
                 return false;
             }
             if (!rescueTeam.IsDeleted)
             {
                 rescueTeam.IsDeleted = true;
                 await _unitOfWork.SaveChangesAsync();
-                _logger.LogInformation("Successfully deleted Rescue Team ID: {RescueTeamId}", rescueTeamId);
+                _logger.LogInformation("[RescueTeamService - Sql Server] Successfully deleted Rescue Team ID: {RescueTeamId}", rescueTeamId);
                 await Task.WhenAll(
                      _cacheService.RemoveAsync(RESCUETEAM_KEY_PREFIX + rescueTeamId),
                      _cacheService.RemoveAsync(ALL_RESCUETEAMS_KEY)
                     );
-                _logger.LogInformation("Cleared cache for Rescue Team ID: {RescueTeamId}", rescueTeamId);
+                _logger.LogInformation("[RescueTeamService - Redis] Cleared cache for Rescue Team ID: {RescueTeamId}", rescueTeamId);
                 return true;
             }
 
-            _logger.LogInformation("RescueTeam ID: {RescueTeamId} was already marked as deleted. No changes made.", rescueTeamId);
+            _logger.LogInformation("[RescueTeamService] RescueTeam ID: {RescueTeamId} was already marked as deleted. No changes made.", rescueTeamId);
             return false;
         }
 
         public async Task<List<RescueTeamResponseDTO>> GetAllRescueTeamsAsync()
         {
-            _logger.LogInformation("Getting all Rescue Teams");
+            _logger.LogInformation("[RescueTeamService] Getting all Rescue Teams");
             var cached = await _cacheService.GetAsync<List<RescueTeamResponseDTO>>(ALL_RESCUETEAMS_KEY);
             if (cached != null)
             {
-                _logger.LogInformation("Cache hit for all Rescue Teams.");
+                _logger.LogInformation("[RescueTeamService - Redis] Cache hit for all Rescue Teams.");
                 return cached;
             }
 
-            _logger.LogInformation("Cache miss for all Rescue Teams. Fetching from database.");
+            _logger.LogInformation("[RescueTeamService - Redis] Cache miss for all Rescue Teams. Fetching from database.");
             List<RescueTeamEntity> rescueTeams = await _unitOfWork.RescueTeams.GetAllAsync();
 
             List<RescueTeamResponseDTO> rescueTeamDTOs = _mapper.Map<List<RescueTeamResponseDTO>>(rescueTeams);
-            _logger.LogInformation("Retrieved {Count} rescue teams from database", rescueTeamDTOs.Count);
+            _logger.LogInformation("[RescueTeamService - Sql Server] Retrieved {Count} rescue teams from database", rescueTeamDTOs.Count);
             await _cacheService.SetAsync(ALL_RESCUETEAMS_KEY, rescueTeamDTOs, TimeSpan.FromMinutes(5));
-            _logger.LogInformation("Cached {Count} rescue teams", rescueTeamDTOs.Count);
+            _logger.LogInformation("[RescueTeamService - Redis] Cached {Count} rescue teams", rescueTeamDTOs.Count);
             return rescueTeamDTOs;
 
         }
 
         public async Task<RescueTeamResponseDTO?> GetRescueTeamByIdAsync(Guid rescueTeamId)
         {
-            _logger.LogInformation("Searching for Rescue Team with ID: {RescueTeamID}", rescueTeamId);
+            _logger.LogInformation("[RescueTeamService] Searching for Rescue Team with ID: {RescueTeamID}", rescueTeamId);
             var cached = await _cacheService.GetAsync<RescueTeamResponseDTO>(RESCUETEAM_KEY_PREFIX + rescueTeamId);
             if (cached != null)
             {
-                _logger.LogInformation("Found Rescue Team in cache: {RescueTeamID}", rescueTeamId);
+                _logger.LogInformation("[RescueTeamService - Redis] Found Rescue Team in cache: {RescueTeamID}", rescueTeamId);
                 return cached;
             }
-            _logger.LogInformation("Cache miss. Searching DB for Rescue Team with ID: {RescueTeamID}", rescueTeamId);
+            _logger.LogInformation("[RescueTeamService - Redis] Cache miss. Searching DB for Rescue Team with ID: {RescueTeamID}", rescueTeamId);
             RescueTeamResponseDTO? responseDTO = null;
             var dbResult = _unitOfWork.RescueTeams.GetAsync(r => r.RescueTeamID == rescueTeamId);
             if (dbResult != null)
             {
                 responseDTO = _mapper.Map<RescueTeamResponseDTO>(dbResult);
                 await _cacheService.SetAsync($"{RESCUETEAM_KEY_PREFIX}{rescueTeamId}", responseDTO, TimeSpan.FromMinutes(5));
-                _logger.LogInformation("Added Rescue Team to cache: {RescueTeamID}", rescueTeamId);
+                _logger.LogInformation("[RescueTeamService - Redis] Added Rescue Team to cache: {RescueTeamID}", rescueTeamId);
                 return responseDTO;
             }
 
-            _logger.LogWarning("Rescue Team with ID: {RescueTeamID} not found in database.", rescueTeamId);
+            _logger.LogWarning("[RescueTeamService - Sql Server] Rescue Team with ID: {RescueTeamID} not found in database.", rescueTeamId);
             return responseDTO;
         }
 
         public async Task<RescueTeamResponseDTO?> UpdateRescueTeamAsync(Guid rescueTeamId, RescueTeamRequestDTO rescueTeamDTO)
         {
-            _logger.LogInformation("Request to update Rescue Team ID: {RescueTeamId}", rescueTeamId);
+            _logger.LogInformation("[RescueTeamService] Request to update Rescue Team ID: {RescueTeamId}", rescueTeamId);
             RescueTeamEntity? _rescueTeam  = await _unitOfWork.RescueTeams.GetAsync(r => r.RescueTeamID == rescueTeamId);
             if (_rescueTeam == null)
             {
-                _logger.LogWarning("Update failed. Rescue Team ID: {RescueTeamId} not found.", rescueTeamId);
+                _logger.LogWarning("[RescueTeamService - Sql Server] Update failed. Rescue Team ID: {RescueTeamId} not found.", rescueTeamId);
                 return null;
             }
             string oldName = _rescueTeam.TeamName;
 
             _mapper.Map(rescueTeamDTO, _rescueTeam);
             var result =   await _unitOfWork.SaveChangesAsync();
-            _logger.LogInformation("Successfully updated Rescue Team ID: {Id} changed name from '{OldName}' to '{NewName}'",
+            _logger.LogInformation("[RescueTeamService - Sql Server] Successfully updated Rescue Team ID: {Id} changed name from '{OldName}' to '{NewName}'",
                 rescueTeamId, oldName, rescueTeamDTO.TeamName);
             if (result > 0) 
             {
-                _logger.LogInformation("Successfully updated Rescue Team ID: {RescueTeamId} in database.", rescueTeamId);
+                _logger.LogInformation("[RescueTeamService - Sql Server] Successfully updated Rescue Team ID: {RescueTeamId} in database.", rescueTeamId);
                 await Task.WhenAll(
                     _cacheService.RemoveAsync(RESCUETEAM_KEY_PREFIX + rescueTeamId),
                     _cacheService.RemoveAsync(ALL_RESCUETEAMS_KEY)
                 );
-                _logger.LogInformation("Cleared cache for Rescue Team ID: {RescueTeamId} and List.", rescueTeamId);
+                _logger.LogInformation("[RescueTeamService - Redis] Cleared cache for Rescue Team ID: {RescueTeamId} and List.", rescueTeamId);
                 return _mapper.Map<RescueTeamResponseDTO>(_rescueTeam);
             }
-            _logger.LogInformation("No changes detected for Rescue Team ID: {RescueTeamId}.", rescueTeamId);
+            _logger.LogInformation("[RescueTeamService - Sql Server] No changes detected for Rescue Team ID: {RescueTeamId}.", rescueTeamId);
             return null;
         }
     }

@@ -27,6 +27,8 @@ namespace FloodRescue.Services.DTO.Request.RescueRequest
         [MaxLength(15)]
         public string PhoneNumber { get; set; } = string.Empty;
 
+        public int PeopleCount { get; set; }
+
         /// <summary>
         /// Danh sách URL ảnh đã upload lên cloud (Cloudinary, S3, ...) trước đó
         /// </summary>

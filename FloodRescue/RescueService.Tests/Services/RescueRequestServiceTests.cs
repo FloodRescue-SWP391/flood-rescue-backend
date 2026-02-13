@@ -229,7 +229,7 @@ namespace FloodRescue.Tests.Services
             Assert.IsNotEmpty(data.ShortCode);
             Assert.AreEqual(dto.RequestType, data.RequestType);
             Assert.AreEqual(dto.PhoneNumber, data.CitizenPhone); // mapping ForMember PhoneNumber -> CitizenPhone
-            Assert.AreEqual(RescueRequest_Status.PENDING_STATUS, data.Status);
+            Assert.AreEqual(RescueRequestSettings.PENDING_STATUS, data.Status);
 
             // ImageUrls: chỉ lấy URL hợp lệ
             Assert.AreEqual(2, data.ImageUrls.Count);
@@ -258,7 +258,7 @@ namespace FloodRescue.Tests.Services
             // Sanity: entity actually created
             Assert.IsNotNull(addedRequest);
             Assert.AreNotEqual(Guid.Empty, addedRequest!.RescueRequestID);
-            Assert.AreEqual(RescueRequest_Status.PENDING_STATUS, addedRequest.Status);
+            Assert.AreEqual(RescueRequestSettings.PENDING_STATUS, addedRequest.Status);
             Assert.IsNotEmpty(addedRequest.ShortCode);
         }
 

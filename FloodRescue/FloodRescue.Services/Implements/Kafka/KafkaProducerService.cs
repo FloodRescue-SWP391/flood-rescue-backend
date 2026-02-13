@@ -58,11 +58,11 @@ namespace FloodRescue.Services.Implements.Kafka
                 //Bên trong kafka có nhiều topic
                 //Bên topic có nhiều partition
                 //Bên trong partition có nhiều offset (bản ghi) 
-                _logger.LogInformation("Kafka message sent to {Topic} partition {Partition} offset {Offset}", result.Topic, result.Partition.Value, result.Offset.Value);
+                _logger.LogInformation("[KafkaProducerService - Kafka Producer] Message delivered to topic {Topic}, partition {Partition}, offset {Offset}", result.Topic, result.Partition.Value, result.Offset.Value);
             }
             catch (ProduceException<string, string> ex)
             {
-                _logger.LogError(ex, "Error producing Kafka message to {Topic} with {Reason}", topic, ex.Error.Reason);
+                _logger.LogError(ex, "[KafkaProducerService - Error] Failed to produce message to topic {Topic}. Reason: {Reason}", topic, ex.Error.Reason);
                 throw;
             }
         }

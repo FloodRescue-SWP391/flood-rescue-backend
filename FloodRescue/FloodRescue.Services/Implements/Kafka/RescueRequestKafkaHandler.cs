@@ -26,7 +26,7 @@ namespace FloodRescue.Services.Implements.Kafka
 
         public async Task HandleAsync(string message)
         {
-            _logger.LogInformation("[KafkaHandler] Received message on topic: {Topic}", Topic);
+            _logger.LogInformation("[RescueRequestKafkaHandler - Kafka Consumer] Received message on topic: {Topic}", Topic);
 
             try
             {
@@ -35,11 +35,11 @@ namespace FloodRescue.Services.Implements.Kafka
 
                 if (kafkaMessage == null)
                 {
-                    _logger.LogWarning("[KafkaHandler] Failed to deserialize message: {Message}", message);
+                    _logger.LogWarning("[RescueRequestKafkaHandler - Kafka Consumer] Failed to deserialize message from topic {Topic}. Message skipped.", Topic);
                     return;
                 }
 
-                _logger.LogInformation("[KafkaHandler] Processing RescueRequest ID: {Id}, ShortCode: {ShortCode}, Phone: {Phone}",
+                _logger.LogInformation("[RescueRequestKafkaHandler - Kafka Consumer] Processing RescueRequest ID: {Id}, ShortCode: {ShortCode}, Phone: {Phone}",
                     kafkaMessage.RescueRequestID, kafkaMessage.ShortCode, kafkaMessage.CitizenPhone);
 
                 // 2. Gửi SMS thông báo cho citizen (PLACEHOLDER - tích hợp Twilio/Vonage sau)
@@ -47,7 +47,7 @@ namespace FloodRescue.Services.Implements.Kafka
 
                 // 3. Gửi realtime notification cho Coordinator qua SignalR (dùng IRealtimeNotificationService đã có)
                 await _notificationService.SendToGroupAsync(
-                    Groups.RESCUE_COORDINATOR_GROUP,
+                    GroupSettings.RESCUE_COORDINATOR_GROUP,
                     "NewRescueRequest",
                     new
                     {
@@ -61,18 +61,18 @@ namespace FloodRescue.Services.Implements.Kafka
                         Message = $"New {kafkaMessage.RequestType} request received - ShortCode: {kafkaMessage.ShortCode}"
                     }
                 );
-                _logger.LogInformation("[KafkaHandler] Sent realtime notification to Rescue Coordinator group for ShortCode: {ShortCode}",
+                _logger.LogInformation("[RescueRequestKafkaHandler - SignalR] Sent NewRescueRequest notification to Coordinator group for ShortCode: {ShortCode}",
                     kafkaMessage.ShortCode);
 
-                _logger.LogInformation("[KafkaHandler] Successfully processed RescueRequest ID: {Id}", kafkaMessage.RescueRequestID);
+                _logger.LogInformation("[RescueRequestKafkaHandler - Kafka Consumer] Successfully processed RescueRequest ID: {Id}", kafkaMessage.RescueRequestID);
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "[KafkaHandler] JSON deserialization error for message: {Message}", message);
+                _logger.LogError(ex, "[RescueRequestKafkaHandler - Error] Failed to deserialize JSON message on topic: {Topic}", Topic);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[KafkaHandler] Unexpected error processing message on topic: {Topic}", Topic);
+                _logger.LogError(ex, "[RescueRequestKafkaHandler - Error] Unexpected error processing message on topic: {Topic}", Topic);
             }
         }
 
@@ -91,7 +91,7 @@ namespace FloodRescue.Services.Implements.Kafka
                                 $"Trạng thái: Pending. " +
                                 $"Chúng tôi sẽ liên hệ sớm nhất.";
 
-            _logger.LogInformation("[SMS-PLACEHOLDER] Sending SMS to {Phone}: {Content}",
+            _logger.LogInformation("[RescueRequestKafkaHandler - SMS] Sending SMS to {Phone}: {Content}",
                 kafkaMessage.CitizenPhone, smsContent);
 
             return Task.CompletedTask;
