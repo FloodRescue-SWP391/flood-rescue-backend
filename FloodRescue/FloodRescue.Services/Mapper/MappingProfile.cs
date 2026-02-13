@@ -14,6 +14,7 @@ using FloodRescue.Services.DTO.Response.ReliefItem;
 using FloodRescue.Services.DTO.Response.RescueRequestResponse;
 using FloodRescue.Services.DTO.Response.RescueTeamResponse;
 using FloodRescue.Services.DTO.Response.Warehouse;
+using FloodRescue.Services.DTO.Response.ReliefOrder;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -83,6 +84,9 @@ namespace FloodRescue.Services.Mapper
             CreateMap<CreateReliefItemRequestDTO, ReliefItem>();
 
             CreateMap<ReliefItem, ReliefItemResponseDTO>();
+
+            // Mapping ReliefOrder DTOs
+            CreateMap<ReliefOrder, ReliefOrderResponseDTO>();
             // Mapping UpdateUserRequestDTO -> Warehouse
             CreateMap<UpdateUserRequestDTO, Warehouse>();
 

@@ -21,6 +21,8 @@ namespace FloodRescue.Services.SharedSetting
             
         public const string RESCUE_REQUEST_CREATED_TOPIC = "rescue-request-created-topic";
 
+        public const string RELIEF_ORDER_CREATED_TOPIC = "relief-order-created-topic";
+
         //Topic đóng CMT
         //public const string RESCUE_REQUEST_TOPIC = "rescue-request-topic";
         //public const string RESCUE_REQUEST_ACCEPTED_TOPIC = "rescue-request-accepted-topic";
