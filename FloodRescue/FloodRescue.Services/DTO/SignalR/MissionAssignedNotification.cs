@@ -23,6 +23,7 @@ namespace FloodRescue.Services.DTO.SignalR
         public string RequestShortCode { get; set; } = string.Empty;    
         public string? CitizenName { get; set; } = string.Empty;
         public string CitizenPhone { get; set; } = string.Empty;    
+        public string RequestType {get; set;} = string.Empty;
         public string? Address { get; set; } = string.Empty;
         public double LocationLatitude { get; set; }
         public double LocationLongitude { get; set; }

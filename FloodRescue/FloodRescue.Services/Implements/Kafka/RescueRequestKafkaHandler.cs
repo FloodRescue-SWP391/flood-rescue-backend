@@ -33,7 +33,7 @@ namespace FloodRescue.Services.Implements.Kafka
                 // 1. Parse message JSON thành object DTO
                 var kafkaMessage = JsonSerializer.Deserialize<RescueRequestKafkaMessage>(message);
 
-                if (kafkaMessage == null)
+                if (kafkaMessage == null || kafkaMessage.RescueRequestID == Guid.Empty)
                 {
                     _logger.LogWarning("[RescueRequestKafkaHandler - Kafka Consumer] Failed to deserialize message from topic {Topic}. Message skipped.", Topic);
                     return;

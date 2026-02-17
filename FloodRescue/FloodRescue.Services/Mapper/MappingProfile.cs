@@ -14,6 +14,7 @@ using FloodRescue.Services.DTO.Response.ReliefItem;
 using FloodRescue.Services.DTO.Response.RescueRequestResponse;
 using FloodRescue.Services.DTO.Response.RescueTeamResponse;
 using FloodRescue.Services.DTO.Response.Warehouse;
+using FloodRescue.Services.DTO.Response.ReliefOrder;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -83,6 +84,10 @@ namespace FloodRescue.Services.Mapper
             CreateMap<CreateReliefItemRequestDTO, ReliefItem>();
 
             CreateMap<ReliefItem, ReliefItemResponseDTO>();
+
+            // Mapping ReliefOrder DTOs
+            CreateMap<ReliefOrder, ReliefOrderResponseDTO>();
+
             // Mapping UpdateUserRequestDTO -> Warehouse
             CreateMap<UpdateUserRequestDTO, Warehouse>();
 
@@ -188,6 +193,17 @@ namespace FloodRescue.Services.Mapper
 
             // Mapping RescueRequest -> RescueRequestKafkaMessage
             CreateMap<RescueRequest, RescueRequestKafkaMessage>(); 
+
+            // mapper ReliefOrder -> ReliefOrderMessage
+            // mapper Rescue Request -> ReliefOrderMessage chủ yếu để xài description và RescueRequestID
+            CreateMap<ReliefOrder, ReliefOrderMessage>(); 
+
+            //Soạn notification phải có description rồi mới gửi cho manager, còn rescue team thì không cần
+            //Trong auto mapper không cần description
+            // mapper ReliefOrderMessage -> ReliefOrderNotification
+            CreateMap<ReliefOrderMessage, ReliefOrderNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
+
+            
         }
     }
 }

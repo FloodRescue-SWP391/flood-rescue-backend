@@ -16,6 +16,7 @@ namespace FloodRescue.Services.DTO.Kafka
         //Thông tin Request
         public Guid RescueRequestID { get; set; }
         public string RequestShortCode { get; set; } = string.Empty;    
+        public string RequestType {get; set;} = string.Empty;
         public string CitizenPhone { get; set; } = string.Empty;    
         public string? CitizenName { get; set; } = string.Empty;
         public string? Address { get; set; } = string.Empty;    

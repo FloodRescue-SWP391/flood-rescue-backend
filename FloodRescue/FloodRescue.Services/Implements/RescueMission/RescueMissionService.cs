@@ -55,7 +55,7 @@ namespace FloodRescue.Services.Implements.RescueMission
             try
             {
                 //Sửa lại pending
-                // Tìm ra Rescue Request chính xác và đang ở trạng thái "Pending"
+                //Tìm ra Rescue Request chính xác và đang ở trạng thái "Pending" và lấy được status
                 RescueRequestEntity? rescueRequest = await _unitOfWork.RescueRequests.GetAsync((RescueRequestEntity rr) => rr.RescueRequestID == request.RescueRequestID && rr.Status == RescueRequestSettings.PENDING_STATUS && !rr.IsDeleted);
 
                 if (rescueRequest == null)
