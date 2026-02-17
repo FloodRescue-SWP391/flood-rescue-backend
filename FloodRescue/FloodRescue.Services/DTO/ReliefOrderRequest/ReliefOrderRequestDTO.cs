@@ -8,8 +8,8 @@ namespace FloodRescue.Services.DTO.ReliefOrderRequest
 {
     public class ReliefOrderRequestDTO
     {
-        public Guid RescueRequestId { get; set; }
+        public Guid RescueRequestID { get; set; }
 
-        public Guid RescueTeamId { get; set; }
+        public Guid RescueTeamID { get; set; }
     }
 }

@@ -8,13 +8,11 @@ namespace FloodRescue.Services.DTO.Response.ReliefOrder
 {
     public class ReliefOrderResponseDTO
     {
-        public Guid ReliefOrderId { get; set; }
+        public Guid ReliefOrderID { get; set; }
 
-        public Guid RescueRequestId { get; set; }
+        public Guid RescueRequestID { get; set; }
 
-        public Guid ManagerId { get; set; }
-
-        public int WarehouseId { get; set; }
+        public Guid ManagerID { get; set; }
 
         public string Status { get; set; } = string.Empty;
 

@@ -4,12 +4,11 @@ namespace FloodRescue.Services.DTO.Kafka
 {
     public class ReliefOrderMessage
     {
-        public Guid ReliefOrderId { get; set; }
-        public Guid RescueRequestId { get; set; }
-        public Guid RescueTeamId { get; set; }
-
+        public Guid ReliefOrderID { get; set; }
+        public Guid RescueRequestID { get; set; }
+        public Guid RescueTeamID { get; set; }
         public string Status { get; set; } = string.Empty;
-
+        public string Description {get; set;} = string.Empty;
         public DateTime CreatedTime { get; set; }
     }
 }

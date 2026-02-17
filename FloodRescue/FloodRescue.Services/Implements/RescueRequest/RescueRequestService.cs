@@ -54,6 +54,12 @@ namespace FloodRescue.Services.Implements.RescueRequest
             try
             {
 
+            if(request.RequestType == RescueRequestType.SUPPLY_TYPE && string.IsNullOrEmpty(request.Description))
+            {
+                _logger.LogInformation("[RescueRequestService] Invalid Rescue Request: Description  must not null if Rescue Request Type is Supply");
+                return (null, "Invalid Rescue Request Type Supply. Description must be not null");
+            }    
+
             // 1. Kiểm tra tính hợp lệ của RequestType (Rescue hoặc Supply)
             if (!ValidRequestTypes.Contains(request.RequestType))
             {

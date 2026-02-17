@@ -31,6 +31,12 @@ namespace FloodRescue.API.Controllers
                 request.PhoneNumber, request.RequestType);
             try
             {
+                if(request.RequestType  == RescueRequestType.SUPPLY_TYPE && string.IsNullOrEmpty(request.Description))
+                {
+                    _logger.LogWarning("[RescueRequestsController] Create Rescue Request Fail - Description must not be null if rescue type is supply");
+                    return BadRequest(ApiResponse<CreateRescueRequestResponseDTO>.Fail("Description must not be null if rescue type is supply"));
+                }
+
                 var (data, errorMessage) = await _rescueRequestService.CreateRescueRequestAsync(request);
 
                 if (data == null)

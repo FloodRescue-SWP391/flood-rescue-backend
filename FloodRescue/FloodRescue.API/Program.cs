@@ -22,7 +22,6 @@ using FloodRescue.Services.Implements.Auth;
 using FloodRescue.Services.Implements.Cache;
 using FloodRescue.Services.Implements.Category;
 using FloodRescue.Services.Implements.Kafka;
-using FloodRescue.Services.Implements.Kafka.Handlers;
 using FloodRescue.Services.Implements.ReliefOrder;
 using FloodRescue.Services.Implements.ReliefItem;
 using FloodRescue.Services.Implements.Warehouse;
@@ -97,7 +96,7 @@ namespace FloodRescue.API
 
             //Lấy cấu hình graylog
             IConfigurationSection gelfConfig = builder.Configuration.GetSection("GELF");
-          /*  Log.Logger = new LoggerConfiguration()
+          Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .Enrich.FromLogContext()
                 .Enrich.WithEnvironmentName()
@@ -113,7 +112,7 @@ namespace FloodRescue.API
                     MinimumLogEventLevel = Serilog.Events.LogEventLevel.Information
                 })
                 .CreateLogger(); //bắt đầy create log và gán vào biến toàn cục static logger
-*/
+
             //bảo host áp dụng cấu hình log mới 
             builder.Host.UseSerilog();
 
@@ -180,7 +179,7 @@ namespace FloodRescue.API
 
 
             //Cấu hình Hangfire với Redis - lưu trữ/để job vào redis thay vì sql server 
-      /*      builder.Services.AddHangfire(config => config
+           builder.Services.AddHangfire(config => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer() //gọn lại tên rồi lưu trữ trên redis
             .UseRecommendedSerializerSettings()
@@ -193,10 +192,10 @@ namespace FloodRescue.API
 
             })
             );
-*/
+
             //Đăng kí Hangfire server để xử lí job
 
-/*            builder.Services.AddHangfireServer(options =>
+          builder.Services.AddHangfireServer(options =>
             {
                 options.ServerName = $"FloodRescue-{Environment.MachineName}";
 
@@ -205,7 +204,7 @@ namespace FloodRescue.API
                 options.Queues = new[] { "critical", "default", "low" }; //tên queue để phân loại job  
 
             });
-*/
+
            
 
 
@@ -298,18 +297,18 @@ namespace FloodRescue.API
                 app.UseSwaggerUI();
             }
 
-       /*     // /hangfire lấy dữ liệu được lưu trữ trên redis rồi vẽ lên giao diện
+           // /hangfire lấy dữ liệu được lưu trữ trên redis rồi vẽ lên giao diện
             app.UseHangfireDashboard("/hangfire", new DashboardOptions
             {
                 //cho phép truy cập dashboard hangfire mà không cần auth
                 IsReadOnlyFunc = (DashboardContext context) => false,
                 DashboardTitle = "FloodRescue Hangfire Dashboard"
             });
-*/
+
 
 
             // Job 1: Dọn dẹp Refresh Tokens - Chạy lúc 2:00 AM mỗi ngày
-       /*     RecurringJob.AddOrUpdate<IBackgroundJobService>(
+            RecurringJob.AddOrUpdate<IBackgroundJobService>(
                 recurringJobId: "cleanup-expired-refresh-tokens",        // ID duy nhất của job
                 methodCall: job => job.CleanUpExpiredRefreshTokenAsyncs(), // Method cần gọi
                 cronExpression: Cron.Daily(2, 0),                         // 2:00 AM UTC
@@ -317,10 +316,10 @@ namespace FloodRescue.API
                 {
                     TimeZone = TimeZoneInfo.Utc //định nghĩa múi giờ
                 }
-            );*/
+            );
 
             // Job 2: Báo cáo tổng hợp hàng ngày - Chạy lúc 8:00 AM mỗi ngày
-        /*    RecurringJob.AddOrUpdate<IBackgroundJobService>(
+           RecurringJob.AddOrUpdate<IBackgroundJobService>(
                 recurringJobId: "daily-summary-report",
                 methodCall: job => job.SendDailySummaryReportAsync(),
                 cronExpression: Cron.Daily(8, 0),                         // 8:00 AM UTC
@@ -328,9 +327,9 @@ namespace FloodRescue.API
                 {
                     TimeZone = TimeZoneInfo.Utc //định nghĩa múi giờ
                 }
-            );*/
+            );
 
-            //app.MapHub<NotificationHub>("/hubs/notification");
+            app.MapHub<NotificationHub>("/hubs/notification");
 
             app.UseHttpsRedirection();
 

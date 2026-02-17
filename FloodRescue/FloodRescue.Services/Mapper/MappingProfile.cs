@@ -87,6 +87,7 @@ namespace FloodRescue.Services.Mapper
 
             // Mapping ReliefOrder DTOs
             CreateMap<ReliefOrder, ReliefOrderResponseDTO>();
+
             // Mapping UpdateUserRequestDTO -> Warehouse
             CreateMap<UpdateUserRequestDTO, Warehouse>();
 
@@ -192,6 +193,17 @@ namespace FloodRescue.Services.Mapper
 
             // Mapping RescueRequest -> RescueRequestKafkaMessage
             CreateMap<RescueRequest, RescueRequestKafkaMessage>(); 
+
+            // mapper ReliefOrder -> ReliefOrderMessage
+            // mapper Rescue Request -> ReliefOrderMessage chủ yếu để xài description và RescueRequestID
+            CreateMap<ReliefOrder, ReliefOrderMessage>(); 
+
+            //Soạn notification phải có description rồi mới gửi cho manager, còn rescue team thì không cần
+            //Trong auto mapper không cần description
+            // mapper ReliefOrderMessage -> ReliefOrderNotification
+            CreateMap<ReliefOrderMessage, ReliefOrderNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
+
+            
         }
     }
 }

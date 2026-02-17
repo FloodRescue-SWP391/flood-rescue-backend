@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Identity.Client;
 
 namespace FloodRescue.Services.DTO.Request.RescueRequest
 {
@@ -19,6 +20,7 @@ namespace FloodRescue.Services.DTO.Request.RescueRequest
         public double LocationLatitude { get; set; }
         public double LocationLongitude { get; set; }
         public int PeopleCount { get; set; }    
+        public string? Description {get; set;}
         public DateTime CreatedTime { get; set; }
     }
 }

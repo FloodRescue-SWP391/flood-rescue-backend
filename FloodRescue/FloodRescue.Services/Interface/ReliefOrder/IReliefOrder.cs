@@ -11,6 +11,6 @@ namespace FloodRescue.Services.Interface.ReliefOrder
 {
     public interface IReliefOrder
     {
-        Task<ReliefOrderResponseDTO> CreateAsync(ReliefOrderRequestDTO request);
+        Task<ReliefOrderResponseDTO?> CreateReliefOrderAsync(ReliefOrderRequestDTO request);
     }
 }
