@@ -50,7 +50,7 @@ namespace FloodRescue.Services.Implements.RescueMission
 
             _logger.LogInformation("[RescueMissionService] Starting Dispatch with Request ID: {RequestID}, Team ID: {TeamID}", request.RescueRequestID, request.RescueTeamID);
 
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -101,7 +101,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                 if (saveResult <= 0)
                 {
                     _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during dispatch. RequestID: {RequestID}, TeamID: {TeamID}", request.RescueRequestID, request.RescueTeamID);
-                    await transaction.RollbackAsync();  
+                    await _unitOfWork.RollbackTransactionAsync();  
                     return null;
                 }
 
@@ -126,14 +126,14 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 response.Message = $"Rescue mission dispatched successfully for Team {rescueTeam.RescueTeamID} - Team Name {rescueTeam.TeamName}.";
 
-                await transaction.CommitAsync();
+                await _unitOfWork.CommitTransactionAsync();
 
                 return response;
                 
             }
             catch(Exception ex)
             {
-                await transaction.RollbackAsync();
+                await _unitOfWork.RollbackTransactionAsync();
 
                 _logger.LogError(ex, "[RescueMissionService - Error] Dispatch failed. Transaction rolled back. RequestID: {RequestID}", request.RescueRequestID);
 
@@ -145,7 +145,7 @@ namespace FloodRescue.Services.Implements.RescueMission
         {
             _logger.LogInformation("[RescueMissionService] Starting Respond with MissionID: {MissionID}, IsAccepted: {IsAccepted}", request.RescueMissionID, request.IsAccepted);
 
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -210,7 +210,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                 if (saveResult <= 0)
                 {
                     _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during respond. MissionID: {MissionID}", request.RescueMissionID);  
-                    await transaction.RollbackAsync();
+                    await _unitOfWork.RollbackTransactionAsync();
                     return null;
                 }
 
@@ -230,14 +230,14 @@ namespace FloodRescue.Services.Implements.RescueMission
                 response.RespondedAt = respondedAt; 
                 response.Message = request.IsAccepted ? $"Rescue mission with ID {rescueMission.RescueMissionID} has been accepted by Team {rescueTeam.TeamName}." : $"Rescue mission with ID {rescueMission.RescueMissionID} has been declined by Team {rescueTeam.TeamName}.";
 
-                await transaction.CommitAsync();
+                await _unitOfWork.CommitTransactionAsync();
 
                 return response;
 
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                await _unitOfWork.RollbackTransactionAsync();
                 _logger.LogError(ex, "[RescueMissionService - Error] Respond failed. Transaction rolled back. MissionID: {MissionID}", request.RescueMissionID);
                 throw;
             }

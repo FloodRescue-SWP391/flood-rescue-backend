@@ -1,5 +1,4 @@
 ﻿using FloodRescue.Repositories.Entites;
-using Microsoft.EntityFrameworkCore.Storage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,8 +27,9 @@ namespace FloodRescue.Repositories.Interface
         IBaseRepository<Warehouse> Warehouses { get; }
         IBaseRepository<RefreshToken> RefreshTokens { get; }
 
-        Task<IDbContextTransaction> BeginTransactionAsync();
-
+        Task BeginTransactionAsync();
+        Task CommitTransactionAsync();
+        Task RollbackTransactionAsync();
         Task<int> SaveChangesAsync();
 
     }

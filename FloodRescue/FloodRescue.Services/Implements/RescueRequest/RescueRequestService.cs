@@ -49,7 +49,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
         {
             _logger.LogInformation("[RescueRequestService] Creating new RescueRequest. Phone: {Phone}, Type: {Type}", request.PhoneNumber, request.RequestType);
 
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -127,7 +127,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
             if (result <= 0)
             {
                 _logger.LogError("[RescueRequestService - Sql Server] Failed to save RescueRequest to database. ID: {Id}", rescueRequest.RescueRequestID);
-                await transaction.RollbackAsync();
+                await _unitOfWork.RollbackTransactionAsync();
                 return (null, "Failed to create rescue request");
             }
 
@@ -167,7 +167,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
                     kafkaMessage // event/message(object)
                 );
 
-                await transaction.CommitAsync();
+                await _unitOfWork.CommitTransactionAsync();
 
                 _logger.LogInformation("[RescueRequestService - Kafka Producer] Message produced to topic: {Topic} for RescueRequest ID: {Id}",
                     KafkaSettings.RESCUE_REQUEST_TOPIC, rescueRequest.RescueRequestID);
@@ -177,7 +177,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
             catch (Exception ex)
             {
                 // Kafka fail không nên block response - request đã được lưu DB thành công
-                await transaction.RollbackAsync();
+                await _unitOfWork.RollbackTransactionAsync();
                 _logger.LogError("[RescueRequestService - Error] Transaction rolled back. Failed to create RescueRequest: {Error}", ex.Message);
                 throw;
             }

@@ -1,4 +1,5 @@
-﻿using FloodRescue.Repositories.Context;
+﻿using Azure;
+using FloodRescue.Repositories.Context;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.Warehouse;
@@ -39,10 +40,10 @@ namespace FloodRescue.API.Controllers
                 if (result != null)
                 {
                     _logger.LogInformation("[WarehousesController] Returned {Count} warehouses.", result.Count);
-                    return ApiResponse<List<ShowWareHouseResponseDTO>>.Ok(result, "Get all warehouses successfully", 200);
+                    return StatusCode(200, ApiResponse<List<ShowWareHouseResponseDTO>>.Ok(result, "Get all warehouses successfully", 200));
                 }
                 _logger.LogWarning("[WarehousesController] GET all warehouses returned null.");
-                return ApiResponse<List<ShowWareHouseResponseDTO>>.Fail("Warehouse not found");
+                return StatusCode(404, ApiResponse<List<ShowWareHouseResponseDTO>>.Fail("Warehouse not found", 404));
             }
             catch (Exception ex)
             {
@@ -64,7 +65,7 @@ namespace FloodRescue.API.Controllers
                     return ApiResponse<ShowWareHouseResponseDTO>.Fail("Warehouse not found");
                 }
                 _logger.LogInformation("[WarehousesController] Warehouse ID: {Id} returned.", id);
-                return ApiResponse<ShowWareHouseResponseDTO>.Ok(result, "Get warehouse successfully", 200);
+                return StatusCode(200, ApiResponse<ShowWareHouseResponseDTO>.Ok(result, "Get warehouse successfully", 200));
             }
             catch (Exception ex)
             {
@@ -106,10 +107,10 @@ namespace FloodRescue.API.Controllers
                 if (result == null)
                 {
                     _logger.LogWarning("[WarehousesController] Create warehouse failed.");
-                    return ApiResponse<CreateWarehouseResponseDTO>.Fail("Create warehouse failed");
+                    return StatusCode(400, ApiResponse<CreateWarehouseResponseDTO>.Fail("Create warehouse failed", 400));
                 }
                 _logger.LogInformation("[WarehousesController] Warehouse created. Name: {Name}", result.Name);
-                return ApiResponse<CreateWarehouseResponseDTO>.Ok(result, "Create warehouse successfully", 200);
+                return StatusCode(200, ApiResponse<CreateWarehouseResponseDTO>.Ok(result, "Create warehouse successfully", 200));
             }
             catch (Exception ex)
             {
@@ -128,10 +129,10 @@ namespace FloodRescue.API.Controllers
                 if (!result)
                 {
                     _logger.LogWarning("[WarehousesController] Delete warehouse failed. ID: {Id}", id);
-                    return ApiResponse<bool>.Fail("Delete failed");
+                    return StatusCode (400, ApiResponse<bool>.Fail("Delete failed", 400));
                 }
                 _logger.LogInformation("[WarehousesController] Warehouse ID: {Id} deleted.", id);
-                return ApiResponse<bool>.Ok(true, "Delete warehouse successfully", 200);
+                return StatusCode(200, ApiResponse<bool>.Ok(true, "Delete warehouse successfully", 200));
             }
             catch (Exception ex)
             {

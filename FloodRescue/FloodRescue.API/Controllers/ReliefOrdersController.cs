@@ -41,12 +41,12 @@ namespace FloodRescue.API.Controllers
 
                 _logger.LogInformation("[ReliefOrdersController] Service done successfully");
 
-                return ApiResponse<ReliefOrderResponseDTO>.Ok(result, "Create relief order successfully", 201);
+                return StatusCode(201, ApiResponse<ReliefOrderResponseDTO>.Ok(result, "Create relief order successfully", 201));
             }
             catch (InvalidOperationException ex)
             {
                 _logger.LogError("[ReliefOrdersController - Error] Create Relief Orders Fail with Error {Error}", ex.Message);
-                return ApiResponse<ReliefOrderResponseDTO>.Fail(ex.Message, 400);
+                return StatusCode(400,ApiResponse<ReliefOrderResponseDTO>.Fail(ex.Message, 400));
             }
             catch(Exception ex)
             {

@@ -68,7 +68,7 @@ namespace FloodRescue.Services.Implements.ReliefOrder
 
             _logger.LogInformation("[ReliefOrderService] Start Transaction for Creating Relief Order");
 
-            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            await _unitOfWork.BeginTransactionAsync();
 
             try
             {
@@ -100,12 +100,12 @@ namespace FloodRescue.Services.Implements.ReliefOrder
                 if (dispatchResult == null)
                 {
                     _logger.LogWarning("[ReliefOrderService] Call in dispatch result service but cannot found");
-                    await transaction.RollbackAsync();
+                    await _unitOfWork.RollbackTransactionAsync();
                     return null;
                 }
 
                 await _unitOfWork.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await _unitOfWork.CommitTransactionAsync();
 
                 // mapper ReliefOrder -> ReliefOrderMessage
                 
@@ -123,7 +123,7 @@ namespace FloodRescue.Services.Implements.ReliefOrder
             catch(Exception ex)
             {
                 _logger.LogError("[ReliefOrderService - Error] Cannot Create Relief Order with Rescue Request ID: {ID} - Error: {error}. Transaction RollBack", request.RescueRequestID, ex.Message.ToString());
-                await transaction.RollbackAsync();
+                await _unitOfWork.RollbackTransactionAsync();
                 throw;
             }
         }

@@ -11,6 +11,9 @@
 *.sln.docstates
 *.env
 
+# file txt to ignore
+bug to fix.txt
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 

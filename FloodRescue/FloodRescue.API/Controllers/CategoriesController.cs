@@ -28,7 +28,7 @@ namespace FloodRescue.API.Controllers
             {
                 var list = await _categoryService.GetAllAsync();
                 _logger.LogInformation("[CategoriesController] Returned {Count} categories.", list.Count);
-                return ApiResponse<List<CategoryResponseDTO>>.Ok(list, "Get categories successfully", 200);
+                return StatusCode(200,ApiResponse<List<CategoryResponseDTO>>.Ok(list, "Get categories successfully", 200));
             }
             catch (Exception ex)
             {
@@ -47,10 +47,10 @@ namespace FloodRescue.API.Controllers
                 if (category == null)
                 {
                     _logger.LogWarning("[CategoriesController] Category ID: {Id} not found.", id);
-                    return ApiResponse<CategoryResponseDTO>.Fail("Category not found", 404);
+                    return StatusCode(404, ApiResponse<CategoryResponseDTO>.Fail("Category not found", 404));
                 }
                 _logger.LogInformation("[CategoriesController] Category ID: {Id} returned.", id);
-                return ApiResponse<CategoryResponseDTO>.Ok(category, "Get category successfully", 200);
+                 return StatusCode(200, ApiResponse<CategoryResponseDTO>.Ok(category, "Get category successfully", 200));
             }
             catch (Exception ex)
             {
@@ -69,10 +69,10 @@ namespace FloodRescue.API.Controllers
                 if (!result)
                 {
                     _logger.LogWarning("[CategoriesController] Update category failed. ID: {Id}", id);
-                    return ApiResponse<bool>.Fail("Update failed or category not found", 400);
+                    return StatusCode(400, ApiResponse<bool>.Fail("Update failed or category not found", 400));
                 }
                 _logger.LogInformation("[CategoriesController] Category ID: {Id} updated.", id);
-                return ApiResponse<bool>.Ok(true, "Update category successfully", 200);
+                return StatusCode(200, ApiResponse<bool>.Ok(true, "Update category successfully", 200));
             }
             catch (Exception ex)
             {
@@ -89,7 +89,7 @@ namespace FloodRescue.API.Controllers
             {
                 var result = await _categoryService.CreateAsync(request);
                 _logger.LogInformation("[CategoriesController] Category created. ID: {Id}", result.CategoryID);
-                return ApiResponse<CategoryResponseDTO>.Ok(result, "Create category successfully", 201);
+                return StatusCode(201, ApiResponse<CategoryResponseDTO>.Ok(result, "Create category successfully", 201));
             }
             catch (Exception ex)
             {
@@ -108,10 +108,10 @@ namespace FloodRescue.API.Controllers
                 if (!result)
                 {
                     _logger.LogWarning("[CategoriesController] Delete category failed. ID: {Id}", id);
-                    return ApiResponse<bool>.Fail("Delete failed or category not found", 400);
+                    return StatusCode(400, ApiResponse<bool>.Fail("Delete failed or category not found", 400));
                 }
                 _logger.LogInformation("[CategoriesController] Category ID: {Id} deleted.", id);
-                return ApiResponse<bool>.Ok(true, "Delete category successfully", 200);
+                return StatusCode(200, ApiResponse<bool>.Ok(true, "Delete category successfully", 200));
             }
             catch (Exception ex)
             {

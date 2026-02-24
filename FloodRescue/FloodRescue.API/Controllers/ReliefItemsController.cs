@@ -28,7 +28,7 @@ namespace FloodRescue.API.Controllers
             {
                 var list = await _service.GetAllAsync();
                 _logger.LogInformation("[ReliefItemsController] Returned {Count} relief items.", list.Count);
-                return ApiResponse<List<ReliefItemResponseDTO>>.Ok(list, "Get relief items successfully", 200);
+                return StatusCode(200, ApiResponse<List<ReliefItemResponseDTO>>.Ok(list, "Get relief items successfully", 200));
             }
             catch (Exception ex)
             {
@@ -47,10 +47,10 @@ namespace FloodRescue.API.Controllers
                 if (item == null)
                 {
                     _logger.LogWarning("[ReliefItemsController] Relief item ID: {Id} not found.", id);
-                    return ApiResponse<ReliefItemResponseDTO>.Fail("Relief item not found", 404);
+                    return StatusCode(404, ApiResponse<ReliefItemResponseDTO>.Fail("Relief item not found", 404));
                 }
                 _logger.LogInformation("[ReliefItemsController] Relief item ID: {Id} returned.", id);
-                return ApiResponse<ReliefItemResponseDTO>.Ok(item, "Get relief item successfully", 200);
+                return StatusCode(200, ApiResponse<ReliefItemResponseDTO>.Ok(item, "Get relief item successfully", 200));
             }
             catch (Exception ex)
             {
@@ -67,7 +67,7 @@ namespace FloodRescue.API.Controllers
             {
                 var result = await _service.CreateAsync(request);
                 _logger.LogInformation("[ReliefItemsController] Relief item created. ID: {Id}", result.ReliefItemID);
-                return ApiResponse<ReliefItemResponseDTO>.Ok(result, "Create relief item successfully", 201);
+                return StatusCode(201, ApiResponse<ReliefItemResponseDTO>.Ok(result, "Create relief item successfully", 201));
             }
             catch (Exception ex)
             {
@@ -86,10 +86,10 @@ namespace FloodRescue.API.Controllers
                 if (!result)
                 {
                     _logger.LogWarning("[ReliefItemsController] Update relief item failed. ID: {Id}", id);
-                    return ApiResponse<bool>.Fail("Update failed", 400);
+                    return StatusCode(400, ApiResponse<bool>.Fail("Update failed", 400));
                 }
                 _logger.LogInformation("[ReliefItemsController] Relief item ID: {Id} updated.", id);
-                return ApiResponse<bool>.Ok(true, "Update relief item successfully", 200);
+                return StatusCode(200, ApiResponse<bool>.Ok(true, "Update relief item successfully", 200));
             }
             catch (Exception ex)
             {
@@ -108,10 +108,10 @@ namespace FloodRescue.API.Controllers
                 if (!result)
                 {
                     _logger.LogWarning("[ReliefItemsController] Delete relief item failed. ID: {Id}", id);
-                    return ApiResponse<bool>.Fail("Delete failed", 400);
+                    return StatusCode(400, ApiResponse<bool>.Fail("Delete failed", 400));
                 }
                 _logger.LogInformation("[ReliefItemsController] Relief item ID: {Id} deleted.", id);
-                return ApiResponse<bool>.Ok(true, "Delete relief item successfully", 200);
+                return StatusCode(200, ApiResponse<bool>.Ok(true, "Delete relief item successfully", 200));
             }
             catch (Exception ex)
             {

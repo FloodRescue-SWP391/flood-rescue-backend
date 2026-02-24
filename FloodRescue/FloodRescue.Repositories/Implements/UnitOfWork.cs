@@ -1,7 +1,6 @@
 ﻿using FloodRescue.Repositories.Context;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
-using Microsoft.EntityFrameworkCore.Storage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -76,10 +75,38 @@ namespace FloodRescue.Repositories.Implements
 
         public IBaseRepository<RefreshToken> RefreshTokens => _refreshTokens ??= new BaseRepository<RefreshToken>(_context);
 
+        //Dùng biến count để định nghĩa cha và con
+        private int _transactionCount = 0;  
 
-        public async Task<IDbContextTransaction> BeginTransactionAsync()
+        public async Task BeginTransactionAsync()
         {
-            return await _context.Database.BeginTransactionAsync();
+            //nếu chưa ai gọi thì cộng lên 1 số rồi gọi
+            if(_transactionCount++ == 0)
+            {
+                await _context.Database.BeginTransactionAsync();
+
+            }
+        }
+
+        public async Task CommitTransactionAsync()
+        {
+            var transaction = _context.Database.CurrentTransaction;
+
+            //nếu đã có ai gọi rồi thì giảm đi 1 số rồi mới gọi
+            if (--_transactionCount == 0 && transaction != null)
+            {
+                await transaction.CommitAsync();
+            }
+        }
+
+        public async Task RollbackTransactionAsync()
+        {
+            var transaction = _context.Database.CurrentTransaction;
+            if(_transactionCount > 0 && transaction != null)
+            {
+                await transaction.RollbackAsync();
+                _transactionCount = 0;  
+            }
         }
 
         public void Dispose()
@@ -87,6 +114,7 @@ namespace FloodRescue.Repositories.Implements
             _context.Dispose();
         }
 
+      
         public async Task<int> SaveChangesAsync()
         {
             return await _context.SaveChangesAsync();

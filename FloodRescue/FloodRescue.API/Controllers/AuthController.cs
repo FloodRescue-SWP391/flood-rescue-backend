@@ -35,7 +35,7 @@ namespace FloodRescue.API.Controllers
                     return ApiResponse<RegisterResponseDTO>.Fail(errorMessage!, 400);
                 }
                 _logger.LogInformation("[AuthController] Register success. UserID: {UserID}, Username: {Username}", data.UserID, data.Username);
-                return ApiResponse<RegisterResponseDTO>.Ok(data!, "Register successfully", 201);
+                return StatusCode(201, ApiResponse<RegisterResponseDTO>.Ok(data!, "Register successfully", 201));
             }
             catch (Exception ex)
             {
@@ -55,11 +55,11 @@ namespace FloodRescue.API.Controllers
                 if (data == null)
                 {
                     _logger.LogWarning("[AuthController] Login failed. Username: {Username}, Error: {Error}", request.Username, errorMessage);
-                    return ApiResponse<AuthResponseDTO>.Fail(errorMessage!, 401);
+                    return StatusCode(401, ApiResponse<AuthResponseDTO>.Fail(errorMessage!, 401));
                 }
 
                 _logger.LogInformation("[AuthController] Login success. UserID: {UserID}, Username: {Username}", data.UserID, data.Username);
-                return ApiResponse<AuthResponseDTO>.Ok(data: data!, message: "Login successfully", 200);
+                return StatusCode(200, ApiResponse<AuthResponseDTO>.Ok(data: data!, message: "Login successfully", 200));
             }
             catch (Exception ex)
             {
@@ -79,11 +79,11 @@ namespace FloodRescue.API.Controllers
                 if (data == null)
                 {
                     _logger.LogWarning("[AuthController] Refresh token failed. Error: {Error}", errorMessage);
-                    return ApiResponse<AuthResponseDTO>.Fail(errorMessage!, 401);
+                    return StatusCode(401, ApiResponse<AuthResponseDTO>.Fail(errorMessage!, 401));
                 }
 
                 _logger.LogInformation("[AuthController] Refresh token success. UserID: {UserID}", data.UserID);
-                return ApiResponse<AuthResponseDTO>.Ok(data: data!, message: "Token refreshed successfully", 200);
+                return StatusCode(200, ApiResponse<AuthResponseDTO>.Ok(data: data!, message: "Token refreshed successfully", 200));
             }
             catch (Exception ex)
             {

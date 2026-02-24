@@ -12,8 +12,6 @@ namespace FloodRescue.Services.DTO.Response.ReliefOrder
 
         public Guid RescueRequestID { get; set; }
 
-        public Guid ManagerID { get; set; }
-
         public string Status { get; set; } = string.Empty;
 
         public string? Description { get; set; }

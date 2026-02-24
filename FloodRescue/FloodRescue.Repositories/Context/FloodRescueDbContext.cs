@@ -52,11 +52,6 @@ namespace FloodRescue.Repositories.Context
                 .HasForeignKey(ro => ro.ManagerID)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<ReliefOrder>()
-                .HasOne(ro => ro.Warehouse)
-                .WithMany()
-                .HasForeignKey(ro => ro.WarehouseID)
-                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<ReliefOrder>()
                 .HasOne(ro => ro.RescueTeam)

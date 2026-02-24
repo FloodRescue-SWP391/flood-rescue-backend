@@ -29,19 +29,11 @@ namespace FloodRescue.Repositories.Entites
 
         // Ai là người quản lý kho tạo đơn này?
         [Column("ManagerID", TypeName = "uniqueidentifier")]
-        public Guid ManagerID { get; set; }
+        public Guid? ManagerID { get; set; }
 
         [ForeignKey(nameof(ManagerID))]
         [JsonIgnore]
         public User? Manager { get; set; }
-
-        // Xuất từ kho nào?
-        [Column("WarehouseID", TypeName = "int")]
-        public int WarehouseID { get; set; }
-
-        [ForeignKey(nameof(WarehouseID))]
-        [JsonIgnore]
-        public Warehouse? Warehouse { get; set; }
 
         // Đội nào đi giao? (Nullable vì lúc mới tạo chưa gán đội)
         [Column("RescueTeamID", TypeName = "uniqueidentifier")]
@@ -58,6 +50,9 @@ namespace FloodRescue.Repositories.Entites
 
         [Column("PreparedTime", TypeName = "datetime2(7)")]
         public DateTime? PreparedTime { get; set; } // Nullable (N)
+
+        [Column("PickedUpTime", TypeName = "datetime2(7)")]
+        public DateTime? PickedUpTime { get; set; } // Nullable (N)
 
         [Column("Description", TypeName = "nvarchar(max)")]
         public string? Description { get; set; } // Nullable (N)
