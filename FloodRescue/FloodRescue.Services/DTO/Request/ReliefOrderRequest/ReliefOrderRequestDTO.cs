@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FloodRescue.Services.DTO.ReliefOrderRequest
+namespace FloodRescue.Services.DTO.Request.ReliefOrderRequest
 {
     public class ReliefOrderRequestDTO
     {
