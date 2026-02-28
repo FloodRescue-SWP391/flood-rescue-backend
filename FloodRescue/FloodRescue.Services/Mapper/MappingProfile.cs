@@ -206,6 +206,9 @@ namespace FloodRescue.Services.Mapper
             // mapper OrderPreparedMessage -> OrderPreparedNotification
             CreateMap<OrderPreparedMessage, OrderPreparedNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
 
+            // mapper DeliveryStartedMessage -> DeliveryStartedNotification
+            CreateMap<DeliveryStartedMessage, DeliveryStartedNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
+
             
         }
     }

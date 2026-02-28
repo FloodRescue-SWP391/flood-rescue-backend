@@ -25,6 +25,8 @@ namespace FloodRescue.Services.SharedSetting
 
         public const string ORDER_PREPARED_TOPIC = "order-prepared-topic";
 
+        public const string DELIVERY_STARTED_TOPIC = "delivery-started-topic";
+
         //Topic đóng CMT
         //public const string RESCUE_REQUEST_TOPIC = "rescue-request-topic";
         //public const string RESCUE_REQUEST_ACCEPTED_TOPIC = "rescue-request-accepted-topic";
