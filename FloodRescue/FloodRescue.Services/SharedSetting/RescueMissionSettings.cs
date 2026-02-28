@@ -14,4 +14,7 @@ public static class RescueMissionSettings
     //Declined
     public const string DECLINED_STATUS = "Declined";
 
+    //Completed
+    public const string COMPLETED_STATUS = "Completed";
+
 }
