@@ -203,7 +203,9 @@ namespace FloodRescue.Services.Mapper
             // mapper ReliefOrderMessage -> ReliefOrderNotification
             CreateMap<ReliefOrderMessage, ReliefOrderNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
 
-            
+
+
+
         }
     }
 }
