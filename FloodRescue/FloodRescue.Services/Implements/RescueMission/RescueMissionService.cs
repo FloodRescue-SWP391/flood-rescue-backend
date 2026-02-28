@@ -22,6 +22,7 @@ using RescueMissionEntity = FloodRescue.Repositories.Entites.RescueMission;
 using RescueRequestEntity = FloodRescue.Repositories.Entites.RescueRequest;
 using RescueTeamEntity = FloodRescue.Repositories.Entites.RescueTeam;
 using RescueTeamMemberEntity = FloodRescue.Repositories.Entites.RescueTeamMember;
+using ReliefOrderEntity = FloodRescue.Repositories.Entites.ReliefOrder;
 
 namespace FloodRescue.Services.Implements.RescueMission
 {
@@ -248,6 +249,21 @@ namespace FloodRescue.Services.Implements.RescueMission
             _logger.LogInformation("[RescueMissionService] Starting CompleteMission with MissionID: {MissionID}", request.RescueMissionID);
 
             // Lấy RescueMission từ DB kèm theo RescueRequest và RescueTeam
+        public async Task<ConfirmPickupResponseDTO?> ConfirmPickupAsync(ConfirmPickUpRequestDTO request)
+        {
+            _logger.LogInformation("[RescueMissionService] Starting ConfirmPickup with MissionID: {MissionID}, ReliefOrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
+
+            // Lấy ReliefOrder từ DB theo ID
+            ReliefOrderEntity? reliefOrder = await _unitOfWork.ReliefOrders.GetAsync(
+                (ReliefOrderEntity ro) => ro.ReliefOrderID == request.ReliefOrderID && !ro.IsDeleted);
+
+            if (reliefOrder == null || reliefOrder.Status != ReliefOrderSettings.PREPARED_STATUS)
+            {
+                _logger.LogWarning("[RescueMissionService - Sql Server] ReliefOrder with ID: {OrderID} not found or not in Prepared status", request.ReliefOrderID);
+                return null;
+            }
+
+            // Lấy RescueMission từ DB
             RescueMissionEntity? rescueMission = await _unitOfWork.RescueMissions.GetAsync(
                 (RescueMissionEntity rm) => rm.RescueMissionID == request.RescueMissionID && !rm.IsDeleted,
                 rm => rm.RescueTeam!,
@@ -256,6 +272,14 @@ namespace FloodRescue.Services.Implements.RescueMission
             if (rescueMission == null || rescueMission.Status != RescueMissionSettings.INPROGRESS_STATUS)
             {
                 _logger.LogWarning("[RescueMissionService - Sql Server] RescueMission with ID: {MissionID} not found or not in InProgress status", request.RescueMissionID);
+                return null;
+            }
+
+            // Check ReliefOrder.RescueRequestID phải trùng với RescueMission.RescueRequestID
+            if (reliefOrder.RescueRequestID != rescueMission.RescueRequestID)
+            {
+                _logger.LogWarning("[RescueMissionService] ReliefOrder.RescueRequestID ({OrderRequestID}) does not match RescueMission.RescueRequestID ({MissionRequestID})",
+                    reliefOrder.RescueRequestID, rescueMission.RescueRequestID);
                 return null;
             }
 
@@ -290,12 +314,20 @@ namespace FloodRescue.Services.Implements.RescueMission
                     rescueRequest.Status = RescueRequestSettings.COMPLETED_STATUS;
                     _logger.LogInformation("[RescueMissionService] RescueRequest {RequestID} is Rescue type - set to Completed", rescueRequest.RescueRequestID);
                 }
+                DateTime pickedUpTime = DateTime.UtcNow;
+
+                // Update ReliefOrder: Status = PickedUp, PickedUpTime
+                reliefOrder.Status = ReliefOrderSettings.PICKEDUP_STATUS;
+                reliefOrder.PickedUpTime = pickedUpTime;
+
+                _logger.LogInformation("[RescueMissionService] ReliefOrder {OrderID} set to PickedUp at {PickedUpTime}", request.ReliefOrderID, pickedUpTime);
 
                 int saveResult = await _unitOfWork.SaveChangesAsync();
 
                 if (saveResult <= 0)
                 {
                     _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during complete mission. MissionID: {MissionID}", request.RescueMissionID);
+                    _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during confirm pickup. OrderID: {OrderID}", request.ReliefOrderID);
                     await _unitOfWork.RollbackTransactionAsync();
                     return null;
                 }
@@ -316,6 +348,16 @@ namespace FloodRescue.Services.Implements.RescueMission
                     MissionStatus = rescueMission.Status,
                     RequestStatus = rescueRequest.Status,
                     EndTime = completedTime,
+                // Gửi message qua Kafka
+                DeliveryStartedMessage kafkaMessage = new DeliveryStartedMessage
+                {
+                    ReliefOrderID = reliefOrder.ReliefOrderID,
+                    RescueMissionID = rescueMission.RescueMissionID,
+                    RescueRequestID = rescueMission.RescueRequestID,
+                    RescueTeamID = rescueTeam.RescueTeamID,
+                    TeamName = rescueTeam.TeamName,
+                    OrderStatus = reliefOrder.Status,
+                    PickedUpTime = pickedUpTime,
                     CoordinatorID = rescueRequest.CoordinatorID
                 };
 
@@ -341,6 +383,22 @@ namespace FloodRescue.Services.Implements.RescueMission
                     NewTeamStatus = rescueTeam.CurrentStatus,
                     EndTime = completedTime,
                     Message = $"Rescue mission {rescueMission.RescueMissionID} has been completed by Team {rescueTeam.TeamName}. Team is now available for new missions."
+                    topic: KafkaSettings.DELIVERY_STARTED_TOPIC,
+                    key: reliefOrder.ReliefOrderID.ToString(),
+                    message: kafkaMessage);
+
+                _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic}", KafkaSettings.DELIVERY_STARTED_TOPIC);
+
+                _logger.LogInformation("[RescueMissionService] Successfully confirmed pickup for ReliefOrder {OrderID}, Mission {MissionID}", request.ReliefOrderID, request.RescueMissionID);
+
+                ConfirmPickupResponseDTO response = new ConfirmPickupResponseDTO
+                {
+                    ReliefOrderID = reliefOrder.ReliefOrderID,
+                    RescueMissionID = rescueMission.RescueMissionID,
+                    RescueRequestID = rescueMission.RescueRequestID,
+                    OrderStatus = reliefOrder.Status,
+                    PickedUpTime = pickedUpTime,
+                    Message = $"Relief Order {reliefOrder.ReliefOrderID} has been picked up by Team {rescueTeam.TeamName}. Delivery started."
                 };
 
                 return response;
@@ -349,6 +407,7 @@ namespace FloodRescue.Services.Implements.RescueMission
             {
                 await _unitOfWork.RollbackTransactionAsync();
                 _logger.LogError(ex, "[RescueMissionService - Error] CompleteMission failed. Transaction rolled back. MissionID: {MissionID}", request.RescueMissionID);
+                _logger.LogError(ex, "[RescueMissionService - Error] ConfirmPickup failed. Transaction rolled back. OrderID: {OrderID}, MissionID: {MissionID}", request.ReliefOrderID, request.RescueMissionID);
                 throw;
             }
         }

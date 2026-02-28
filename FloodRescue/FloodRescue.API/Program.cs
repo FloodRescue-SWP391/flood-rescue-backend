@@ -164,6 +164,8 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IKafkaHandler, TeamAcceptedHandler>();
             builder.Services.AddScoped<IKafkaHandler, TeamRejectedHandler>();
             builder.Services.AddScoped<IKafkaHandler, MissionCompletedHandler>();
+            builder.Services.AddScoped<IKafkaHandler, OrderPreparedHandler>();
+            builder.Services.AddScoped<IKafkaHandler, DeliveryStartedHandler>();
 
 
             // Đăng ký Redis Cache để inject được vào Cache Service

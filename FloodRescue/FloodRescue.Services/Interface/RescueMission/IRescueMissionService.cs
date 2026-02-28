@@ -13,5 +13,6 @@ namespace FloodRescue.Services.Interface.RescueMission
         Task<DispatchMissionResponseDTO?> DispatchMissionAsync(DispatchMissionRequestDTO request);
         Task<RespondMissionResponseDTO?> RespondMissionAsync(RespondMessageRequestDTO request);
         Task<CompleteMissionResponseDTO?> CompleteMissionAsync(CompleteMissionRequestDTO request);
+        Task<ConfirmPickupResponseDTO?> ConfirmPickupAsync(ConfirmPickUpRequestDTO request);
     }
 }
