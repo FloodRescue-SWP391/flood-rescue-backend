@@ -249,6 +249,111 @@ namespace FloodRescue.Services.Implements.RescueMission
             _logger.LogInformation("[RescueMissionService] Starting CompleteMission with MissionID: {MissionID}", request.RescueMissionID);
 
             // Lấy RescueMission từ DB kèm theo RescueRequest và RescueTeam
+            RescueMissionEntity? rescueMission = await _unitOfWork.RescueMissions.GetAsync(
+                (RescueMissionEntity rm) => rm.RescueMissionID == request.RescueMissionID && !rm.IsDeleted,
+                rm => rm.RescueTeam!,
+                rm => rm.RescueRequest!);
+
+            if (rescueMission == null || rescueMission.Status != RescueMissionSettings.INPROGRESS_STATUS)
+            {
+                _logger.LogWarning("[RescueMissionService - Sql Server] RescueMission with ID: {MissionID} not found or not in InProgress status", request.RescueMissionID);
+                return null;
+            }
+
+            RescueTeamEntity rescueTeam = rescueMission.RescueTeam!;
+            RescueRequestEntity rescueRequest = rescueMission.RescueRequest!;
+
+            await _unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+                DateTime completedTime = DateTime.UtcNow;
+
+                // Update RescueMission: Status = Completed, EndTime
+                rescueMission.Status = RescueMissionSettings.COMPLETED_STATUS;
+                rescueMission.EndTime = completedTime;
+
+                _logger.LogInformation("[RescueMissionService] RescueMission {MissionID} set to Completed at {EndTime}", request.RescueMissionID, completedTime);
+
+                // Update RescueTeam: CurrentStatus = Available
+                rescueTeam.CurrentStatus = RescueTeamSettings.AVAILABLE_STATUS;
+
+                _logger.LogInformation("[RescueMissionService] RescueTeam {TeamID} - {TeamName} set to Available", rescueTeam.RescueTeamID, rescueTeam.TeamName);
+
+                // Update RescueRequest: nếu Type == Supply thì Status = Delivered, còn lại = Completed
+                if (rescueRequest.RequestType == RescueRequestType.SUPPLY_TYPE)
+                {
+                    rescueRequest.Status = RescueRequestSettings.DELIVERED_STATUS;
+                    _logger.LogInformation("[RescueMissionService] RescueRequest {RequestID} is Supply type - set to Delivered", rescueRequest.RescueRequestID);
+                }
+                else
+                {
+                    rescueRequest.Status = RescueRequestSettings.COMPLETED_STATUS;
+                    _logger.LogInformation("[RescueMissionService] RescueRequest {RequestID} is Rescue type - set to Completed", rescueRequest.RescueRequestID);
+                }
+
+                int saveResult = await _unitOfWork.SaveChangesAsync();
+
+                if (saveResult <= 0)
+                {
+                    _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during complete mission. MissionID: {MissionID}", request.RescueMissionID);
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return null;
+                }
+
+                await _unitOfWork.CommitTransactionAsync();
+
+                _logger.LogInformation("[RescueMissionService] Transaction committed for CompleteMission. MissionID: {MissionID}", request.RescueMissionID);
+
+                // Gửi message qua Kafka
+                MissionCompletedMessage kafkaMessage = new MissionCompletedMessage
+                {
+                    RescueMissionID = rescueMission.RescueMissionID,
+                    RescueRequestID = rescueRequest.RescueRequestID,
+                    RequestShortCode = rescueRequest.ShortCode,
+                    RequestType = rescueRequest.RequestType,
+                    RescueTeamID = rescueTeam.RescueTeamID,
+                    TeamName = rescueTeam.TeamName,
+                    MissionStatus = rescueMission.Status,
+                    RequestStatus = rescueRequest.Status,
+                    EndTime = completedTime,
+                    CoordinatorID = rescueRequest.CoordinatorID
+                };
+
+                await _kafkaProducer.ProduceAsync(
+                    topic: KafkaSettings.MISSION_COMPLETED_TOPIC,
+                    key: rescueMission.RescueMissionID.ToString(),
+                    message: kafkaMessage);
+
+                _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic} for MissionID: {MissionID}", KafkaSettings.MISSION_COMPLETED_TOPIC, request.RescueMissionID);
+
+                _logger.LogInformation("[RescueMissionService] Successfully completed mission with ID: {MissionID}", request.RescueMissionID);
+
+                // Tạo response DTO
+                CompleteMissionResponseDTO response = new CompleteMissionResponseDTO
+                {
+                    RescueMissionID = rescueMission.RescueMissionID,
+                    RescueRequestID = rescueRequest.RescueRequestID,
+                    RequestShortCode = rescueRequest.ShortCode,
+                    RescueTeamID = rescueTeam.RescueTeamID,
+                    TeamName = rescueTeam.TeamName,
+                    NewMissionStatus = rescueMission.Status,
+                    NewRequestStatus = rescueRequest.Status,
+                    NewTeamStatus = rescueTeam.CurrentStatus,
+                    EndTime = completedTime,
+                    Message = $"Rescue mission {rescueMission.RescueMissionID} has been completed by Team {rescueTeam.TeamName}. Team is now available for new missions."
+                };
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, "[RescueMissionService - Error] CompleteMission failed. Transaction rolled back. MissionID: {MissionID}", request.RescueMissionID);
+                throw;
+            }
+        }
+
         public async Task<ConfirmPickupResponseDTO?> ConfirmPickupAsync(ConfirmPickUpRequestDTO request)
         {
             _logger.LogInformation("[RescueMissionService] Starting ConfirmPickup with MissionID: {MissionID}, ReliefOrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
@@ -290,30 +395,6 @@ namespace FloodRescue.Services.Implements.RescueMission
 
             try
             {
-                DateTime completedTime = DateTime.UtcNow;
-
-                // Update RescueMission: Status = Completed, EndTime
-                rescueMission.Status = RescueMissionSettings.COMPLETED_STATUS;
-                rescueMission.EndTime = completedTime;
-
-                _logger.LogInformation("[RescueMissionService] RescueMission {MissionID} set to Completed at {EndTime}", request.RescueMissionID, completedTime);
-
-                // Update RescueTeam: CurrentStatus = Available
-                rescueTeam.CurrentStatus = RescueTeamSettings.AVAILABLE_STATUS;
-
-                _logger.LogInformation("[RescueMissionService] RescueTeam {TeamID} - {TeamName} set to Available", rescueTeam.RescueTeamID, rescueTeam.TeamName);
-
-                // Update RescueRequest: nếu Type == Supply thì Status = Delivered, còn lại = Completed
-                if (rescueRequest.RequestType == RescueRequestType.SUPPLY_TYPE)
-                {
-                    rescueRequest.Status = RescueRequestSettings.DELIVERED_STATUS;
-                    _logger.LogInformation("[RescueMissionService] RescueRequest {RequestID} is Supply type - set to Delivered", rescueRequest.RescueRequestID);
-                }
-                else
-                {
-                    rescueRequest.Status = RescueRequestSettings.COMPLETED_STATUS;
-                    _logger.LogInformation("[RescueMissionService] RescueRequest {RequestID} is Rescue type - set to Completed", rescueRequest.RescueRequestID);
-                }
                 DateTime pickedUpTime = DateTime.UtcNow;
 
                 // Update ReliefOrder: Status = PickedUp, PickedUpTime
@@ -326,7 +407,6 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 if (saveResult <= 0)
                 {
-                    _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during complete mission. MissionID: {MissionID}", request.RescueMissionID);
                     _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during confirm pickup. OrderID: {OrderID}", request.ReliefOrderID);
                     await _unitOfWork.RollbackTransactionAsync();
                     return null;
@@ -334,20 +414,6 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 await _unitOfWork.CommitTransactionAsync();
 
-                _logger.LogInformation("[RescueMissionService] Transaction committed for CompleteMission. MissionID: {MissionID}", request.RescueMissionID);
-
-                // Gửi message qua Kafka
-                MissionCompletedMessage kafkaMessage = new MissionCompletedMessage
-                {
-                    RescueMissionID = rescueMission.RescueMissionID,
-                    RescueRequestID = rescueRequest.RescueRequestID,
-                    RequestShortCode = rescueRequest.ShortCode,
-                    RequestType = rescueRequest.RequestType,
-                    RescueTeamID = rescueTeam.RescueTeamID,
-                    TeamName = rescueTeam.TeamName,
-                    MissionStatus = rescueMission.Status,
-                    RequestStatus = rescueRequest.Status,
-                    EndTime = completedTime,
                 // Gửi message qua Kafka
                 DeliveryStartedMessage kafkaMessage = new DeliveryStartedMessage
                 {
@@ -362,27 +428,6 @@ namespace FloodRescue.Services.Implements.RescueMission
                 };
 
                 await _kafkaProducer.ProduceAsync(
-                    topic: KafkaSettings.MISSION_COMPLETED_TOPIC,
-                    key: rescueMission.RescueMissionID.ToString(),
-                    message: kafkaMessage);
-
-                _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic} for MissionID: {MissionID}", KafkaSettings.MISSION_COMPLETED_TOPIC, request.RescueMissionID);
-
-                _logger.LogInformation("[RescueMissionService] Successfully completed mission with ID: {MissionID}", request.RescueMissionID);
-
-                // Tạo response DTO
-                CompleteMissionResponseDTO response = new CompleteMissionResponseDTO
-                {
-                    RescueMissionID = rescueMission.RescueMissionID,
-                    RescueRequestID = rescueRequest.RescueRequestID,
-                    RequestShortCode = rescueRequest.ShortCode,
-                    RescueTeamID = rescueTeam.RescueTeamID,
-                    TeamName = rescueTeam.TeamName,
-                    NewMissionStatus = rescueMission.Status,
-                    NewRequestStatus = rescueRequest.Status,
-                    NewTeamStatus = rescueTeam.CurrentStatus,
-                    EndTime = completedTime,
-                    Message = $"Rescue mission {rescueMission.RescueMissionID} has been completed by Team {rescueTeam.TeamName}. Team is now available for new missions."
                     topic: KafkaSettings.DELIVERY_STARTED_TOPIC,
                     key: reliefOrder.ReliefOrderID.ToString(),
                     message: kafkaMessage);
@@ -406,7 +451,6 @@ namespace FloodRescue.Services.Implements.RescueMission
             catch (Exception ex)
             {
                 await _unitOfWork.RollbackTransactionAsync();
-                _logger.LogError(ex, "[RescueMissionService - Error] CompleteMission failed. Transaction rolled back. MissionID: {MissionID}", request.RescueMissionID);
                 _logger.LogError(ex, "[RescueMissionService - Error] ConfirmPickup failed. Transaction rolled back. OrderID: {OrderID}, MissionID: {MissionID}", request.ReliefOrderID, request.RescueMissionID);
                 throw;
             }

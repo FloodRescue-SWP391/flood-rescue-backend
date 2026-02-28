@@ -95,10 +95,6 @@ namespace FloodRescue.API.Controllers
         public async Task<ActionResult<ApiResponse<CompleteMissionResponseDTO>>> CompleteMission([FromBody] CompleteMissionRequestDTO request)
         {
             _logger.LogInformation("[RescueMissionController] PUT complete called. MissionID: {MissionID}", request.RescueMissionID);
-        [HttpPut("confirm-pickup")]
-        public async Task<ActionResult<ApiResponse<ConfirmPickupResponseDTO>>> ConfirmPickup([FromBody] ConfirmPickUpRequestDTO request)
-        {
-            _logger.LogInformation("[RescueMissionController] PUT confirm-pickup called. MissionID: {MissionID}, OrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
             try
             {
                 if (!ModelState.IsValid)
@@ -122,6 +118,17 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[RescueMissionController - Error] CompleteMission failed. MissionID: {MissionID}", request.RescueMissionID);
                 return StatusCode(500, ApiResponse<CompleteMissionResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
+
+        [HttpPut("confirm-pickup")]
+        public async Task<ActionResult<ApiResponse<ConfirmPickupResponseDTO>>> ConfirmPickup([FromBody] ConfirmPickUpRequestDTO request)
+        {
+            _logger.LogInformation("[RescueMissionController] PUT confirm-pickup called. MissionID: {MissionID}, OrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
+            try
+            {
+                if (!ModelState.IsValid)
+                {
                     _logger.LogWarning("[RescueMissionController] ConfirmPickup validation failed. ModelState invalid.");
                     return BadRequest(ApiResponse<ConfirmPickupResponseDTO>.Fail("Data is not valid, please check again.", 400));
                 }
