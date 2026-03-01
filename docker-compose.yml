@@ -1,4 +1,5 @@
 version: '3.8'
+name: flood-rescue-infra
 
 services:
   flood-rescue-api:
