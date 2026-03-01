@@ -1,5 +1,5 @@
 using FloodRescue.Services.BusinessModels;
-using FloodRescue.Services.DTO.ReliefOrderRequest;
+using FloodRescue.Services.DTO.Request.ReliefOrderRequest;
 using FloodRescue.Services.DTO.Response.ReliefOrder;
 using FloodRescue.Services.Interface.ReliefOrder;
 using Microsoft.AspNetCore.Mvc;
