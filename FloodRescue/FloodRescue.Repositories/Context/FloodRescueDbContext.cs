@@ -89,8 +89,8 @@ namespace FloodRescue.Repositories.Context
             // RescueTeamMember - Prevent cascade delete conflicts
             modelBuilder.Entity<RescueTeamMember>()
                 .HasOne(rtm => rtm.User)
-                .WithMany()
-                .HasForeignKey(rtm => rtm.UserID)
+                .WithOne()
+                .HasForeignKey<RescueTeamMember>(rtm => rtm.UserID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<RescueRequestImage>()

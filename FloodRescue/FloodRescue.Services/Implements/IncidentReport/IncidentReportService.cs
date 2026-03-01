@@ -1,6 +1,7 @@
 ﻿using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.DTO.Response.IncidentResponse;
 using FloodRescue.Services.Interface.IncidentReport;
+using FloodRescue.Services.SharedSetting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using IncidentReportEntity = FloodRescue.Repositories.Entites.IncidentReport
+using IncidentReportEntity = FloodRescue.Repositories.Entites.IncidentReport;
+
 namespace FloodRescue.Services.Implements.IncidentReport
 {
     public class IncidentReportService : IIncidentReportService
