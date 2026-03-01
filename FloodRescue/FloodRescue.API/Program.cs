@@ -303,7 +303,11 @@ namespace FloodRescue.API
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
+            else
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
            // /hangfire lấy dữ liệu được lưu trữ trên redis rồi vẽ lên giao diện
             app.UseHangfireDashboard("/hangfire", new DashboardOptions
             {
