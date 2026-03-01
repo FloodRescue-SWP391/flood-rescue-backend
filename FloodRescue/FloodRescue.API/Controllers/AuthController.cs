@@ -39,7 +39,7 @@ namespace FloodRescue.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[AuthController - Error] Register failed. Username: {Username}", request.Username);
+                _logger.LogError(ex, "[AuthController - Error] Register failed. Username: {Username} with Error: {Error}", request.Username, ex.Message.ToString());
                 return StatusCode(500, ApiResponse<RegisterResponseDTO>.Fail("Internal server error", 500));
             }
         }
