@@ -59,6 +59,7 @@ jobs:
                 REGISTRY: ${{ env.REGISTRY_HOST }}
                 REPO_USER: ${{ env.REPO_USER }}
                 IMAGE_NAME: ${{ env.IMAGE_NAME }}
+                IMAGE_TAG_VERSION: ${{ github.ref_name }}
                 TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
                 DATABASE_SERVER: ${{ secrets.DATABASE_SERVER_PURIN_WITH_PORT }}
                 DATABASE_NAME: ${{ secrets.FLOODRESCUE_DATABASE_NAME }}

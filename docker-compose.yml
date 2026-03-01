@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   flood-rescue-api:
-    image: ${REGISTRY}/${REPO_USER}/${IMAGE_NAME}/${IMAGE_TAG_VERSION}
+    image: ${REGISTRY}/${REPO_USER}/${IMAGE_NAME}:${IMAGE_TAG_VERSION}
     container_name: flood-rescue-api-container
     restart: always
     depends_on:
@@ -14,11 +14,11 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=${DATABASE_SERVER};Database=${DATABASE_NAME};User Id=${DATABASE_USERNAME};Password=${DATABASE_PASSWORD};TrustServerCertificate=True;
       - Redis__ConnectionString=redis:6379
-      - Kafka_BootstrapsServers=kafka:6379
+      - Kafka_BootstrapServers=kafka:6379
       - Jwt__SecretKey=${JWT_SECRET_KEY}
       - GELF__Host=graylog
       - GELF__Port=12201
-      - GELF__Protocal=UDP
+      - GELF__Protocol=UDP
       - GELF__LogSource=cqh-floodrescue-backend
     networks:
       - flood-rescue-network
