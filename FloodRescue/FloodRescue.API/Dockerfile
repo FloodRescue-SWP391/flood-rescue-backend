@@ -29,6 +29,6 @@ RUN dotnet publish "FloodRescue.API.csproj" -c $BUILD_CONFIGURATION -o /app/publ
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "FloodRescue.API.dll"] # tương đương với dotnet FloodRescue.API.dll - để chạy file dll lên
+ENTRYPOINT ["dotnet", "FloodRescue.API.dll"]
 
 
