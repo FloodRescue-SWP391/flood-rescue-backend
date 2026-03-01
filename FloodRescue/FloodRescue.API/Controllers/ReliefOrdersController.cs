@@ -1,7 +1,9 @@
 using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.ReliefOrderRequest;
 using FloodRescue.Services.DTO.Response.ReliefOrder;
+using FloodRescue.Services.DTO.Response.ReliefOrderResponse;
 using FloodRescue.Services.Interface.ReliefOrder;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FloodRescue.API.Controllers
@@ -52,6 +54,25 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[ReliefOrdersController - Error] Respond failed. RescueRequestID: {RequestID}", request.RescueRequestID);
                 return StatusCode(500, ApiResponse<ReliefOrderResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
+
+        [HttpGet("pending")]
+        [Authorize(Roles = "Inventory Manager")]
+        public async Task<ActionResult<ApiResponse<List<PendingOrderResponseDTO>>>> GetPendingOrders()
+        {
+            _logger.LogInformation("[ReliefOrdersController] GET pending relief orders called.");
+            try
+            {
+                List<PendingOrderResponseDTO> result = await _service.GetPendingOrdersAsync();
+
+                _logger.LogInformation("[ReliefOrdersController] Returned {Count} pending relief order(s).", result.Count);
+                return Ok(ApiResponse<List<PendingOrderResponseDTO>>.Ok(result, "Get pending relief orders successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ReliefOrdersController - Error] GET pending relief orders failed.");
+                return StatusCode(500, ApiResponse<List<PendingOrderResponseDTO>>.Fail("Internal server error", 500));
             }
         }
     }
