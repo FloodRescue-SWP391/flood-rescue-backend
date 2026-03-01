@@ -6,9 +6,9 @@ WORKDIR /src
 
 ## build vào bên trong container để ra dll sau đó dotnet run bằng entrypoint để chạy cái dll lên
 # copy vào container của mình
-COPY ["FloodRescue/FloodRescue.API/FloodRescue.API.csproj", "FloodRescue.API/"]
-COPY ["FloodRescue/FloodRescue.Services/FloodRescue.Services.csproj", "FloodRescue.Services/"]
-COPY ["FloodRescue/FloodRescue.Repositories/FloodRescue.Repositories.csproj", "FloodRescue.Repositories/"]
+COPY ["FloodRescue.API/FloodRescue.API.csproj", "FloodRescue.API/"]
+COPY ["FloodRescue.Services/FloodRescue.Services.csproj", "FloodRescue.Services/"]
+COPY ["FloodRescue.Repositories/FloodRescue.Repositories.csproj", "FloodRescue.Repositories/"]
 
 # tải các thư viện về container để đảm bảo máy khứa nào cũng chạy được
 RUN dotnet restore "./FloodRescue.API/FloodRescue.API.csproj"
