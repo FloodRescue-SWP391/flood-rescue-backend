@@ -63,6 +63,8 @@ namespace FloodRescue.Services.Mapper
             // Mapping Warehouse -> UpdateWarehouseResponseDTO
             CreateMap<Warehouse, UpdateWarehouseResponseDTO>();
 
+            CreateMap<Warehouse, ShowWareHouseResponseDTO>();
+
             // Mapping Category DTOs
             CreateMap<CreateCategoryRequestDTO, Category>();
 
@@ -190,6 +192,9 @@ namespace FloodRescue.Services.Mapper
             //Trong auto mapper không cần description
             // mapper ReliefOrderMessage -> ReliefOrderNotification
             CreateMap<ReliefOrderMessage, ReliefOrderNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
+
+
+
 
             // mapper OrderPreparedMessage -> OrderPreparedNotification
             CreateMap<OrderPreparedMessage, OrderPreparedNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());

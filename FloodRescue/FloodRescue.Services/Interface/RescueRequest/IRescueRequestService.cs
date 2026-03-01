@@ -26,5 +26,11 @@ namespace FloodRescue.Services.Interface.RescueRequest
         /// Coordinator xem danh sách tất cả rescue requests (có cache)
         /// </summary>
         Task<List<CreateRescueRequestResponseDTO>> GetAllRescueRequestsAsync();
+
+        /// <summary>
+        /// [PUBLIC API] Citizen tra cứu trạng thái request bằng ShortCode
+        /// Trả về dữ liệu đã được masking (che giấu thông tin nhạy cảm)
+        /// </summary>
+        Task<(TrackRequestResponseDTO? Data, string? ErrorMessage)> TrackRequestByShortCodeAsync(string shortCode);
     }
 }

@@ -4,6 +4,7 @@ using FloodRescue.Repositories.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FloodRescue.Repositories.Migrations
 {
     [DbContext(typeof(FloodRescueDbContext))]
-    partial class FloodRescueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260301152826_Fix-RescueTeamMember-FluentAPI")]
+    partial class FixRescueTeamMemberFluentAPI
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -741,6 +744,10 @@ namespace FloodRescue.Repositories.Migrations
                         .HasColumnType("float")
                         .HasColumnName("LocationLong");
 
+                    b.Property<Guid>("ManagerID")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("ManagerID");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -748,6 +755,8 @@ namespace FloodRescue.Repositories.Migrations
                         .HasColumnName("Name");
 
                     b.HasKey("WarehouseID");
+
+                    b.HasIndex("ManagerID");
 
                     b.ToTable("Warehouses");
                 });
@@ -964,6 +973,17 @@ namespace FloodRescue.Repositories.Migrations
                     b.Navigation("RescueTeamMember");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("FloodRescue.Repositories.Entites.Warehouse", b =>
+                {
+                    b.HasOne("FloodRescue.Repositories.Entites.User", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Manager");
                 });
 
             modelBuilder.Entity("FloodRescue.Repositories.Entites.RescueTeam", b =>
