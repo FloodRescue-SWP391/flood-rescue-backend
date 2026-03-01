@@ -60,18 +60,6 @@ namespace FloodRescue.Services.Mapper
             //Mapping CreateWarehouseRequestDTO -> WarehouseRequest
             CreateMap<CreateWarehouseRequestDTO, Warehouse>();
 
-            //Mapping Warehouse -> CreateWarehouseResponseDTO
-            CreateMap<Warehouse, CreateWarehouseResponseDTO>().ForMember(
-                    destinationMember: destination => destination.CreatedBy,
-                    opt => opt.MapFrom(src => src.Manager != null ? src.Manager.FullName : string.Empty)
-                );
-
-            // Mapping Warehouse -> ShowWareHouseResponseDTO
-            CreateMap<Warehouse, ShowWareHouseResponseDTO>().ForMember(
-                destinationMember: destination => destination.ManagedBy,
-                opt => opt.MapFrom(src => src.Manager != null ? src.Manager.FullName : string.Empty)
-            );
-
             // Mapping Warehouse -> UpdateWarehouseResponseDTO
             CreateMap<Warehouse, UpdateWarehouseResponseDTO>();
 

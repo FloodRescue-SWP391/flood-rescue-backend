@@ -101,8 +101,7 @@ namespace FloodRescue.Services.Implements.Warehouse
             _logger.LogInformation("[WarehouseService - Redis] Cache miss. Searching DB for Warehouse with ID: {WarehouseID}", id);
             // 2. nếu không có trong cache thì gọi db
             WarehouseEntity? warehouse = await _unitOfWork.Warehouses.GetAsync(
-                w => w.WarehouseID == id && !w.IsDeleted,
-                w => w.Manager!
+                w => w.WarehouseID == id && !w.IsDeleted
             );
 
             ShowWareHouseResponseDTO? responseDTO = null;
@@ -131,8 +130,7 @@ namespace FloodRescue.Services.Implements.Warehouse
             }
 
             List<WarehouseEntity> warehouse = await _unitOfWork.Warehouses.GetAllAsync(
-                w => !w.IsDeleted,
-                w => w.Manager!
+                w => !w.IsDeleted
             );
 
             var result = _mapper.Map<List<ShowWareHouseResponseDTO>>(warehouse);
