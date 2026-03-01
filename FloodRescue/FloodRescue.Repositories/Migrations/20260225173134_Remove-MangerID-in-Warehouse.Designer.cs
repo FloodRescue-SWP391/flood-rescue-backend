@@ -4,6 +4,7 @@ using FloodRescue.Repositories.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FloodRescue.Repositories.Migrations
 {
     [DbContext(typeof(FloodRescueDbContext))]
-    partial class FloodRescueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260225173134_Remove-MangerID-in-Warehouse")]
+    partial class RemoveMangerIDinWarehouse
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -680,9 +683,6 @@ namespace FloodRescue.Repositories.Migrations
                         .HasColumnType("varchar(15)")
                         .HasColumnName("Phone");
 
-                    b.Property<Guid?>("RescueTeamMemberUserID")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("RoleID")
                         .IsRequired()
                         .HasMaxLength(2)
@@ -704,8 +704,6 @@ namespace FloodRescue.Repositories.Migrations
 
                     b.HasIndex("Phone")
                         .IsUnique();
-
-                    b.HasIndex("RescueTeamMemberUserID");
 
                     b.HasIndex("RoleID");
 
@@ -939,8 +937,8 @@ namespace FloodRescue.Repositories.Migrations
                         .IsRequired();
 
                     b.HasOne("FloodRescue.Repositories.Entites.User", "User")
-                        .WithOne()
-                        .HasForeignKey("FloodRescue.Repositories.Entites.RescueTeamMember", "UserID")
+                        .WithMany()
+                        .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -951,17 +949,11 @@ namespace FloodRescue.Repositories.Migrations
 
             modelBuilder.Entity("FloodRescue.Repositories.Entites.User", b =>
                 {
-                    b.HasOne("FloodRescue.Repositories.Entites.RescueTeamMember", "RescueTeamMember")
-                        .WithMany()
-                        .HasForeignKey("RescueTeamMemberUserID");
-
                     b.HasOne("FloodRescue.Repositories.Entites.Role", "Role")
                         .WithMany("Users")
                         .HasForeignKey("RoleID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("RescueTeamMember");
 
                     b.Navigation("Role");
                 });

@@ -17,11 +17,6 @@ namespace FloodRescue.Repositories.Entites
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Key]
         public int WarehouseID { get; set; }
-        [Column("ManagerID", TypeName = "uniqueidentifier")]
-        public Guid ManagerID { get; set; }
-        [ForeignKey(nameof(ManagerID))]
-        [JsonIgnore]
-        public User? Manager { get; set; }
         [Column("Name", TypeName = "nvarchar(200)'")]
         [Required]
         [MaxLength(200)]

@@ -133,6 +133,36 @@ namespace FloodRescue.API.Controllers
 
             }
         }
+
+        [HttpPut("confirm-pickup")]
+        public async Task<ActionResult<ApiResponse<ConfirmPickupResponseDTO>>> ConfirmPickup([FromBody] ConfirmPickUpRequestDTO request)
+        {
+            _logger.LogInformation("[RescueMissionController] PUT confirm-pickup called. MissionID: {MissionID}, OrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    _logger.LogWarning("[RescueMissionController] ConfirmPickup validation failed. ModelState invalid.");
+                    return BadRequest(ApiResponse<ConfirmPickupResponseDTO>.Fail("Data is not valid, please check again.", 400));
+                }
+
+                ConfirmPickupResponseDTO? result = await _rescueMissionService.ConfirmPickupAsync(request);
+
+                if (result == null)
+                {
+                    _logger.LogWarning("[RescueMissionController] ConfirmPickup returned null. MissionID: {MissionID}, OrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
+                    return NotFound(ApiResponse<ConfirmPickupResponseDTO>.Fail("Cannot confirm pickup. Relief order may not be in Prepared status, mission may not be in InProgress status, or order does not belong to this mission.", 404));
+                }
+
+                _logger.LogInformation("[RescueMissionController] ConfirmPickup success. MissionID: {MissionID}, OrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
+                return Ok(ApiResponse<ConfirmPickupResponseDTO>.Ok(result, "Confirm pickup successfully.", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueMissionController - Error] ConfirmPickup failed. MissionID: {MissionID}, OrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
+                return StatusCode(500, ApiResponse<ConfirmPickupResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
     }
 }
 

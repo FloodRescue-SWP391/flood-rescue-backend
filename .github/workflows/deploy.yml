@@ -1,0 +1,73 @@
+name: CI/CD Flood Rescue Pipeline
+
+on:
+    push:
+        tags:
+            - v*
+
+env:
+    IMAGE_NAME: flood_rescue_api
+    REGISTRY_HOST: docker.io
+    REPO_USER: ${{ secrets.DOCKER_HUB_USERNAME }}
+
+jobs:
+    build_and_push:
+        runs-on: ubuntu-latest
+        steps:
+            - name: 1. Get Source Code to ubuntu-latest
+              uses: actions/checkout@v4
+
+            - name: 2. Login to Registry
+              uses: docker/login-action@v3
+              with:
+                registry: ${{ env.REGISTRY_HOST }}
+                username: ${{ secrets.DOCKER_HUB_USERNAME }}
+                password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+            - name: 3. Build Code & Push to Docker Hub
+              uses: docker/build-push-action@v5
+              with:
+                context: ./FloodRescue
+                file: ./FloodRescue/FloodRescue.API/Dockerfile
+                push: true
+                tags: ${{env.REGISTRY_HOST}}/${{secrets.DOCKER_HUB_USERNAME}}/${{env.IMAGE_NAME}}:${{github.ref_name}}
+
+    deploy:
+        needs: build_and_push
+        runs-on: flood-rescue
+        steps:
+            - name: 1. Checkout Code 
+              uses: actions/checkout@v4
+
+            - name: 2. Login to Registry
+              uses: docker/login-action@v3
+              with:
+                registry: ${{ env.REGISTRY_HOST }}
+                username: ${{ secrets.DOCKER_HUB_USERNAME }}
+                password: ${{ secrets.DOCKERHUB_TOKEN }}
+            
+            - name: 3. Pull Image
+              env: 
+                REGISTRY: ${{ env.REGISTRY_HOST}}
+                REPO_USER: ${{ secrets.DOCKER_HUB_USERNAME }}
+                IMAGE_NAME: ${{ env.IMAGE_NAME }}
+                IMAGE_TAG_VERSION: ${{ github.ref_name }}
+              run: docker compose pull
+
+            - name: 4. Start Containers
+              env:
+                REGISTRY: ${{ env.REGISTRY_HOST }}
+                REPO_USER: ${{ env.REPO_USER }}
+                IMAGE_NAME: ${{ env.IMAGE_NAME }}
+                TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+                DATABASE_SERVER: ${{ secrets.DATABASE_SERVER_PURIN_WITH_PORT }}
+                DATABASE_NAME: ${{ secrets.FLOODRESCUE_DATABASE_NAME }}
+                DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+                DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+                JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+              run: docker compose up -d --remove-orphans
+
+            - name: 5. Cleanup Old Images
+              run: docker image prune -f
+
+            
