@@ -11,19 +11,19 @@ COPY ["FloodRescue.Services/FloodRescue.Services.csproj", "FloodRescue.Services/
 COPY ["FloodRescue.Repositories/FloodRescue.Repositories.csproj", "FloodRescue.Repositories/"]
 
 # tải các thư viện về container để đảm bảo máy khứa nào cũng chạy được
-RUN dotnet restore "./FloodRescue.API/FloodRescue.API.csproj"
+RUN dotnet restore "FloodRescue.API/FloodRescue.API.csproj"
 
 # copy toàn bộ code vào /src
 COPY . .
-WORKDIR "/src/FloodRescue/FloodRescue.API"
+WORKDIR "/src/FloodRescue.API"
 
 # build project -> xuất ra dll chưa được dọn dẹp
-RUN dotnet build "./FloodRescue.API.csproj" -c $BUILD_CONFIGURATION -o /app/build 
+RUN dotnet build "FloodRescue.API.csproj" -c $BUILD_CONFIGURATION -o /app/build 
 
 # publish ra file chạy .dll đã được dọn dẹp
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./FloodRescue.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "FloodRescue.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # run - run cái dll đó lên bằng dotnet runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
