@@ -16,7 +16,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Server=${DATABASE_SERVER};Database=${DATABASE_NAME};User Id=${DATABASE_USERNAME};Password=${DATABASE_PASSWORD};TrustServerCertificate=True;
       - Redis__ConnectionString=redis:6379
-      - Kafka_BootstrapServers=kafka:29092
+      - Kafka__BootstrapServers=kafka:29092
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - JwtSettings__Issuer=FloodRescueAPI
       - JwtSettings__Audience=FloodRescueClient
