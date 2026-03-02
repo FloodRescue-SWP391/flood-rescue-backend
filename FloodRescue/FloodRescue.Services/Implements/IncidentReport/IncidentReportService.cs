@@ -1,5 +1,7 @@
 ﻿using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.DTO.Response.IncidentResponse;
+using FloodRescue.Services.Implements.Cache;
+using FloodRescue.Services.Interface.Cache;
 using FloodRescue.Services.Interface.IncidentReport;
 using FloodRescue.Services.SharedSetting;
 using Microsoft.Extensions.Logging;
@@ -17,11 +19,16 @@ namespace FloodRescue.Services.Implements.IncidentReport
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<IncidentReportService> _logger;
+        private readonly ICacheService _cacheService;
 
-        public IncidentReportService(IUnitOfWork unitOfWork, ILogger<IncidentReportService> logger)
+        // Cache keys
+        private const string INCIDENT_HISTORY_KEY = "incident:history:all";
+        private const string PENDING_INCIDENTS_KEY = "incident:pending:all";
+        public IncidentReportService(IUnitOfWork unitOfWork, ILogger<IncidentReportService> logger, ICacheService cacheService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _cacheService = cacheService;
         }
 
         /// <summary>
@@ -31,6 +38,16 @@ namespace FloodRescue.Services.Implements.IncidentReport
         public async Task<List<IncidentHistoryResponseDTO>> GetIncidentHistoryAsync()
         {
             _logger.LogInformation("[IncidentReportService] GetIncidentHistory called.");
+
+            // 1. Check cache first
+            var cached = await _cacheService.GetAsync<List<IncidentHistoryResponseDTO>>(INCIDENT_HISTORY_KEY);
+            if (cached != null)
+            {
+                _logger.LogInformation("[IncidentReportService - Redis] Cache hit for incident history. Count: {Count}", cached.Count);
+                return cached;
+            }
+
+            _logger.LogInformation("[IncidentReportService - Redis] Cache miss. Querying DB for incident history.");
 
             // Query với Include: RescueMission, Reported (User), Resolver (User)
             List<IncidentReportEntity> resolvedIncidents = await _unitOfWork.IncidentReports.GetAllAsync(
@@ -87,7 +104,8 @@ namespace FloodRescue.Services.Implements.IncidentReport
                 ResolvedTime = ir.ResolvedTime
             }).ToList();
 
-            _logger.LogInformation("[IncidentReportService] Found {Count} resolved incidents.", result.Count);
+            await _cacheService.SetAsync(INCIDENT_HISTORY_KEY, result, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("[IncidentReportService - Redis] Cached {Count} resolved incidents.", result.Count);
             return result;
         }
         /// <summary>
@@ -96,6 +114,15 @@ namespace FloodRescue.Services.Implements.IncidentReport
         public async Task<List<PendingIncidentResponseDTO>> GetPendingIncidentsAsync()
         {
             _logger.LogInformation("[IncidentReportService] GetPendingIncidents called.");
+            // 1. Check cache first
+            var cached = await _cacheService.GetAsync<List<PendingIncidentResponseDTO>>(PENDING_INCIDENTS_KEY);
+            if (cached != null)
+            {
+                _logger.LogInformation("[IncidentReportService - Redis] Cache hit for pending incidents. Count: {Count}", cached.Count);
+                return cached;
+            }
+
+            _logger.LogInformation("[IncidentReportService - Redis] Cache miss. Querying DB for pending incidents.");
             // Query với Include: RescueMission -> RescueTeam, Reported (User)
             List<IncidentReportEntity> pendingIncidents = await _unitOfWork.IncidentReports.GetAllAsync(
                 filter: ir => ir.Status == IncidentReportSettings.PENDING_STATUS,
@@ -146,7 +173,9 @@ namespace FloodRescue.Services.Implements.IncidentReport
                 CreatedTime = ir.CreatedTime
             }).ToList();
 
-            _logger.LogInformation("[IncidentReportService] Found {Count} pending incidents.", result.Count);
+            // 4. Cache the result (TTL ngắn vì pending thay đổi thường xuyên)
+            await _cacheService.SetAsync(PENDING_INCIDENTS_KEY, result, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("[IncidentReportService - Redis] Cached {Count} pending incidents.", result.Count);
             return result;
         }
 

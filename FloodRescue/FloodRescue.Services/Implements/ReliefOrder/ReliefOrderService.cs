@@ -29,7 +29,6 @@ namespace FloodRescue.Services.Implements.ReliefOrder
         private readonly IRescueMissionService _rescueMissionService;
 
         private readonly ILogger<ReliefOrderService> _logger;
-
         public ReliefOrderService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
@@ -43,7 +42,7 @@ namespace FloodRescue.Services.Implements.ReliefOrder
             _rescueMissionService = rescueMissionService;
             _logger = logger;
         }
-   
+
 
         public async Task<ReliefOrderResponseDTO?> CreateReliefOrderAsync(ReliefOrderRequestDTO request)
         {

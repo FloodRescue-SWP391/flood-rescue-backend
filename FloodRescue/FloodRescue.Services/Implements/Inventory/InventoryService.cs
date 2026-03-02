@@ -2,6 +2,8 @@
 using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.DTO.Request.InventoryRequest;
 using FloodRescue.Services.DTO.Response.InventoryResponse;
+using FloodRescue.Services.Implements.Cache;
+using FloodRescue.Services.Interface.Cache;
 using FloodRescue.Services.Interface.Inventory;
 using Microsoft.Extensions.Logging;
 using System;
@@ -19,16 +21,31 @@ namespace FloodRescue.Services.Implements.Inventory
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<InventoryService> _logger;
+        private readonly ICacheService _cacheService;
+        // Cache keys
+        private const string INVENTORY_CACHE_KEY_PREFIX = "inventory:warehouse:";
 
-        public InventoryService(IUnitOfWork unitOfWork, ILogger<InventoryService> logger) 
+        public InventoryService(IUnitOfWork unitOfWork, ILogger<InventoryService> logger, ICacheService cacheService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _cacheService = cacheService;
         }
 
         public async Task<(List<InventoryItemResponseDTO>? Data, string? ErrorMessage)> GetInventoryByWarehouseAsync(int warehouseId)
         {
             _logger.LogInformation("[InventoryService] GetInventoryByWarehouse called. WarehouseID: {WarehouseID}", warehouseId);
+
+            // 1. Check cache first
+            string cacheKey = $"{INVENTORY_CACHE_KEY_PREFIX}{warehouseId}";
+            var cached = await _cacheService.GetAsync<List<InventoryItemResponseDTO>>(cacheKey);
+            if (cached != null)
+            {
+                _logger.LogInformation("[InventoryService - Redis] Cache hit for WarehouseID: {WarehouseID}. Count: {Count}", warehouseId, cached.Count);
+                return (cached, null);
+            }
+
+            _logger.LogInformation("[InventoryService - Redis] Cache miss. Querying DB for WarehouseID: {WarehouseID}", warehouseId);
             // 1. Kiểm tra Warehouse có tồn tại không
             WarehouseEntity? warehouse = await _unitOfWork.Warehouses.GetAsync(w => w.WarehouseID == warehouseId && !w.IsDeleted);
 
@@ -67,7 +84,9 @@ namespace FloodRescue.Services.Implements.Inventory
 
             _logger.LogInformation("[InventoryService] Found {Count} inventory items for WarehouseID: {WarehouseID}",
                 result.Count, warehouseId);
-
+            // 6. Cache the result
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("[InventoryService - Redis] Cached {Count} inventory items for WarehouseID: {WarehouseID}", result.Count, warehouseId);
             return (result, null);
         }
 
@@ -203,7 +222,10 @@ namespace FloodRescue.Services.Implements.Inventory
 
                 await _unitOfWork.CommitTransactionAsync();
 
-
+                // Invalidate cache for this warehouse
+                string cacheKey = $"{INVENTORY_CACHE_KEY_PREFIX}{request.WarehouseID}";
+                await _cacheService.RemoveAsync(cacheKey);
+                _logger.LogInformation("[InventoryService - Redis] Cleared cache for WarehouseID: {WarehouseID}", request.WarehouseID);
                 // 7. TẠO RESPONSE
                 ReceiveInventoryResponseDTO response = new ReceiveInventoryResponseDTO
                 {
