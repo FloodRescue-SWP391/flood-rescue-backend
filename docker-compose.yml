@@ -18,6 +18,10 @@ services:
       - Redis__ConnectionString=redis:6379
       - Kafka_BootstrapServers=kafka:6379
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - JwtSettings__Issuer=FloodRescueAPI
+      - JwtSettings__Audience=FloodRescueClient
+      - JwtSettings__AccessTokenExpirationMinutes=15
+      - JwtSettings__RefreshTokenExpirationDays=7
       - GELF__Host=graylog
       - GELF__Port=12201
       - GELF__Protocol=UDP
