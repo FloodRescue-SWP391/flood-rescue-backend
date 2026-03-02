@@ -30,6 +30,8 @@ namespace FloodRescue.Services.Implements.RescueRequest
         // Cache keys
         private const string ALL_RESCUE_REQUESTS_KEY = "rescuerequest:all";
         private const string RESCUE_REQUEST_KEY_PREFIX = "rescuerequest:shortcode:";
+        // Add this constant with the other cache keys (around line 30)
+        private const string TRACK_REQUEST_KEY_PREFIX = "rescuerequest:track:";
         // Danh sách các RequestType hợp lệ lấy từ RescueRequestSetting
         private static readonly HashSet<string> ValidRequestTypes = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -303,8 +305,17 @@ namespace FloodRescue.Services.Implements.RescueRequest
                 _logger.LogWarning("[RescueRequestService] ShortCode is empty.");
                 return (null, "Mã tra cứu không được để trống");
             }
+            // 2. Check cache first
+            string cacheKey = $"{TRACK_REQUEST_KEY_PREFIX}{shortCode}";
+            var cached = await _cacheService.GetAsync<TrackRequestResponseDTO>(cacheKey);
+            if (cached != null)
+            {
+                _logger.LogInformation("[RescueRequestService - Redis] Cache hit for TrackRequest ShortCode: {ShortCode}", shortCode);
+                return (cached, null);
+            }
 
-            // 2. Query RescueRequest by ShortCode
+            _logger.LogInformation("[RescueRequestService - Redis] Cache miss. Querying DB for TrackRequest ShortCode: {ShortCode}", shortCode);
+            // 3. Query RescueRequest by ShortCode
             RescueRequestEntity? rescueRequest = await _unitOfWork.RescueRequests.GetAsync(
                 filter: rr => rr.ShortCode == shortCode && !rr.IsDeleted
             );
@@ -315,7 +326,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
                 return (null, "Mã tra cứu không tồn tại");
             }
 
-            // 3. Query RescueMission (nếu có) - Lấy mission KHÔNG bị Cancelled/Declined
+            // 4. Query RescueMission (nếu có) - Lấy mission KHÔNG bị Cancelled/Declined
             string? missionStatus = null;
             string? teamName = null;
 
@@ -333,11 +344,11 @@ namespace FloodRescue.Services.Implements.RescueRequest
                 teamName = mission.RescueTeam?.TeamName;
             }
 
-            // 4. Masking sensitive data
+            // 5. Masking sensitive data
             string maskedName = MaskName(rescueRequest.CitizenName);
             string maskedPhone = MaskPhone(rescueRequest.CitizenPhone);
 
-            // 5. Map to DTO
+            // 6. Map to DTO
             TrackRequestResponseDTO response = new TrackRequestResponseDTO
             {
                 RescueRequestID = rescueRequest.RescueRequestID,
@@ -351,6 +362,10 @@ namespace FloodRescue.Services.Implements.RescueRequest
                 MissionStatus = missionStatus,
                 TeamName = teamName
             };
+
+            // 7. Cache the response (shorter TTL since mission status can change)
+            await _cacheService.SetAsync(cacheKey, response, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("[RescueRequestService - Redis] Cached TrackRequest ShortCode: {ShortCode}", shortCode);
 
             _logger.LogInformation("[RescueRequestService] TrackRequest success. ShortCode: {ShortCode}, Status: {Status}, MissionStatus: {MissionStatus}",
                 shortCode, rescueRequest.Status, missionStatus ?? "N/A");

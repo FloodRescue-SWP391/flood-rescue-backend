@@ -23,6 +23,7 @@ using RescueRequestEntity = FloodRescue.Repositories.Entites.RescueRequest;
 using RescueTeamEntity = FloodRescue.Repositories.Entites.RescueTeam;
 using RescueTeamMemberEntity = FloodRescue.Repositories.Entites.RescueTeamMember;
 using ReliefOrderEntity = FloodRescue.Repositories.Entites.ReliefOrder;
+using FloodRescue.Services.Interface.Cache;
 
 namespace FloodRescue.Services.Implements.RescueMission
 {
@@ -32,18 +33,21 @@ namespace FloodRescue.Services.Implements.RescueMission
         private readonly ILogger<RescueMissionService> _logger;
         private readonly IKafkaProducerService _kafkaProducer;
         private readonly IMapper _mapper;
-        
+        private readonly ICacheService _cacheService;
 
+        // Cache keys
+        private const string PENDING_MISSIONS_KEY_PREFIX = "rescuemission:pending:team:";
         public RescueMissionService(IUnitOfWork unitOfWork,
             ILogger<RescueMissionService> logger,
             IKafkaProducerService kafkaProducer,
-           IMapper mapper)
+           IMapper mapper, ICacheService cacheService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
             _kafkaProducer = kafkaProducer;
             _mapper = mapper;
-            
+            _cacheService = cacheService;
+
         }
 
         public async Task<DispatchMissionResponseDTO?> DispatchMissionAsync(DispatchMissionRequestDTO request)
@@ -128,7 +132,8 @@ namespace FloodRescue.Services.Implements.RescueMission
                 response.Message = $"Rescue mission dispatched successfully for Team {rescueTeam.RescueTeamID} - Team Name {rescueTeam.TeamName}.";
 
                 await _unitOfWork.CommitTransactionAsync();
-
+                await _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}{request.RescueTeamID}");
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared pending missions cache for TeamID: {TeamID}", request.RescueTeamID);
                 return response;
                 
             }
@@ -155,7 +160,18 @@ namespace FloodRescue.Services.Implements.RescueMission
 
             Guid teamId = teamMember.RescueTeamID;
             _logger.LogInformation("[RescueMissionService] User {UserID} belongs to TeamID: {TeamID}", currentUserId, teamId);
-            // 2. Query: Lấy các mission đang ở trạng thái "Assigned" của team này
+
+            // 2. Check cache first
+            string cacheKey = $"{PENDING_MISSIONS_KEY_PREFIX}{teamId}";
+            var cached = await _cacheService.GetAsync<List<PendingMissionResponseDTO>>(cacheKey);
+
+            if (cached != null)
+            {
+                _logger.LogInformation("[RescueMissionService - Redis] Cache hit for pending missions TeamID: {TeamID}. Count: {Count}", teamId, cached.Count);
+                return (cached, null);
+            }
+            _logger.LogInformation("[RescueMissionService - Redis] Cache miss. Querying DB for pending missions TeamID: {TeamID}", teamId);
+            // 3. Query: Lấy các mission đang ở trạng thái "Assigned" của team này
             List<RescueMissionEntity> pendingMissions = await _unitOfWork.RescueMissions.GetAllAsync(
                     filter: m => m.RescueTeamID == teamId
                     && m.Status == RescueMissionSettings.ASSIGNED_STATUS
@@ -168,23 +184,23 @@ namespace FloodRescue.Services.Implements.RescueMission
                 _logger.LogInformation("[RescueMissionService] No pending missions found for TeamID: {TeamID}", teamId);
                 return (new List<PendingMissionResponseDTO>(), null);
             }
-            // 3. Lấy danh sách RescueRequestIDs để query images
+            // 4. Lấy danh sách RescueRequestIDs để query images
             var requestIds = pendingMissions
                 .Where(m => m.RescueRequest != null)
                 .Select(m => m.RescueRequestID)
                 .ToList();
 
-            // 4. Query images cho tất cả requests (tối ưu - chỉ 1 query)
+            // 5. Query images cho tất cả requests (tối ưu - chỉ 1 query)
             var allImages = await _unitOfWork.RescueRequestImages.GetAllAsync(
                 img => requestIds.Contains(img.RescueRequestID)
             );
 
-            // 5. Group images theo RescueRequestID
+            // 6. Group images theo RescueRequestID
             var imagesByRequest = allImages
                 .GroupBy(img => img.RescueRequestID)
                 .ToDictionary(g => g.Key, g => g.Select(img => img.ImageUrl).ToList());
 
-            // 6. Mapping sang DTO
+            // 7. Mapping sang DTO
             List<PendingMissionResponseDTO> result = pendingMissions.Select(mission => new PendingMissionResponseDTO
             {
                 // Mission Info
@@ -215,7 +231,9 @@ namespace FloodRescue.Services.Implements.RescueMission
                 RequestCreatedTime = mission.RescueRequest?.CreatedTime ?? DateTime.MinValue
             }).ToList();
 
-            _logger.LogInformation("[RescueMissionService] Found {Count} pending missions for TeamID: {TeamID}", result.Count, teamId);
+            // 8. Cache the result
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("[RescueMissionService - Redis] Cached {Count} pending missions for TeamID: {TeamID}", result.Count, teamId);
             return (result, null);
         }
 
@@ -309,7 +327,8 @@ namespace FloodRescue.Services.Implements.RescueMission
                 response.Message = request.IsAccepted ? $"Rescue mission with ID {rescueMission.RescueMissionID} has been accepted by Team {rescueTeam.TeamName}." : $"Rescue mission with ID {rescueMission.RescueMissionID} has been declined by Team {rescueTeam.TeamName}.";
 
                 await _unitOfWork.CommitTransactionAsync();
-
+                await _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}{rescueTeam.RescueTeamID}");
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared pending missions cache for TeamID: {TeamID}", rescueTeam.RescueTeamID);
                 return response;
 
             }
