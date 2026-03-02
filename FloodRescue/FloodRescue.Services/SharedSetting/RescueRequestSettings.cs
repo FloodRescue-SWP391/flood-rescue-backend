@@ -11,6 +11,7 @@ namespace FloodRescue.Services.SharedSetting
         public const string PENDING_STATUS = "Pending";
         public const string PROCESSING_STATUS = "Processing";
         public const string COMPLETED_STATUS = "Completed";
+        public const string DELIVERED_STATUS = "Delivered";
         public const string REJECTED_STATUS = "Rejected";
     }
 

@@ -23,6 +23,7 @@ namespace FloodRescue.Services.SharedSetting
 
         public const string RELIEF_ORDER_CREATED_TOPIC = "relief-order-created-topic";
 
+        public const string MISSION_COMPLETED_TOPIC = "mission-completed-topic";
         public const string ORDER_PREPARED_TOPIC = "order-prepared-topic";
 
         public const string DELIVERY_STARTED_TOPIC = "delivery-started-topic";

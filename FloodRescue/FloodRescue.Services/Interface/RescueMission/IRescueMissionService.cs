@@ -12,6 +12,7 @@ namespace FloodRescue.Services.Interface.RescueMission
     {
         Task<DispatchMissionResponseDTO?> DispatchMissionAsync(DispatchMissionRequestDTO request);
         Task<RespondMissionResponseDTO?> RespondMissionAsync(RespondMessageRequestDTO request);
+        Task<CompleteMissionResponseDTO?> CompleteMissionAsync(CompleteMissionRequestDTO request);
 
         /// <summary>
         /// Lấy danh sách các nhiệm vụ đang chờ (Assigned) cho đội cứu hộ dựa vào CurrentUserID
