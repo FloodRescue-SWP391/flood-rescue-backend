@@ -37,7 +37,7 @@ namespace FloodRescue.Services.Implements.Kafka
                 BootstrapServers = configuration["Kafka:BootstrapServers"],
                 GroupId = "FloodRescue-Consumer-Group",
                 AutoOffsetReset = AutoOffsetReset.Earliest,
-                EnableAutoCommit = false   
+                EnableAutoCommit = false
             };
 
             _consumer = new ConsumerBuilder<string, string>(config).Build();
@@ -47,7 +47,7 @@ namespace FloodRescue.Services.Implements.Kafka
             {
                 var handlers = scope.ServiceProvider.GetServices<IKafkaHandler>();
 
-                _topics = handlers.Select(h => h.Topic).Distinct().ToList();    
+                _topics = handlers.Select(h => h.Topic).Distinct().ToList();
             }
 
             if (_topics.Any())
@@ -56,7 +56,7 @@ namespace FloodRescue.Services.Implements.Kafka
             }
             else
             {
-                _logger.LogWarning("[KafkaConsumerService - Kafka Consumer] No topics found from any IKafkaHandler implementations. Consumer will have nothing to subscribe.");  
+                _logger.LogWarning("[KafkaConsumerService - Kafka Consumer] No topics found from any IKafkaHandler implementations. Consumer will have nothing to subscribe.");
             }
         }
 
@@ -71,38 +71,41 @@ namespace FloodRescue.Services.Implements.Kafka
             _consumer.Subscribe(_topics);
             _logger.LogInformation("[KafkaConsumerService - Kafka Consumer] Consumer started. Subscribed to: {Topic}", string.Join(", ", _topics));
 
-            //lặp đến khi nào server tắt và không còn request nào nữa
-            while (!stoppingToken.IsCancellationRequested)
+            await Task.Run(async () =>
             {
-                try
+                while (!stoppingToken.IsCancellationRequested)
                 {
-                    // biến này sẽ đi lấy dữ liệu từ kafka producer ở trên controller đăng kí
-                    var result = _consumer.Consume(stoppingToken);
+                    try
+                    {
+                        // biến này sẽ đi lấy dữ liệu từ kafka producer ở trên controller đăng kí
+                        var result = _consumer.Consume(stoppingToken);
 
 
-                    //ghi log theo dõi
-                    _logger.LogInformation("[KafkaConsumerService - Kafka Consumer] Received message from topic {Topic}: Key={Key}, Value={Value}", result.Topic, result.Message.Key, result.Message.Value);
+                        //ghi log theo dõi
+                        _logger.LogInformation("[KafkaConsumerService - Kafka Consumer] Received message from topic {Topic}: Key={Key}, Value={Value}", result.Topic, result.Message.Key, result.Message.Value);
 
-                    // xử lí message nhận được các topic 
-                    // value lúc này đã chuyển thành json nên để string nhưng thực chất là object dto
-                    await ProcessMessageAsync(result.Topic, result.Message.Key, result.Message.Value);
+                        // xử lí message nhận được các topic 
+                        // value lúc này đã chuyển thành json nên để string nhưng thực chất là object dto
+                        await ProcessMessageAsync(result.Topic, result.Message.Key, result.Message.Value);
 
 
-                    //commit lại sau khi xử lí thành công - commit thủ công để chắc chắn
-                    _consumer.Commit(result);
+                        //commit lại sau khi xử lí thành công - commit thủ công để chắc chắn
+                        _consumer.Commit(result);
+                    }
+                    catch (ConsumeException ex)
+                    {
+                        _logger.LogError(ex, "[KafkaConsumerService - Error] Kafka consume failed. Reason: {Error}. Retrying in 5s.", ex.Error.Reason);
+                        await Task.Delay(5000, stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "[KafkaConsumerService - Error] Handler threw exception while processing message: {Error}. Retrying in 2s.", ex.Message);
+
+                        await Task.Delay(2000, stoppingToken);
+                    }
                 }
-                catch (ConsumeException ex)
-                {
-                    _logger.LogError(ex, "[KafkaConsumerService - Error] Kafka consume failed. Reason: {Error}. Retrying in 5s.", ex.Error.Reason);
-                    await Task.Delay(5000, stoppingToken);
-                }
-                catch(Exception ex)
-                {
-                    _logger.LogError(ex, "[KafkaConsumerService - Error] Handler threw exception while processing message: {Error}. Retrying in 2s.", ex.Message);
-
-                    await Task.Delay(2000, stoppingToken);
-                }
-            }
+            }, stoppingToken);
+            //lặp đến khi nào server tắt và không còn request nào nữa
 
         }
 
@@ -113,7 +116,7 @@ namespace FloodRescue.Services.Implements.Kafka
         /// <param name="key"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        private async Task ProcessMessageAsync (string topic, string key, string value)
+        private async Task ProcessMessageAsync(string topic, string key, string value)
         {
             using var scope = _serviceProvider.CreateScope();
 
