@@ -5,6 +5,7 @@ using FloodRescue.Services.DTO.Response.RescueRequestResponse;
 using FloodRescue.Services.Interface.Kafka;
 using FloodRescue.Services.Interface.RescueRequest;
 using FloodRescue.Services.SharedSetting;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -93,6 +94,46 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[RescueRequestsController - Error] GET all rescue requests failed.");
                 return StatusCode(500, ApiResponse<List<CreateRescueRequestResponseDTO>>.Fail("Internal server error", 500));
+            }
+        }
+
+        /// <summary>
+        /// [PUBLIC API] Citizen tra cứu trạng thái yêu cầu cứu trợ bằng mã ShortCode
+        /// Không cần đăng nhập - Thông tin được che giấu để bảo vệ quyền riêng tư
+        /// GET /api/rescuerequests/track?shortCode=FR-1234
+        /// </summary>
+        [HttpGet("track")]
+        [AllowAnonymous]  // Không cần đăng nhập
+        public async Task<ActionResult<ApiResponse<TrackRequestResponseDTO>>> TrackRequest([FromQuery] string shortCode)
+        {
+            _logger.LogInformation("[RescueRequestsController] GET track request called. ShortCode: {ShortCode}", shortCode);
+
+            try
+            {
+                // Validate input
+                if (string.IsNullOrWhiteSpace(shortCode))
+                {
+                    _logger.LogWarning("[RescueRequestsController] ShortCode is empty.");
+                    return BadRequest(ApiResponse<TrackRequestResponseDTO>.Fail("Mã tra cứu không được để trống", 400));
+                }
+
+                // Gọi service
+                var (data, errorMessage) = await _rescueRequestService.TrackRequestByShortCodeAsync(shortCode);
+
+                // Xử lý kết quả
+                if (errorMessage != null)
+                {
+                    _logger.LogWarning("[RescueRequestsController] TrackRequest failed: {Error}", errorMessage);
+                    return NotFound(ApiResponse<TrackRequestResponseDTO>.Fail(errorMessage, 404));
+                }
+
+                _logger.LogInformation("[RescueRequestsController] TrackRequest success. ShortCode: {ShortCode}", shortCode);
+                return Ok(ApiResponse<TrackRequestResponseDTO>.Ok(data!, "Tra cứu thành công", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueRequestsController - Error] TrackRequest failed. ShortCode: {ShortCode}", shortCode);
+                return StatusCode(500, ApiResponse<TrackRequestResponseDTO>.Fail("Internal server error", 500));
             }
         }
     }

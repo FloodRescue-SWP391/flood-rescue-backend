@@ -5,6 +5,7 @@ using FloodRescue.Services.Interface.RescueMission;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics.Contracts;
+using System.Security.Claims;
 namespace FloodRescue.API.Controllers
 {
     [Route("api/[controller]")]
@@ -17,6 +18,48 @@ namespace FloodRescue.API.Controllers
         {
             _rescueMissionService = rescueMissionService;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// Lấy danh sách các nhiệm vụ đang chờ xử lý (Assigned) cho đội cứu hộ của user hiện tại
+        /// </summary>
+        [HttpGet("pending")]
+        [Authorize(Roles = "RescueTeam")]
+        public async Task<ActionResult<ApiResponse<List<PendingMissionResponseDTO>>>> GetPendingMissions()
+        {
+            _logger.LogInformation("[RescueMissionController] GET pending missions called.");
+
+            try
+            {
+                // 1. Lấy UserID từ JWT Token
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid currentUserId))
+                {
+                    _logger.LogWarning("[RescueMissionController] Unable to extract UserID from JWT token.");
+                    return Unauthorized(ApiResponse<List<PendingMissionResponseDTO>>.Fail("Invalid token. Please login again.", 401));
+                }
+
+                _logger.LogInformation("[RescueMissionController] Fetching pending missions for UserID: {UserID}", currentUserId);
+
+                // 2. Gọi service
+                var (data, errorMessage) = await _rescueMissionService.GetPendingMissionsAsync(currentUserId);
+
+                // 3. Xử lý kết quả
+                if (errorMessage != null)
+                {
+                    _logger.LogWarning("[RescueMissionController] GetPendingMissions failed: {Error}", errorMessage);
+                    return BadRequest(ApiResponse<List<PendingMissionResponseDTO>>.Fail(errorMessage, 400));
+                }
+
+                _logger.LogInformation("[RescueMissionController] GetPendingMissions success. Found {Count} missions.", data?.Count ?? 0);
+                return Ok(ApiResponse<List<PendingMissionResponseDTO>>.Ok(data!, "Get pending missions successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueMissionController - Error] GetPendingMissions failed unexpectedly.");
+                return StatusCode(500, ApiResponse<List<PendingMissionResponseDTO>>.Fail("Internal server error", 500));
+            }
         }
 
         [HttpPost("dispatch")]
@@ -88,6 +131,66 @@ namespace FloodRescue.API.Controllers
                 _logger.LogError(ex, "[RescueMissionController - Error] Respond failed. MissionID: {MissionID}", request.RescueMissionID);
                 return StatusCode(500, ApiResponse<RespondMissionResponseDTO>.Fail("Internal server error", 500));
 
+            }
+        }
+
+        [HttpPut("confirm-pickup")]
+        public async Task<ActionResult<ApiResponse<ConfirmPickupResponseDTO>>> ConfirmPickup([FromBody] ConfirmPickUpRequestDTO request)
+        {
+            _logger.LogInformation("[RescueMissionController] PUT confirm-pickup called. MissionID: {MissionID}, OrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    _logger.LogWarning("[RescueMissionController] ConfirmPickup validation failed. ModelState invalid.");
+                    return BadRequest(ApiResponse<ConfirmPickupResponseDTO>.Fail("Data is not valid, please check again.", 400));
+                }
+
+                ConfirmPickupResponseDTO? result = await _rescueMissionService.ConfirmPickupAsync(request);
+
+                if (result == null)
+                {
+                    _logger.LogWarning("[RescueMissionController] ConfirmPickup returned null. MissionID: {MissionID}, OrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
+                    return NotFound(ApiResponse<ConfirmPickupResponseDTO>.Fail("Cannot confirm pickup. Relief order may not be in Prepared status, mission may not be in InProgress status, or order does not belong to this mission.", 404));
+                }
+
+                _logger.LogInformation("[RescueMissionController] ConfirmPickup success. MissionID: {MissionID}, OrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
+                return Ok(ApiResponse<ConfirmPickupResponseDTO>.Ok(result, "Confirm pickup successfully.", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueMissionController - Error] ConfirmPickup failed. MissionID: {MissionID}, OrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
+                return StatusCode(500, ApiResponse<ConfirmPickupResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
+
+        [HttpPut("complete")]
+        public async Task<ActionResult<ApiResponse<CompleteMissionResponseDTO>>> CompleteMission([FromBody] CompleteMissionRequestDTO request)
+        {
+            _logger.LogInformation("[RescueMissionController] PUT complete called. MissionID: {MissionID}", request.RescueMissionID);
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    _logger.LogWarning("[RescueMissionController] CompleteMission validation failed. ModelState invalid.");
+                    return BadRequest(ApiResponse<CompleteMissionResponseDTO>.Fail("Data is not valid, please check again.", 400));
+                }
+
+                CompleteMissionResponseDTO? result = await _rescueMissionService.CompleteMissionAsync(request);
+
+                if (result == null)
+                {
+                    _logger.LogWarning("[RescueMissionController] CompleteMission returned null. MissionID: {MissionID}", request.RescueMissionID);
+                    return NotFound(ApiResponse<CompleteMissionResponseDTO>.Fail("Cannot complete mission. Mission may not be found or not in InProgress status, please check again.", 404));
+                }
+
+                _logger.LogInformation("[RescueMissionController] CompleteMission success. MissionID: {MissionID}", request.RescueMissionID);
+                return Ok(ApiResponse<CompleteMissionResponseDTO>.Ok(result, "Mission completed successfully.", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueMissionController - Error] CompleteMission failed. MissionID: {MissionID}", request.RescueMissionID);
+                return StatusCode(500, ApiResponse<CompleteMissionResponseDTO>.Fail("Internal server error", 500));
             }
         }
     }

@@ -12,6 +12,5 @@ namespace FloodRescue.Services.DTO.Response.Warehouse
         public string? Address { get; set; }
         public double LocationLong { get; set; }
         public double LocationLat { get; set; }
-        public string ManagedBy { get; set; } = string.Empty;
     }
 }

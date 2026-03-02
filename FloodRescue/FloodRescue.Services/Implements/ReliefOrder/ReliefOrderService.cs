@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.DTO.Kafka;
-using FloodRescue.Services.DTO.ReliefOrderRequest;
 using FloodRescue.Services.DTO.Response.ReliefOrder;
 using FloodRescue.Services.DTO.Response.ReliefOrderResponse;
 using FloodRescue.Services.Interface.Kafka;
@@ -15,9 +14,12 @@ using ReliefOrderEntity = FloodRescue.Repositories.Entites.ReliefOrder;
 using RescueRequestEntity = FloodRescue.Repositories.Entites.RescueRequest;
 using RescueTeamEntity = FloodRescue.Repositories.Entites.RescueTeam;
 using RescueMissionEntity = FloodRescue.Repositories.Entites.RescueMission;
+using InventoryEntity = FloodRescue.Repositories.Entites.Inventory;
+using ReliefOrderDetailEntity = FloodRescue.Repositories.Entites.ReliefOrderDetail;
 
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using FloodRescue.Services.DTO.Request.ReliefOrderRequest;
 
 namespace FloodRescue.Services.Implements.ReliefOrder
 {
@@ -194,6 +196,143 @@ namespace FloodRescue.Services.Implements.ReliefOrder
             _logger.LogInformation("[ReliefOrderService - Redis] Cached {Count} pending order(s)", result.Count);
 
             return result;
+        public async Task<ReliefOrderResponseDTO?> PrepareReliefOrderAsync(PrepareOrderRequestDTO request, Guid managerID)
+        {
+            _logger.LogInformation("[ReliefOrderService] Start PrepareReliefOrderAsync for ReliefOrderID: {ID}", request.ReliefOrderID);
+
+            // Validate ReliefOrder
+            ReliefOrderEntity? reliefOrder = await _unitOfWork.ReliefOrders.GetAsync(o => o.ReliefOrderID == request.ReliefOrderID && !o.IsDeleted);
+
+            if (reliefOrder == null)
+            {
+                _logger.LogWarning("[ReliefOrderService - Sql Server] Cannot find Relief Order with ID: {ID}", request.ReliefOrderID);
+                return null;
+            }
+
+            if (reliefOrder.Status != ReliefOrderSettings.PENDING_STATUS)
+            {
+                _logger.LogWarning("[ReliefOrderService] Relief Order status must be Pending. Current status: {Status}", reliefOrder.Status);
+                return null;
+            }
+
+            // Validate RescueMission related to this order (same RescueRequestID and RescueTeamID)
+            RescueMissionEntity? rescueMission = await _unitOfWork.RescueMissions.GetAsync(
+                m => m.RescueRequestID == reliefOrder.RescueRequestID
+                     && m.RescueTeamID == reliefOrder.RescueTeamID
+                     && !m.IsDeleted);
+
+            if (rescueMission == null)
+            {
+                _logger.LogWarning("[ReliefOrderService - Sql Server] Cannot find Rescue Mission for RescueRequestID: {RequestID} - RescueTeamID: {TeamID}", reliefOrder.RescueRequestID, reliefOrder.RescueTeamID);
+                return null;
+            }
+
+            if (rescueMission.Status != RescueMissionSettings.INPROGRESS_STATUS)
+            {
+                _logger.LogWarning("[ReliefOrderService] Rescue Mission status must be InProgress. Current status: {Status}", rescueMission.Status);
+                return null;
+            }
+
+            _logger.LogInformation("[ReliefOrderService] Start Transaction for Preparing Relief Order");
+
+            await _unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+                // Set ManagerID from JWT token
+                reliefOrder.ManagerID = managerID;
+
+                // Loop through items and process inventory
+                foreach (var item in request.Items)
+                {
+                    _logger.LogInformation("[ReliefOrderService] Processing item ReliefItemID: {ItemID} - Quantity: {Quantity}", item.ReliefItemID, item.Quantity);
+
+                    // Check inventory
+                    InventoryEntity? inventory = await _unitOfWork.Inventories.GetAsync(
+                        inv => inv.ReliefItemID == item.ReliefItemID);
+
+                    if (inventory == null)
+                    {
+                        _logger.LogWarning("[ReliefOrderService] Cannot find Inventory for ReliefItemID: {ItemID}", item.ReliefItemID);
+                        await _unitOfWork.RollbackTransactionAsync();
+                        throw new InvalidOperationException($"Cannot find inventory for ReliefItemID: {item.ReliefItemID}");
+                    }
+
+                    if (inventory.Quantity < item.Quantity)
+                    {
+                        _logger.LogWarning("[ReliefOrderService] Not enough stock for ReliefItemID: {ItemID}. Available: {Available}, Requested: {Requested}", item.ReliefItemID, inventory.Quantity, item.Quantity);
+                        await _unitOfWork.RollbackTransactionAsync();
+                        throw new InvalidOperationException($"Not enough stock for ReliefItemID: {item.ReliefItemID}. Available: {inventory.Quantity}, Requested: {item.Quantity}");
+                    }
+
+                    // Deduct inventory
+                    inventory.Quantity -= item.Quantity;
+                    inventory.LastUpdated = DateTime.UtcNow;
+                    _unitOfWork.Inventories.Update(inventory);
+
+                    _logger.LogInformation("[ReliefOrderService] Inventory deducted for ReliefItemID: {ItemID}. Remaining: {Remaining}", item.ReliefItemID, inventory.Quantity);
+
+                    // Save to ReliefOrderDetails
+                    var orderDetail = new ReliefOrderDetailEntity
+                    {
+                        ReliefOrderDetailID = Guid.NewGuid(),
+                        ReliefOrderID = reliefOrder.ReliefOrderID,
+                        ReliefItemID = item.ReliefItemID,
+                        Quantity = item.Quantity
+                    };
+
+                    await _unitOfWork.ReliefOrderDetails.AddAsync(orderDetail);
+
+                    _logger.LogInformation("[ReliefOrderService] ReliefOrderDetail saved for ReliefItemID: {ItemID}", item.ReliefItemID);
+                }
+
+                // Update ReliefOrder status
+                reliefOrder.Status = ReliefOrderSettings.PREPARED_STATUS;
+                reliefOrder.PreparedTime = DateTime.UtcNow;
+                _unitOfWork.ReliefOrders.Update(reliefOrder);
+
+                _logger.LogInformation("[ReliefOrderService] Relief Order status updated to Prepared");
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                _logger.LogInformation("[ReliefOrderService] Transaction committed successfully for ReliefOrderID: {ID}", reliefOrder.ReliefOrderID);
+
+                // Kafka message after commit
+                var kafkaMessage = new OrderPreparedMessage
+                {
+                    ReliefOrderID = reliefOrder.ReliefOrderID,
+                    RescueRequestID = reliefOrder.RescueRequestID,
+                    RescueTeamID = reliefOrder.RescueTeamID,
+                    ManagerID = reliefOrder.ManagerID,
+                    Status = reliefOrder.Status,
+                    PreparedTime = reliefOrder.PreparedTime,
+                    Items = request.Items.Select(i => new OrderPreparedItemMessage
+                    {
+                        ReliefItemID = i.ReliefItemID,
+                        Quantity = i.Quantity
+                    }).ToList()
+                };
+
+                await _kafkaProducer.ProduceAsync(
+                    topic: KafkaSettings.ORDER_PREPARED_TOPIC,
+                    key: reliefOrder.ReliefOrderID.ToString(),
+                    message: kafkaMessage);
+
+                _logger.LogInformation("[ReliefOrderService - Kafka Producer] Kafka message sent to topic {Topic}", KafkaSettings.ORDER_PREPARED_TOPIC);
+
+                return _mapper.Map<ReliefOrderResponseDTO>(reliefOrder);
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[ReliefOrderService - Error] Cannot Prepare Relief Order with ID: {ID} - Error: {error}. Transaction RollBack", request.ReliefOrderID, ex.Message.ToString());
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
     }
 }

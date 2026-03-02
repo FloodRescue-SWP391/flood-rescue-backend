@@ -4,6 +4,7 @@ using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.Auth;
 using FloodRescue.Services.DTO.Request.AuthRequest;
+using FloodRescue.Services.DTO.Request.RescueTeamRequest;
 using FloodRescue.Services.DTO.Request.User;
 using FloodRescue.Services.DTO.Response.AuthResponse;
 using FloodRescue.Services.DTO.Response.RegisterResponse;
@@ -17,6 +18,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
+using RescueTeamEntity = FloodRescue.Repositories.Entites.RescueTeam;
 namespace FloodRescue.Services.Implements.Auth
 {
     public class AuthService : IAuthService
@@ -95,12 +97,24 @@ namespace FloodRescue.Services.Implements.Auth
                 return (null, "Invalid RoleID");
             }
 
-            // 4. Can't register as admin
-            // OrdinalIgnoreCase: So sánh trực tiếp, bỏ qua hoa/thường không có tạo string tạm thời
-            // if (string.Equals(request.RoleID, "AD", StringComparison.OrdinalIgnoreCase))
-            // {
-            //     return (null, "Cannot register as admin");
-            // }
+            // 4. Nếu RoleID = "RT" thì validate RescueTeamID bắt buộc
+            bool isRescueTeamRole = string.Equals(request.RoleID, "RT", StringComparison.OrdinalIgnoreCase);
+            RescueTeamEntity? rescueTeam = null;
+
+            if (isRescueTeamRole)
+            {
+                if (request.RescueTeamID == null || request.RescueTeamID == Guid.Empty)
+                {
+                    _logger.LogWarning("[AuthService] Register failed. RescueTeamID is required for RescueTeam role.");
+                    return (null, "RescueTeamID is required when registering as RescueTeam member");
+                }
+                rescueTeam = await _unitOfWork.RescueTeams.GetAsync(rt => rt.RescueTeamID == request.RescueTeamID && !rt.IsDeleted); // 
+                if (rescueTeam == null)
+                {
+                    _logger.LogWarning("[AuthService] Register failed. RescueTeam not found. RescueTeamID: {RescueTeamID}", request.RescueTeamID);
+                    return (null, "RescueTeam not found");
+                }
+            }
 
             // 5. Create new user and hash the password
             User newUser = _mapper.Map<User>(request);
@@ -115,21 +129,47 @@ namespace FloodRescue.Services.Implements.Auth
 
 
             //User newUser = _mapper.Map<User>(user);
-
-            // 6. Add new user to RAM
-            await _unitOfWork.Users.AddAsync(newUser);
-
-            // 7. Save to database
-            int result = await _unitOfWork.SaveChangesAsync();
-
-            // 8. Check if save was successful
-            if (result <= 0) 
+            // 6. Dùng transaction vì có thể insert cả User + RescueTeamMember
+            await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                _logger.LogError("[AuthService - Error] Failed to save new user to database. Username: {Username}", request.Username);
+                // 7. Add new user to Dbcontext change tracker
+                await _unitOfWork.Users.AddAsync(newUser);
+                // 8. Nếu là RescueTeam thì thêm vào RescueTeamMembers
+                if (isRescueTeamRole)
+                {
+                    var teamMember = new RescueTeamMember
+                    {
+                        UserID = newUser.UserID,
+                        RescueTeamID = request.RescueTeamID!.Value,
+                        IsLeader = request.IsLeader,
+                        IsDeleted = false
+                    };
+                    await _unitOfWork.RescueTeamMembers.AddAsync(teamMember);
+                    _logger.LogInformation("[AuthService] Added user as RescueTeamMember. RescueTeamID: {RescueTeamID}, IsLeader: {IsLeader}",
+       request.RescueTeamID, request.IsLeader);
+                }
+                // 9. Save to database
+                int result = await _unitOfWork.SaveChangesAsync();
+
+                // 10. Check if save was successful
+                if (result <= 0)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    _logger.LogError("[AuthService - Error] Failed to save new user to database. Username: {Username}", request.Username);
+                    return (null, "Failed to create user");
+                }
+
+                await _unitOfWork.CommitTransactionAsync();
+            }
+            catch (Exception ex) 
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, "[AuthService - Error] Exception during registration. Username: {Username}", request.Username);
                 return (null, "Failed to create user");
             }
-            
-            var responseDTO = _mapper.Map<RegisterResponseDTO>(newUser);
+
+            RegisterResponseDTO responseDTO = _mapper.Map<RegisterResponseDTO>(newUser);
             _logger.LogInformation("[AuthService - Sql Server] User registered successfully. UserID: {UserID}, Username: {Username}", newUser.UserID, newUser.Username);
             return (responseDTO, null);
         }
@@ -138,7 +178,7 @@ namespace FloodRescue.Services.Implements.Auth
         {
             _logger.LogInformation("[AuthService] Login attempt for Username: {Username}", request.Username);
             // 1. Tìm user theo username (không lấy user đã xóa)
-            var user = await _unitOfWork.Users.GetAsync(u => u.Username == request.Username && !u.IsDeleted, u => u.Role!);
+            var user = await _unitOfWork.Users.GetAsync(u => u.Username == request.Username && !u.IsDeleted, u => u.Role!, u => u.RescueTeamMember!);
             if (user == null)
             {
                 _logger.LogWarning("[AuthService - Sql Server] Login failed. Username '{Username}' not found.", request.Username);
