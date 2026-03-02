@@ -9,6 +9,7 @@ using FloodRescue.Services.Interface.ReliefOrder;
 using FloodRescue.Services.Interface.RescueMission;
 using FloodRescue.Services.DTO.Request.RescueMissionRequest;
 using FloodRescue.Services.SharedSetting;
+using FloodRescue.Services.Interface.Cache;
 
 using ReliefOrderEntity = FloodRescue.Repositories.Entites.ReliefOrder;
 using RescueRequestEntity = FloodRescue.Repositories.Entites.RescueRequest;
@@ -26,20 +27,24 @@ namespace FloodRescue.Services.Implements.ReliefOrder
         private readonly IMapper _mapper;
         private readonly IKafkaProducerService _kafkaProducer;
         private readonly IRescueMissionService _rescueMissionService;
-
+        private readonly ICacheService _cacheService;
         private readonly ILogger<ReliefOrderService> _logger;
+
+        private const string PENDING_ORDERS_CACHE_KEY = "relieforder:pending";
 
         public ReliefOrderService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             IKafkaProducerService kafkaProducer,
             IRescueMissionService rescueMissionService,
+            ICacheService cacheService,
             ILogger<ReliefOrderService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _kafkaProducer = kafkaProducer;
             _rescueMissionService = rescueMissionService;
+            _cacheService = cacheService;
             _logger = logger;
         }
    
@@ -134,6 +139,16 @@ namespace FloodRescue.Services.Implements.ReliefOrder
         {
             _logger.LogInformation("[ReliefOrderService] Starting GetPendingOrders");
 
+            // Kiểm tra cache trước
+            var cached = await _cacheService.GetAsync<List<PendingOrderResponseDTO>>(PENDING_ORDERS_CACHE_KEY);
+            if (cached != null)
+            {
+                _logger.LogInformation("[ReliefOrderService - Redis] Cache hit for pending orders. Returned {Count} item(s)", cached.Count);
+                return cached;
+            }
+
+            _logger.LogInformation("[ReliefOrderService - Redis] Cache miss for pending orders. Querying database");
+
             // Query ReliefOrders với Status == Pending, include RescueTeam
             List<ReliefOrderEntity> pendingOrders = await _unitOfWork.ReliefOrders.GetAllAsync(
                 (ReliefOrderEntity ro) => ro.Status == ReliefOrderSettings.PENDING_STATUS && !ro.IsDeleted,
@@ -174,6 +189,9 @@ namespace FloodRescue.Services.Implements.ReliefOrder
             }).ToList();
 
             _logger.LogInformation("[ReliefOrderService] Successfully mapped {Count} pending order(s) to response", result.Count);
+
+            await _cacheService.SetAsync(PENDING_ORDERS_CACHE_KEY, result, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("[ReliefOrderService - Redis] Cached {Count} pending order(s)", result.Count);
 
             return result;
         }
