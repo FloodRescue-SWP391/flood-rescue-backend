@@ -2,6 +2,7 @@
 using FloodRescue.Services.DTO.Request.RescueTeamRequest;
 using FloodRescue.Services.DTO.Response.RescueTeamResponse;
 using FloodRescue.Services.Interface.RescueTeam;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,6 +22,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponse<RescueTeamResponseDTO>>> CreateRescueTeam(RescueTeamRequestDTO request)
         {
             _logger.LogInformation("[RescueTeamsController] POST create rescue team called. TeamName: {TeamName}", request.TeamName);
@@ -43,6 +45,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponse<RescueTeamResponseDTO>>> UpdateRescueTeam(Guid id, RescueTeamRequestDTO request)
         {
             _logger.LogInformation("[RescueTeamsController] PUT rescue team called. ID: {Id}", id);
@@ -65,6 +68,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponse<RescueTeamResponseDTO>>> GetRescueTeamById(Guid id)
         {
             _logger.LogInformation("[RescueTeamsController] GET rescue team called. ID: {Id}", id);
@@ -87,6 +91,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponse<List<RescueTeamResponseDTO>>>> GetAllRescueTeams()
         {
             _logger.LogInformation("[RescueTeamsController] GET all rescue teams called.");
@@ -104,6 +109,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponse<bool>>> DeleteRescueTeam(Guid id)
         {
             _logger.LogInformation("[RescueTeamsController] DELETE rescue team called. ID: {Id}", id);

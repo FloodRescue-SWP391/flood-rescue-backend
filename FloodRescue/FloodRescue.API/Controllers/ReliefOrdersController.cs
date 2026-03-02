@@ -23,6 +23,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Rescue Coordinator")]
         public async Task<ActionResult<ApiResponse<ReliefOrderResponseDTO>>> CreateReliefOrder(ReliefOrderRequestDTO request)
         {
             _logger.LogInformation("[ReliefOrdersController] Start process request in relief order controller");
@@ -60,7 +61,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpGet("pending")]
-        [Authorize(Roles = "Inventory Manager")]
+        [Authorize(Roles = "Inventory Manager, Rescue Coordinator")]
         public async Task<ActionResult<ApiResponse<List<PendingOrderResponseDTO>>>> GetPendingOrders()
         {
             _logger.LogInformation("[ReliefOrdersController] GET pending relief orders called.");
@@ -75,6 +76,9 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[ReliefOrdersController - Error] GET pending relief orders failed.");
                 return StatusCode(500, ApiResponse<List<PendingOrderResponseDTO>>.Fail("Internal server error", 500));
+            }
+        }
+
         [Authorize(Roles = "Inventory Manager")]
         [HttpPut("prepare")]
         public async Task<ActionResult<ApiResponse<ReliefOrderResponseDTO>>> PrepareReliefOrder(PrepareOrderRequestDTO request)

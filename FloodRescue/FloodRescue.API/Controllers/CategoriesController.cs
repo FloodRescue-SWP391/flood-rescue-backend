@@ -1,4 +1,5 @@
-﻿using FloodRescue.Services.BusinessModels;
+﻿using FloodRescue.Repositories.Entites;
+using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.Category;
 using FloodRescue.Services.DTO.Response.Category;
 using FloodRescue.Services.Interface.Category;
@@ -21,6 +22,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Inventory Manager")]
         public async Task<ActionResult<ApiResponse<List<CategoryResponseDTO>>>> GetCategories()
         {
             _logger.LogInformation("[CategoriesController] GET all categories called.");
@@ -38,6 +40,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "Inventory Manager")]
         public async Task<ActionResult<ApiResponse<CategoryResponseDTO>>> GetCategory(int id)
         {
             _logger.LogInformation("[CategoriesController] GET category called. ID: {Id}", id);
@@ -60,6 +63,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Inventory Manager")]
         public async Task<ActionResult<ApiResponse<bool>>> PutCategory(int id, CreateCategoryRequestDTO request)
         {
             _logger.LogInformation("[CategoriesController] PUT category called. ID: {Id}", id);
@@ -82,6 +86,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Inventory Manager")]
         public async Task<ActionResult<ApiResponse<CategoryResponseDTO>>> PostCategory(CreateCategoryRequestDTO request)
         {
             _logger.LogInformation("[CategoriesController] POST category called. Name: {Name}", request.CategoryName);
@@ -99,6 +104,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Inventory Manager")]
         public async Task<ActionResult<ApiResponse<bool>>> DeleteCategory(int id)
         {
             _logger.LogInformation("[CategoriesController] DELETE category called. ID: {Id}", id);

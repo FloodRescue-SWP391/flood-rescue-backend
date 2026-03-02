@@ -27,7 +27,7 @@ namespace FloodRescue.API.Controllers
         /// GET /api/inventorys?warehouseId=1
         /// </summary>
         [HttpGet]
-        [Authorize(Roles = "Inventory Manager,Coordinator")]
+        [Authorize(Roles = "Inventory Manager")]
         public async Task<ActionResult<ApiResponse<List<InventoryItemResponseDTO>>>> GetInventoryByWarehouse(
             [FromQuery] int warehouseId)
         {

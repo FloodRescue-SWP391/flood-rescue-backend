@@ -25,7 +25,7 @@ namespace FloodRescue.API.Controllers
         /// GET /api/incidentreports/pending
         /// </summary>
         [HttpGet("pending")]
-        [Authorize(Roles = "Coordinator")]
+        [Authorize(Roles = "Rescue Coordinator")]
         public async Task<ActionResult<ApiResponse<List<PendingIncidentResponseDTO>>>> GetPendingIncidents()
         {
             _logger.LogInformation("[IncidentReportsController] GET pending incidents called.");
@@ -49,7 +49,7 @@ namespace FloodRescue.API.Controllers
         /// GET /api/incidentreports/history
         /// </summary>
         [HttpGet("history")]
-        [Authorize(Roles = "Coordinator,Admin")]
+        [Authorize(Roles = "Rescue Coordinator")]
         public async Task<ActionResult<ApiResponse<List<IncidentHistoryResponseDTO>>>> GetIncidentHistory()
         {
             _logger.LogInformation("[IncidentReportsController] GET incident history called.");

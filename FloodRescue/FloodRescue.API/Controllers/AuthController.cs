@@ -4,6 +4,7 @@ using FloodRescue.Services.DTO.Request.AuthRequest;
 using FloodRescue.Services.DTO.Response.AuthResponse;
 using FloodRescue.Services.DTO.Response.RegisterResponse;
 using FloodRescue.Services.Interface.Auth;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,6 +24,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPost("register")]
+        //[Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponse<RegisterResponseDTO>>> Register([FromBody] RegisterRequestDTO request)
         {
             _logger.LogInformation("[AuthController] POST register called. Username: {Username}", request.Username);

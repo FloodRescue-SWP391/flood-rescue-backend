@@ -24,7 +24,7 @@ namespace FloodRescue.API.Controllers
         /// Lấy danh sách các nhiệm vụ đang chờ xử lý (Assigned) cho đội cứu hộ của user hiện tại
         /// </summary>
         [HttpGet("pending")]
-        [Authorize(Roles = "RescueTeam")]
+        [Authorize(Roles = "Rescue Coordinator")]
         public async Task<ActionResult<ApiResponse<List<PendingMissionResponseDTO>>>> GetPendingMissions()
         {
             _logger.LogInformation("[RescueMissionController] GET pending missions called.");
@@ -63,6 +63,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPost("dispatch")]
+         [Authorize(Roles = "Rescue Coordinator")]
         public async Task<ActionResult<ApiResponse<DispatchMissionResponseDTO>>> DispatchMission([FromBody] DispatchMissionRequestDTO request)
         {
             _logger.LogInformation("[RescueMissionController] POST dispatch called. RequestID: {RequestID}, TeamID: {TeamID}", request.RescueRequestID, request.RescueTeamID);
@@ -95,6 +96,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPost("respond")]
+        [Authorize(Roles = "Rescue Team Member")]
         public async Task<ActionResult<ApiResponse<RespondMissionResponseDTO>>> RespondMission([FromBody] RespondMessageRequestDTO request)
         {
             _logger.LogInformation("[RescueMissionController] POST respond called. MissionID: {MissionID}, IsAccepted: {IsAccepted}", request.RescueMissionID, request.IsAccepted);
@@ -135,6 +137,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPut("confirm-pickup")]
+        [Authorize(Roles = "Rescue Team Member")]
         public async Task<ActionResult<ApiResponse<ConfirmPickupResponseDTO>>> ConfirmPickup([FromBody] ConfirmPickUpRequestDTO request)
         {
             _logger.LogInformation("[RescueMissionController] PUT confirm-pickup called. MissionID: {MissionID}, OrderID: {OrderID}", request.RescueMissionID, request.ReliefOrderID);
@@ -165,6 +168,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPut("complete")]
+        [Authorize(Roles = "Rescue Team Member")]
         public async Task<ActionResult<ApiResponse<CompleteMissionResponseDTO>>> CompleteMission([FromBody] CompleteMissionRequestDTO request)
         {
             _logger.LogInformation("[RescueMissionController] PUT complete called. MissionID: {MissionID}", request.RescueMissionID);

@@ -196,6 +196,8 @@ namespace FloodRescue.Services.Implements.ReliefOrder
             _logger.LogInformation("[ReliefOrderService - Redis] Cached {Count} pending order(s)", result.Count);
 
             return result;
+        }
+        
         public async Task<ReliefOrderResponseDTO?> PrepareReliefOrderAsync(PrepareOrderRequestDTO request, Guid managerID)
         {
             _logger.LogInformation("[ReliefOrderService] Start PrepareReliefOrderAsync for ReliefOrderID: {ID}", request.ReliefOrderID);

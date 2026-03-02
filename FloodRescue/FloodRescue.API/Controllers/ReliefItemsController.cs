@@ -21,6 +21,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Inventory Manager")]
         public async Task<ActionResult<ApiResponse<List<ReliefItemResponseDTO>>>> GetAll()
         {
             _logger.LogInformation("[ReliefItemsController] GET all relief items called.");
@@ -38,6 +39,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "Inventory Manager")]
         public async Task<ActionResult<ApiResponse<ReliefItemResponseDTO>>> Get(int id)
         {
             _logger.LogInformation("[ReliefItemsController] GET relief item called. ID: {Id}", id);
@@ -60,6 +62,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Inventory Manager")]
         public async Task<ActionResult<ApiResponse<ReliefItemResponseDTO>>> Create(CreateReliefItemRequestDTO request)
         {
             _logger.LogInformation("[ReliefItemsController] POST relief item called. Name: {Name}", request.ReliefItemName);
@@ -77,6 +80,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Inventory Manager")]
         public async Task<ActionResult<ApiResponse<bool>>> Update(int id, CreateReliefItemRequestDTO request)
         {
             _logger.LogInformation("[ReliefItemsController] PUT relief item called. ID: {Id}", id);
@@ -99,6 +103,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Inventory Manager")]
         public async Task<ActionResult<ApiResponse<bool>>> Delete(int id)
         {
             _logger.LogInformation("[ReliefItemsController] DELETE relief item called. ID: {Id}", id);
