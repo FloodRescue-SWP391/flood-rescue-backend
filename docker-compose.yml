@@ -1,55 +1,221 @@
 version: '3.8'
+name: flood-rescue-infra
 
 services:
-  # 1. DATABASE
-  db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: sql_container
-    restart: always
-    environment:
-      - ACCEPT_EULA=y
-      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD} # nhận tham số từ file yml
-    ports:
-      - "1433:1433"
-    volumes:
-      - sql_data:/var/opt/mssql
-    networks:      
-      - app-network
-
-  # 2. BACKEND API
-  flood-rescue-api: # Đặt tên ngắn gọn là api
-    # Hứng tham số từ bên file yml
+  flood-rescue-api:
     image: ${REGISTRY}/${REPO_USER}/${IMAGE_NAME}:${IMAGE_TAG_VERSION}
-    build:
-      context: .
-      dockerfile: FloodRescue/FloodRescue.API/Dockerfile
-    container_name: api_container
+    container_name: flood-rescue-api-container
     restart: always
-    depends_on: 
-      - db
+    depends_on:
+      - kafka
+      - redis
+      - graylog
     ports:
-      - "8080:80" # Map port để test local nếu cần
+      - "8080:8080"
     environment:
-      # Lưu ý: Server=db (tên service db ở trên)
-      - ConnectionStrings__DefaultConnection=Server=db,1433;Database=FloodRescue;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=${DATABASE_SERVER};Database=${DATABASE_NAME};User Id=${DATABASE_USERNAME};Password=${DATABASE_PASSWORD};TrustServerCertificate=True;
+      - Redis__ConnectionString=redis:6379
+      - Kafka_BootstrapServers=kafka:29092
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - JwtSettings__Issuer=FloodRescueAPI
+      - JwtSettings__Audience=FloodRescueClient
+      - JwtSettings__AccessTokenExpirationMinutes=15
+      - JwtSettings__RefreshTokenExpirationDays=7
+      - GELF__Host=graylog
+      - GELF__Port=12201
+      - GELF__Protocol=UDP
+      - GELF__LogSource=cqh-floodrescue-backend
     networks:
-      - app-network
+      - flood-rescue-network
+      - sql-network
+  # redis service
+  # bộ nhớ đệm tốc độ cao, dùng để lưu dữ liệu và kết hợp với signalR 
+  # dùng cache để hạn chế việc backend chọc vào sql server liên tục
+  # đóng vai trò là ram của hệ thống
+  redis:
+    image: redis:alpine
+    container_name: flood-rescue-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    networks:
+      - flood-rescue-network
+      - sql-network
 
-  # 3. CLOUDFLARE TUNNEL
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: flood-rescue-redis-ui
+    restart: always
+    ports: 
+      - "8001:5540"
+    networks:
+      - flood-rescue-network
+      - sql-network
+
+  # quản lí danh sách kafka broker
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: flood-rescue-zookeeper
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      # mỗi 2 giây sẽ kiểm tra heartbeat của hệ thống 1 lần
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - flood-rescue-network
+      - sql-network
+
+  # tọa độ sẽ được gửi vào kafka
+  # backend - signalR  - graylog - các service khác sẽ lấy dữ liệu từ kafka xử lí
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: flood-rescue-kafka
+    restart: always
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # các container khác trong cùng 1 dãy docker network thì sẽ kết nối thông qua port 29092
+      # còn port 9092 là để dành cho các nơi khác gửi thông tin vào
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://100.78.66.77:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # Giữ tin nhắn tối đa 6 giờ (cho toàn bộ server)
+      KAFKA_LOG_RETENTION_HOURS: 6
+
+      # QUY ĐỊNH CẮT FILE
+      # Ép đóng file cũ mỗi 1 giờ -> Để Kafka có cái mà xóa
+      KAFKA_LOG_SEGMENT_MS: 3600000  # 1 giờ (1 * 60 * 60 * 1000)
+
+      # Cắt file log mỗi 1 giờ (để dễ xóa)
+      KAFKA_LOG_SEGMENT_BYTES: 104857600  # 100MB
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000 # Check rác mỗi 5 phút
+
+      # định nghĩa cơ chế single-node
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - flood-rescue-network
+      - sql-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: flood-rescue-kafka-ui
+    restart: always
+    depends_on:
+      - kafka
+    ports:
+      - "8085:8080"
+    environment:
+       KAFKA_CLUSTERS_0_NAME: local
+       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    networks:
+      - flood-rescue-network
+      - sql-network
+   
+  mongo:
+    image: mongo:5.0
+    container_name: flood-rescue-mongo
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - flood-rescue-network
+      - sql-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    container_name: flood-rescue-elasticsearch
+    restart: always
+    environment:
+        # mặc định sẽ mở cổng 9200 với 9300
+      - http.host=0.0.0.0 # mở cái này để kết nối ai cũng có thể truy cập vào container này với port 9200 - để graylog có thể tìm thấy
+      - transport.host=localhost # cổng 9300 chỉ 1 mình container này được nghe này thôi - nếu public nó thì đòi hỏi hạ tầng phải mạnh kh thì sẽ disconnect
+      - network.host=0.0.0.0 # cái này là cấu hình backup coi thằng nào thiếu nó sẽ lấp
+      - "discovery.type=single-node" # để đó không là nó báo lỗi không tìm đc master
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # cho java ăn 512mb là max th
+    ulimits:
+      memlock:
+       # cho phép es khóa ram lại thoải mái trong phạm vi
+        soft: -1
+        hard: -1
+        # chỉ cấp giới hạn cho elaticsearch 1 gb ram th bởi vì không giới hạn nó sẽ ăn hết ram
+    mem_limit: 1g
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - flood-rescue-network
+      - sql-network
+
+  graylog:
+    image: graylog/graylog:5.1
+    container_name: flood-rescue-graylog
+    restart: always
+    depends_on:
+      - mongo
+      - elasticsearch
+        # chạy tini trước rồi mới chạy cái gray log lên để đảm bảo có thể diệt hết tiến trình cũ khi graylog container mất đi
+    entrypoint: /usr/bin/tini -- /docker-entrypoint.sh
+    environment:
+      GRAYLOG_NODE_ID_FILE: /usr/share/graylog/data/config/node-id
+      # đây là salt để mã hóa password
+      GRAYLOG_PASSWORD_SECRET: huypasswordsecretingraylog
+       # pass của tài khoản admin phải được điền cái đã mã hóa
+      GRAYLOG_ROOT_PASSWORD_SHA2: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918  
+      GRAYLOG_HTTP_EXTERNAL_URI: http://localhost:9001/
+      GRAYLOG_MONGODB_URI: "mongodb://flood-rescue-mongo:27017/graylog"
+      GRAYLOG_ELASTICSEARCH_HOSTS: "http://flood-rescue-elasticsearch:9200"
+    networks:
+      - flood-rescue-network
+      - sql-network
+    ports:
+      - "9001:9000"
+        # 2 cái port ở tcp với udp này là dùng để check log ngoài hạ tầng máy ảo của mình 
+        # vd : ai ssh vô máy ? tiến trình tự động backup file có thể của cron job
+        # phần cứng kernel bị lỗi - hết ram chẳng hạn
+      - "1514:1514"
+      - "1514:1514/udp"
+        # 2 cái port này là để code .NET chuyển trực tiếp log lên thông qua 2 cái port này - vdu như gửi json
+      - "12201:12201"
+      - "12201:12201/udp"
+    volumes:
+      - graylog_data:/usr/share/graylog/data/journal
+
   tunnel:
     image: cloudflare/cloudflared:latest
-    container_name: cloudflared_tunnel
+    container_name: flood-rescue-tunnel
     restart: always
     command: tunnel run
     environment:
-      - TUNNEL_TOKEN=${TUNNEL_TOKEN} #nhận tham số từ file .yml
-    networks:
-      - app-network
+     - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    extra_hosts:
+     - "host.docker.internal:host-gateway"
+    networks: 
+     - flood-rescue-network
+     - sql-network
 
-# Định nghĩa Network để các container nhìn thấy nhau dễ hơn
 networks:
-  app-network:
-    driver: bridge
+  flood-rescue-network:
+      name: flood-rescue-network
+  sql-network:
+      external: true
 
 volumes:
-  sql_data:
+  redis_data:
+      name: redis_volume_data 
+  mongo_data:
+      name: mongo_volume_data
+  es_data:
+      name: es_volume_data
+  graylog_data:
+      name: graylog_volume_data
+

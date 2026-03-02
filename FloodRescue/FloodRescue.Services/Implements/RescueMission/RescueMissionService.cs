@@ -142,6 +142,83 @@ namespace FloodRescue.Services.Implements.RescueMission
             }
         }
 
+        public async Task<(List<PendingMissionResponseDTO>? Data, string? ErrorMessage)> GetPendingMissionsAsync(Guid currentUserId)
+        {
+            _logger.LogInformation("[RescueMissionService] GetPendingMissions called for UserID: {UserID}", currentUserId);
+            // 1. Kiểm tra User có phải thuộc RescueTeamMember không
+            RescueTeamMemberEntity? teamMember = await _unitOfWork.RescueTeamMembers.GetAsync(m => m.UserID == currentUserId && !m.IsDeleted);
+            if (teamMember == null)
+            {
+                _logger.LogWarning("[RescueMissionService - Sql Server] User {UserID} is not a member of any rescue team.", currentUserId);
+                return (null, "User không thuộc đội cứu hộ nào");
+            }
+
+            Guid teamId = teamMember.RescueTeamID;
+            _logger.LogInformation("[RescueMissionService] User {UserID} belongs to TeamID: {TeamID}", currentUserId, teamId);
+            // 2. Query: Lấy các mission đang ở trạng thái "Assigned" của team này
+            List<RescueMissionEntity> pendingMissions = await _unitOfWork.RescueMissions.GetAllAsync(
+                    filter: m => m.RescueTeamID == teamId
+                    && m.Status == RescueMissionSettings.ASSIGNED_STATUS
+                    && !m.IsDeleted,
+                    includes: m => m.RescueRequest! // Include RescueRequest để lấy thông tin chi tiết
+                );
+
+            if (pendingMissions == null || !pendingMissions.Any())
+            {
+                _logger.LogInformation("[RescueMissionService] No pending missions found for TeamID: {TeamID}", teamId);
+                return (new List<PendingMissionResponseDTO>(), null);
+            }
+            // 3. Lấy danh sách RescueRequestIDs để query images
+            var requestIds = pendingMissions
+                .Where(m => m.RescueRequest != null)
+                .Select(m => m.RescueRequestID)
+                .ToList();
+
+            // 4. Query images cho tất cả requests (tối ưu - chỉ 1 query)
+            var allImages = await _unitOfWork.RescueRequestImages.GetAllAsync(
+                img => requestIds.Contains(img.RescueRequestID)
+            );
+
+            // 5. Group images theo RescueRequestID
+            var imagesByRequest = allImages
+                .GroupBy(img => img.RescueRequestID)
+                .ToDictionary(g => g.Key, g => g.Select(img => img.ImageUrl).ToList());
+
+            // 6. Mapping sang DTO
+            List<PendingMissionResponseDTO> result = pendingMissions.Select(mission => new PendingMissionResponseDTO
+            {
+                // Mission Info
+                RescueMissionID = mission.RescueMissionID,
+                AssignedAt = mission.AssignedAt,
+                MissionStatus = mission.Status,
+
+                // Request Info
+                RescueRequestID = mission.RescueRequestID,
+                ShortCode = mission.RescueRequest?.ShortCode ?? string.Empty,
+                RequestType = mission.RescueRequest?.RequestType ?? string.Empty,
+                Description = mission.RescueRequest?.Description,
+
+                // Citizen Info
+                CitizenName = mission.RescueRequest?.CitizenName,
+                CitizenPhone = mission.RescueRequest?.CitizenPhone ?? string.Empty,
+                PeopleCount = mission.RescueRequest?.PeopleCount ?? 0,
+
+                // Location Info
+                Address = mission.RescueRequest?.Address,
+                LocationLatitude = mission.RescueRequest?.LocationLatitude ?? 0,
+                LocationLongitude = mission.RescueRequest?.LocationLongitude ?? 0,
+
+                // Images
+                ImageUrls = imagesByRequest.TryGetValue(mission.RescueRequestID, out var urls) ? urls : new List<string>(),
+
+                // Timestamps
+                RequestCreatedTime = mission.RescueRequest?.CreatedTime ?? DateTime.MinValue
+            }).ToList();
+
+            _logger.LogInformation("[RescueMissionService] Found {Count} pending missions for TeamID: {TeamID}", result.Count, teamId);
+            return (result, null);
+        }
+
         public async Task<RespondMissionResponseDTO?> RespondMissionAsync(RespondMessageRequestDTO request)
         {
             _logger.LogInformation("[RescueMissionService] Starting Respond with MissionID: {MissionID}, IsAccepted: {IsAccepted}", request.RescueMissionID, request.IsAccepted);

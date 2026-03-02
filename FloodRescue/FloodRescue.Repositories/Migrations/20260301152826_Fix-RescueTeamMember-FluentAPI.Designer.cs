@@ -4,6 +4,7 @@ using FloodRescue.Repositories.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FloodRescue.Repositories.Migrations
 {
     [DbContext(typeof(FloodRescueDbContext))]
-    partial class FloodRescueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260301152826_Fix-RescueTeamMember-FluentAPI")]
+    partial class FixRescueTeamMemberFluentAPI
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -680,6 +683,9 @@ namespace FloodRescue.Repositories.Migrations
                         .HasColumnType("varchar(15)")
                         .HasColumnName("Phone");
 
+                    b.Property<Guid?>("RescueTeamMemberUserID")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("RoleID")
                         .IsRequired()
                         .HasMaxLength(2)
@@ -701,6 +707,8 @@ namespace FloodRescue.Repositories.Migrations
 
                     b.HasIndex("Phone")
                         .IsUnique();
+
+                    b.HasIndex("RescueTeamMemberUserID");
 
                     b.HasIndex("RoleID");
 
@@ -736,6 +744,10 @@ namespace FloodRescue.Repositories.Migrations
                         .HasColumnType("float")
                         .HasColumnName("LocationLong");
 
+                    b.Property<Guid>("ManagerID")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("ManagerID");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -743,6 +755,8 @@ namespace FloodRescue.Repositories.Migrations
                         .HasColumnName("Name");
 
                     b.HasKey("WarehouseID");
+
+                    b.HasIndex("ManagerID");
 
                     b.ToTable("Warehouses");
                 });
@@ -934,7 +948,7 @@ namespace FloodRescue.Repositories.Migrations
                         .IsRequired();
 
                     b.HasOne("FloodRescue.Repositories.Entites.User", "User")
-                        .WithOne("RescueTeamMember")
+                        .WithOne()
                         .HasForeignKey("FloodRescue.Repositories.Entites.RescueTeamMember", "UserID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -946,13 +960,30 @@ namespace FloodRescue.Repositories.Migrations
 
             modelBuilder.Entity("FloodRescue.Repositories.Entites.User", b =>
                 {
+                    b.HasOne("FloodRescue.Repositories.Entites.RescueTeamMember", "RescueTeamMember")
+                        .WithMany()
+                        .HasForeignKey("RescueTeamMemberUserID");
+
                     b.HasOne("FloodRescue.Repositories.Entites.Role", "Role")
                         .WithMany("Users")
                         .HasForeignKey("RoleID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("RescueTeamMember");
+
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("FloodRescue.Repositories.Entites.Warehouse", b =>
+                {
+                    b.HasOne("FloodRescue.Repositories.Entites.User", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Manager");
                 });
 
             modelBuilder.Entity("FloodRescue.Repositories.Entites.RescueTeam", b =>
@@ -963,11 +994,6 @@ namespace FloodRescue.Repositories.Migrations
             modelBuilder.Entity("FloodRescue.Repositories.Entites.Role", b =>
                 {
                     b.Navigation("Users");
-                });
-
-            modelBuilder.Entity("FloodRescue.Repositories.Entites.User", b =>
-                {
-                    b.Navigation("RescueTeamMember");
                 });
 #pragma warning restore 612, 618
         }

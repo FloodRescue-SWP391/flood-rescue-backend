@@ -28,5 +28,15 @@ namespace FloodRescue.Services.DTO.Request.Auth
         [MaxLength(2)]
         [RegularExpression("^(RC|IM|RT|AD)$", ErrorMessage = "RoleID must be AD, RC, IM or RT")]
         public string RoleID { get; set; } = string.Empty;
+        /// <summary>
+        /// Bắt buộc khi RoleID = "RT". ID của đội cứu hộ mà user muốn tham gia.
+        /// </summary>
+        public Guid? RescueTeamID { get; set; }
+        /// <summary>
+        /// Chỉ áp dụng khi RoleID = "RT". Mặc định là false.
+        /// </summary>
+        public bool IsLeader { get; set; } = false;
+
+
     }
 }

@@ -165,7 +165,8 @@ namespace FloodRescue.Services.Implements.Auth
             // GetAsync tự động load Navigation Property (Role)
             var user = await _unitOfWork.Users.GetAsync(
                 u => u.UserID == userID && !u.IsDeleted,  // Filter: tìm user theo ID và chưa bị xóa
-                u => u.Role!  // Include: load thêm Role navigation property
+                u => u.Role! , // Include: load thêm Role navigation property
+                u => u.RescueTeamMember!
             );
             
             if(user == null)
@@ -221,7 +222,8 @@ namespace FloodRescue.Services.Implements.Auth
             SigningCredentials credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             //----- PAYLOAD -------//
-            Claim[] claims = new[]
+            // Đổi từ Claim[] sang List<Claim> để có thể Add()
+            List<Claim> claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserID.ToString()),
 
@@ -235,6 +237,15 @@ namespace FloodRescue.Services.Implements.Auth
                 new Claim(ClaimTypes.Role, user.Role.RoleName)
 
             };
+            
+            // Nếu là RescueTeam, thêm TeamID và IsLeader vào claims
+            if (string.Equals(user.Role.RoleID, "RT", StringComparison.OrdinalIgnoreCase) && user.RescueTeamMember != null)
+            {
+                claims.Add(new Claim("TeamID", user.RescueTeamMember.RescueTeamID.ToString()));
+                claims.Add(new Claim("IsLeader", user.RescueTeamMember.IsLeader.ToString()));
+                _logger.LogInformation("[TokenService] Added RescueTeam claims - TeamID: {TeamID}, IsLeader: {IsLeader}",
+    user.RescueTeamMember.RescueTeamID, user.RescueTeamMember.IsLeader);
+            }
 
             //----- CREATE JWT TOKEN -----// 
             JwtSecurityToken tokenFormat = new JwtSecurityToken(
@@ -318,7 +329,7 @@ namespace FloodRescue.Services.Implements.Auth
             await _unitOfWork.SaveChangesAsync();
 
             //Bước 6: Lấy user với role
-            User? user = await _unitOfWork.Users.GetAsync((User user) => user.UserID == userId && !user.IsDeleted, (User user) => user.Role!);
+            User? user = await _unitOfWork.Users.GetAsync((User user) => user.UserID == userId && !user.IsDeleted, (User user) => user.Role!, (User user) => user.RescueTeamMember!);
 
             if (user == null)
             {

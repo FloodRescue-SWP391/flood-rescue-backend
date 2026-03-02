@@ -72,12 +72,6 @@ namespace FloodRescue.Repositories.Context
                 .HasForeignKey(ir => ir.ResolvedBy)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Warehouse - Prevent cascade delete conflicts
-            modelBuilder.Entity<Warehouse>()
-                .HasOne(w => w.Manager)
-                .WithMany()
-                .HasForeignKey(w => w.ManagerID)
-                .OnDelete(DeleteBehavior.Restrict);
 
             // RescueRequest - Prevent cascade delete conflicts
             modelBuilder.Entity<RescueRequest>()
@@ -89,8 +83,8 @@ namespace FloodRescue.Repositories.Context
             // RescueTeamMember - Prevent cascade delete conflicts
             modelBuilder.Entity<RescueTeamMember>()
                 .HasOne(rtm => rtm.User)
-                .WithMany()
-                .HasForeignKey(rtm => rtm.UserID)
+                .WithOne(u => u.RescueTeamMember)
+                .HasForeignKey<RescueTeamMember>(rtm => rtm.UserID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<RescueRequestImage>()

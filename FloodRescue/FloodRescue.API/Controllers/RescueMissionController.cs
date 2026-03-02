@@ -5,6 +5,7 @@ using FloodRescue.Services.Interface.RescueMission;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics.Contracts;
+using System.Security.Claims;
 namespace FloodRescue.API.Controllers
 {
     [Route("api/[controller]")]
@@ -17,6 +18,48 @@ namespace FloodRescue.API.Controllers
         {
             _rescueMissionService = rescueMissionService;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// Lấy danh sách các nhiệm vụ đang chờ xử lý (Assigned) cho đội cứu hộ của user hiện tại
+        /// </summary>
+        [HttpGet("pending")]
+        [Authorize(Roles = "RescueTeam")]
+        public async Task<ActionResult<ApiResponse<List<PendingMissionResponseDTO>>>> GetPendingMissions()
+        {
+            _logger.LogInformation("[RescueMissionController] GET pending missions called.");
+
+            try
+            {
+                // 1. Lấy UserID từ JWT Token
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid currentUserId))
+                {
+                    _logger.LogWarning("[RescueMissionController] Unable to extract UserID from JWT token.");
+                    return Unauthorized(ApiResponse<List<PendingMissionResponseDTO>>.Fail("Invalid token. Please login again.", 401));
+                }
+
+                _logger.LogInformation("[RescueMissionController] Fetching pending missions for UserID: {UserID}", currentUserId);
+
+                // 2. Gọi service
+                var (data, errorMessage) = await _rescueMissionService.GetPendingMissionsAsync(currentUserId);
+
+                // 3. Xử lý kết quả
+                if (errorMessage != null)
+                {
+                    _logger.LogWarning("[RescueMissionController] GetPendingMissions failed: {Error}", errorMessage);
+                    return BadRequest(ApiResponse<List<PendingMissionResponseDTO>>.Fail(errorMessage, 400));
+                }
+
+                _logger.LogInformation("[RescueMissionController] GetPendingMissions success. Found {Count} missions.", data?.Count ?? 0);
+                return Ok(ApiResponse<List<PendingMissionResponseDTO>>.Ok(data!, "Get pending missions successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueMissionController - Error] GetPendingMissions failed unexpectedly.");
+                return StatusCode(500, ApiResponse<List<PendingMissionResponseDTO>>.Fail("Internal server error", 500));
+            }
         }
 
         [HttpPost("dispatch")]

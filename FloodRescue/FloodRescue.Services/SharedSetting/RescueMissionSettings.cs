@@ -13,8 +13,12 @@ public static class RescueMissionSettings
 
     //Declined
     public const string DECLINED_STATUS = "Declined";
+    // Completed
+    public const string COMPLETED_STATUS = "Completed";
+    // Concelled
+    public const string CANCELLED_STATUS = "Cancelled";
 
     //Completed
-    public const string COMPLETED_STATUS = "Completed";
+    //public const string COMPLETED_STATUS = "Completed";
 
 }

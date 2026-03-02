@@ -4,6 +4,7 @@ using FloodRescue.Repositories.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FloodRescue.Repositories.Migrations
 {
     [DbContext(typeof(FloodRescueDbContext))]
-    partial class FloodRescueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260225173134_Remove-MangerID-in-Warehouse")]
+    partial class RemoveMangerIDinWarehouse
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -934,8 +937,8 @@ namespace FloodRescue.Repositories.Migrations
                         .IsRequired();
 
                     b.HasOne("FloodRescue.Repositories.Entites.User", "User")
-                        .WithOne("RescueTeamMember")
-                        .HasForeignKey("FloodRescue.Repositories.Entites.RescueTeamMember", "UserID")
+                        .WithMany()
+                        .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -963,11 +966,6 @@ namespace FloodRescue.Repositories.Migrations
             modelBuilder.Entity("FloodRescue.Repositories.Entites.Role", b =>
                 {
                     b.Navigation("Users");
-                });
-
-            modelBuilder.Entity("FloodRescue.Repositories.Entites.User", b =>
-                {
-                    b.Navigation("RescueTeamMember");
                 });
 #pragma warning restore 612, 618
         }

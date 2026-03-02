@@ -57,6 +57,8 @@ namespace FloodRescue.Repositories.Entites
         [Column("IsDeleted", TypeName = "BIT")]
         public bool IsDeleted { get; set; } = false;
 
-
+        // Navigation property - Quan hệ 1:1 với RescueTeamMember (chỉ khi user là thành viên đội cứu hộ)
+        [JsonIgnore]
+        public RescueTeamMember? RescueTeamMember { get; set; }
     }
 }
