@@ -43,7 +43,6 @@ using Serilog.Sinks.Graylog;
 using Serilog.Sinks.Graylog.Core.Transport;
 using StackExchange.Redis;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FloodRescue.API
 {
@@ -150,6 +149,7 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IInventoryService,InventoryService>();
             builder.Services.AddScoped<IRescueTeamService, RescueTeamService>();
             builder.Services.AddScoped<IRescueRequestService, RescueRequestService>();
+            builder.Services.AddScoped<IInventoryService, InventoryService>();
             builder.Services.AddScoped<IKafkaHandler, RescueRequestKafkaHandler>();
             builder.Services.AddScoped<IIncidentReportService, IncidentReportService>();
             //Đăng ký DbContext
@@ -168,6 +168,7 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IKafkaHandler, DispatchMissionKafkaHandler>();
             builder.Services.AddScoped<IKafkaHandler, TeamAcceptedHandler>();
             builder.Services.AddScoped<IKafkaHandler, TeamRejectedHandler>();
+            builder.Services.AddScoped<IKafkaHandler, MissionCompletedHandler>();
             builder.Services.AddScoped<IKafkaHandler, OrderPreparedHandler>();
             builder.Services.AddScoped<IKafkaHandler, DeliveryStartedHandler>();
 
@@ -257,10 +258,10 @@ namespace FloodRescue.API
             {
                 options.AddPolicy("AllowAlls",
                     policy => 
-                    policy.WithOrigins("http://localhost:3000")
-                          .AllowAnyOrigin()
+                    policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+                          .AllowAnyMethod()
                           .AllowAnyHeader()
-                          .AllowAnyMethod());
+                          .AllowCredentials());
             });
 
 

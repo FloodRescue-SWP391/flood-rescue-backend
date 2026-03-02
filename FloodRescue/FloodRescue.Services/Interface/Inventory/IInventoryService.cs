@@ -1,3 +1,5 @@
+using FloodRescue.Services.DTO.Request.InventoryRequest;
+using FloodRescue.Services.DTO.Response.InventoryResponse;
 ﻿using FloodRescue.Services.DTO.Request.InventoryRequest;
 using FloodRescue.Services.DTO.Response.InventoryResponse;
 using System;
@@ -10,6 +12,7 @@ namespace FloodRescue.Services.Interface.Inventory
 {
     public interface IInventoryService
     {
+        Task<(AdjustInventoryResponseDTO? Data, string? ErrorMessage)> AdjustInventoryAsync(AdjustInventoryRequestDTO request);
         /// <summary>
         /// Nhập hàng vào kho - cộng dồn hoặc tạo mới inventory
         /// </summary>

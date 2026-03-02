@@ -163,6 +163,36 @@ namespace FloodRescue.API.Controllers
                 return StatusCode(500, ApiResponse<ConfirmPickupResponseDTO>.Fail("Internal server error", 500));
             }
         }
+
+        [HttpPut("complete")]
+        public async Task<ActionResult<ApiResponse<CompleteMissionResponseDTO>>> CompleteMission([FromBody] CompleteMissionRequestDTO request)
+        {
+            _logger.LogInformation("[RescueMissionController] PUT complete called. MissionID: {MissionID}", request.RescueMissionID);
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    _logger.LogWarning("[RescueMissionController] CompleteMission validation failed. ModelState invalid.");
+                    return BadRequest(ApiResponse<CompleteMissionResponseDTO>.Fail("Data is not valid, please check again.", 400));
+                }
+
+                CompleteMissionResponseDTO? result = await _rescueMissionService.CompleteMissionAsync(request);
+
+                if (result == null)
+                {
+                    _logger.LogWarning("[RescueMissionController] CompleteMission returned null. MissionID: {MissionID}", request.RescueMissionID);
+                    return NotFound(ApiResponse<CompleteMissionResponseDTO>.Fail("Cannot complete mission. Mission may not be found or not in InProgress status, please check again.", 404));
+                }
+
+                _logger.LogInformation("[RescueMissionController] CompleteMission success. MissionID: {MissionID}", request.RescueMissionID);
+                return Ok(ApiResponse<CompleteMissionResponseDTO>.Ok(result, "Mission completed successfully.", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueMissionController - Error] CompleteMission failed. MissionID: {MissionID}", request.RescueMissionID);
+                return StatusCode(500, ApiResponse<CompleteMissionResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
     }
 }
 
