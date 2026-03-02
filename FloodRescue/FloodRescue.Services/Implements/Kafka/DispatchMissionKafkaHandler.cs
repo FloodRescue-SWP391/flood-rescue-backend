@@ -38,14 +38,18 @@ public class DispatchMissionKafkaHandler : IKafkaHandler
             }
 
             //xài auto mapper
-            MissionAssignedNotification notification = _mapper.Map<MissionAssignedNotification>(missionAssigned);         
+            MissionAssignedNotification notification = _mapper.Map<MissionAssignedNotification>(missionAssigned);
+
+            // Gửi notification qua SignalR đến ĐÍCH DANH Group Leader của Team
+            // Format group name: Team_{RescueTeamID}_Leader
+            var leaderGroupName = $"Team_{missionAssigned.RescueTeamID}_Leader";
 
             //Gửi notification qua SignalR
             //xíu hồi tạo connection on riêng biệt bên fe để lắng nghe
             //còn hàm invoke để gửi xin gia nhập team id trong signalR hub là 1 hàm nữa - tổng cộng là 2 hàm là đủ
-            await _realtimeNotificationService.SendToGroupAsync(groupName: missionAssigned.RescueTeamID.ToString(), method: "ReceiveMissionNotification", message: notification);
+            await _realtimeNotificationService.SendToGroupAsync(groupName: leaderGroupName, method: "ReceiveMissionNotification", message: notification);
 
-            _logger.LogInformation("[DispatchMissionKafkaHandler - SignalR] SignalR notification sent to group {GroupName}", missionAssigned.RescueTeamID.ToString());
+            _logger.LogInformation("[DispatchMissionKafkaHandler - SignalR] SignalR notification sent to group {GroupName}", leaderGroupName);
 
         }catch(JsonException ex)
         {

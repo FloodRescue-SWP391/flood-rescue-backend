@@ -1,47 +1,48 @@
 ﻿using FloodRescue.Repositories.Context;
 using FloodRescue.Repositories.Implements;
 using FloodRescue.Repositories.Interface;
+using FloodRescue.Services.Hubs;
+using FloodRescue.Services.Implements.Auth;
+using FloodRescue.Services.Implements.BackgroundJob;
+using FloodRescue.Services.Implements.Cache;
+using FloodRescue.Services.Implements.Category;
+using FloodRescue.Services.Implements.IncidentReport;
+using FloodRescue.Services.Implements.Inventory;
+using FloodRescue.Services.Implements.Kafka;
+using FloodRescue.Services.Implements.RealTimeNoti;
+using FloodRescue.Services.Implements.ReliefItem;
+using FloodRescue.Services.Implements.ReliefOrder;
+using FloodRescue.Services.Implements.RescueMission;
+using FloodRescue.Services.Implements.RescueRequest;
+using FloodRescue.Services.Implements.RescueTeam;
+using FloodRescue.Services.Implements.Warehouse;
+using FloodRescue.Services.Interface.Auth;
+using FloodRescue.Services.Interface.BackgroundJob;
+using FloodRescue.Services.Interface.Cache;
+using FloodRescue.Services.Interface.Category;
+using FloodRescue.Services.Interface.IncidentReport;
+using FloodRescue.Services.Interface.Inventory;
+using FloodRescue.Services.Interface.Kafka;
+using FloodRescue.Services.Interface.RealTimeNoti;
+using FloodRescue.Services.Interface.ReliefItem;
+using FloodRescue.Services.Interface.ReliefOrder;
+using FloodRescue.Services.Interface.RescueMission;
+using FloodRescue.Services.Interface.RescueRequest;
+using FloodRescue.Services.Interface.RescueTeam;
+using FloodRescue.Services.Interface.Warehouse;
 using FloodRescue.Services.Mapper;
+using Hangfire;
+using Hangfire.Dashboard;
+using Hangfire.Redis.StackExchange;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using StackExchange.Redis;
-using System.Text;
 using Serilog;
 using Serilog.Sinks.Graylog;
 using Serilog.Sinks.Graylog.Core.Transport;
-using FloodRescue.Services.Interface.Auth;
-using FloodRescue.Services.Interface.Warehouse;
-using FloodRescue.Services.Interface.Cache;
-using FloodRescue.Services.Interface.ReliefItem;
-using FloodRescue.Services.Interface.Category;
-using FloodRescue.Services.Interface.Kafka;
-using FloodRescue.Services.Interface.ReliefOrder;
-using FloodRescue.Services.Implements.Auth;
-using FloodRescue.Services.Implements.Cache;
-using FloodRescue.Services.Implements.Category;
-using FloodRescue.Services.Implements.Kafka;
-using FloodRescue.Services.Implements.ReliefOrder;
-using FloodRescue.Services.Implements.ReliefItem;
-using FloodRescue.Services.Implements.Warehouse;
-using FloodRescue.Services.Interface.RealTimeNoti;
-using FloodRescue.Services.Implements.RealTimeNoti;
-using System.Threading.Tasks;
-using FloodRescue.Services.Hubs;
-using FloodRescue.Services.Interface.BackgroundJob;
-using Hangfire;
-using Hangfire.Redis.StackExchange;
-using FloodRescue.Services.Implements.BackgroundJob;
-using Hangfire.Dashboard;
-using FloodRescue.Services.Interface.RescueMission;
-using FloodRescue.Services.Implements.RescueMission;
-using FloodRescue.Services.Interface.RescueTeam;
-using FloodRescue.Services.Implements.RescueTeam;
-using FloodRescue.Services.Interface.RescueRequest;
-using FloodRescue.Services.Implements.RescueRequest;
-using FloodRescue.Services.Interface.Inventory;
-using FloodRescue.Services.Implements.Inventory;
+using StackExchange.Redis;
+using System.Text;
 
 namespace FloodRescue.API
 {
@@ -145,11 +146,12 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
             builder.Services.AddScoped<IBackgroundJobService, BackgroundJobService>();
             builder.Services.AddScoped<IRescueMissionService, RescueMissionService>();
-
+            builder.Services.AddScoped<IInventoryService,InventoryService>();
             builder.Services.AddScoped<IRescueTeamService, RescueTeamService>();
             builder.Services.AddScoped<IRescueRequestService, RescueRequestService>();
             builder.Services.AddScoped<IInventoryService, InventoryService>();
             builder.Services.AddScoped<IKafkaHandler, RescueRequestKafkaHandler>();
+            builder.Services.AddScoped<IIncidentReportService, IncidentReportService>();
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
                 options.UseSqlServer(
@@ -166,6 +168,9 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IKafkaHandler, DispatchMissionKafkaHandler>();
             builder.Services.AddScoped<IKafkaHandler, TeamAcceptedHandler>();
             builder.Services.AddScoped<IKafkaHandler, TeamRejectedHandler>();
+            builder.Services.AddScoped<IKafkaHandler, MissionCompletedHandler>();
+            builder.Services.AddScoped<IKafkaHandler, OrderPreparedHandler>();
+            builder.Services.AddScoped<IKafkaHandler, DeliveryStartedHandler>();
 
 
             // Đăng ký Redis Cache để inject được vào Cache Service
@@ -253,10 +258,10 @@ namespace FloodRescue.API
             {
                 options.AddPolicy("AllowAlls",
                     policy => 
-                    policy.WithOrigins("http://localhost:3000")
-                          .AllowAnyOrigin()
+                    policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+                          .AllowAnyMethod()
                           .AllowAnyHeader()
-                          .AllowAnyMethod());
+                          .AllowCredentials());
             });
 
 
@@ -299,7 +304,11 @@ namespace FloodRescue.API
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
+            else
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
            // /hangfire lấy dữ liệu được lưu trữ trên redis rồi vẽ lên giao diện
             app.UseHangfireDashboard("/hangfire", new DashboardOptions
             {

@@ -934,8 +934,8 @@ namespace FloodRescue.Repositories.Migrations
                         .IsRequired();
 
                     b.HasOne("FloodRescue.Repositories.Entites.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserID")
+                        .WithOne("RescueTeamMember")
+                        .HasForeignKey("FloodRescue.Repositories.Entites.RescueTeamMember", "UserID")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -963,6 +963,11 @@ namespace FloodRescue.Repositories.Migrations
             modelBuilder.Entity("FloodRescue.Repositories.Entites.Role", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("FloodRescue.Repositories.Entites.User", b =>
+                {
+                    b.Navigation("RescueTeamMember");
                 });
 #pragma warning restore 612, 618
         }

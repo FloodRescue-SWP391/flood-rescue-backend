@@ -38,9 +38,22 @@ namespace FloodRescue.Services.Hubs
 
                     _logger.LogInformation("[NotificationHub - SignalR] Connection {UserId} added to role group {GroupName}", Context.ConnectionId, roleName);
                 }
+                // 2. Nếu là RescueTeam Leader thì add vào group riêng: Team_{TeamID}_Leader
+                var roleClaim = user.FindFirst(ClaimTypes.Role)?.Value;
+                var isLeaderClaim = user.FindFirst("IsLeader")?.Value;
+                var teamIdClaim = user.FindFirst("TeamID")?.Value;
+                if (string.Equals(roleClaim, "RescueTeam", StringComparison.OrdinalIgnoreCase) && string.Equals(isLeaderClaim, "True", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(teamIdClaim))
+                {
+                    var leaderGroupName = $"Team_{teamIdClaim}_Leader";
+                    await Groups.AddToGroupAsync(Context.ConnectionId, leaderGroupName);
+
+                    _logger.LogInformation(
+                        "[NotificationHub - SignalR] RescueTeam Leader detected. Connection {ConnectionId} added to group {LeaderGroup}",
+                        Context.ConnectionId, leaderGroupName);
+                }
             }
 
-            
+
             //------------
 
             await base.OnConnectedAsync();
