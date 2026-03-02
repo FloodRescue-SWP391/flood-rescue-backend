@@ -1,7 +1,5 @@
 using FloodRescue.Services.DTO.Request.InventoryRequest;
 using FloodRescue.Services.DTO.Response.InventoryResponse;
-﻿using FloodRescue.Services.DTO.Request.InventoryRequest;
-using FloodRescue.Services.DTO.Response.InventoryResponse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
