@@ -197,6 +197,48 @@ namespace FloodRescue.API.Controllers
                 return StatusCode(500, ApiResponse<CompleteMissionResponseDTO>.Fail("Internal server error", 500));
             }
         }
+
+        [HttpPost("report-incident")]
+        [Authorize(Roles = "Rescue Team Member")]
+        public async Task<ActionResult<ApiResponse<IncidentReportResponseDTO>>> ReportIncident([FromBody] IncidentReportRequestDTO request)
+        {
+            _logger.LogInformation("[RescueMissionController] POST report-incident called. MissionID: {MissionID}", request.RescueMissionID);
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    _logger.LogWarning("[RescueMissionController] ReportIncident validation failed. ModelState invalid.");
+                    return BadRequest(ApiResponse<IncidentReportResponseDTO>.Fail("Data is not valid, please check again.", 400));
+                }
+
+                // Lấy CurrentUserID từ JWT Token
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid currentUserId))
+                {
+                    _logger.LogWarning("[RescueMissionController] Unable to extract UserID from JWT token.");
+                    return Unauthorized(ApiResponse<IncidentReportResponseDTO>.Fail("Invalid token. Please login again.", 401));
+                }
+
+                _logger.LogInformation("[RescueMissionController] ReportIncident by UserID: {UserID} for MissionID: {MissionID}", currentUserId, request.RescueMissionID);
+
+                var (data, errorMessage) = await _rescueMissionService.ReportIncidentAsync(request, currentUserId);
+
+                if (data == null)
+                {
+                    _logger.LogWarning("[RescueMissionController] ReportIncident returned null. MissionID: {MissionID}. Error: {Error}", request.RescueMissionID, errorMessage);
+                    return BadRequest(ApiResponse<IncidentReportResponseDTO>.Fail(errorMessage ?? "Failed to report incident.", 400));
+                }
+
+                _logger.LogInformation("[RescueMissionController] ReportIncident success. IncidentID: {IncidentID}, MissionID: {MissionID}", data.IncidentReportID, request.RescueMissionID);
+                return Ok(ApiResponse<IncidentReportResponseDTO>.Ok(data, "Incident reported successfully.", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueMissionController - Error] ReportIncident failed. MissionID: {MissionID}", request.RescueMissionID);
+                return StatusCode(500, ApiResponse<IncidentReportResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
     }
 }
 

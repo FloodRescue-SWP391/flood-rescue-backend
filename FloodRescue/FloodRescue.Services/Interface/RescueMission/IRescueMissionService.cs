@@ -19,5 +19,6 @@ namespace FloodRescue.Services.Interface.RescueMission
         /// </summary>
         Task<(List<PendingMissionResponseDTO>? Data, string? ErrorMessage)> GetPendingMissionsAsync(Guid currentUserId);
         Task<ConfirmPickupResponseDTO?> ConfirmPickupAsync(ConfirmPickUpRequestDTO request);
+        Task<(IncidentReportResponseDTO? Data, string? ErrorMessage)> ReportIncidentAsync(IncidentReportRequestDTO request, Guid currentUserId);
     }
 }

@@ -23,6 +23,7 @@ using RescueRequestEntity = FloodRescue.Repositories.Entites.RescueRequest;
 using RescueTeamEntity = FloodRescue.Repositories.Entites.RescueTeam;
 using RescueTeamMemberEntity = FloodRescue.Repositories.Entites.RescueTeamMember;
 using ReliefOrderEntity = FloodRescue.Repositories.Entites.ReliefOrder;
+using IncidentReportEntity = FloodRescue.Repositories.Entites.IncidentReport;
 using FloodRescue.Services.Interface.Cache;
 
 namespace FloodRescue.Services.Implements.RescueMission
@@ -548,6 +549,144 @@ namespace FloodRescue.Services.Implements.RescueMission
             {
                 await _unitOfWork.RollbackTransactionAsync();
                 _logger.LogError(ex, "[RescueMissionService - Error] ConfirmPickup failed. Transaction rolled back. OrderID: {OrderID}, MissionID: {MissionID}", request.ReliefOrderID, request.RescueMissionID);
+                throw;
+            }
+        }
+
+        public async Task<(IncidentReportResponseDTO? Data, string? ErrorMessage)> ReportIncidentAsync(IncidentReportRequestDTO request, Guid currentUserId)
+        {
+            _logger.LogInformation("[RescueMissionService] Starting ReportIncident with MissionID: {MissionID}, ReportedBy: {UserID}", request.RescueMissionID, currentUserId);
+
+            // Lấy RescueMission từ DB kèm theo RescueTeam
+            RescueMissionEntity? rescueMission = await _unitOfWork.RescueMissions.GetAsync(
+                (RescueMissionEntity rm) => rm.RescueMissionID == request.RescueMissionID && !rm.IsDeleted,
+                rm => rm.RescueTeam!);
+
+            if (rescueMission == null)
+            {
+                _logger.LogWarning("[RescueMissionService - Sql Server] RescueMission with ID: {MissionID} not found", request.RescueMissionID);
+                return (null, "Rescue mission not found.");
+            }
+
+            // Kiểm tra trạng thái Mission phải là InProgress
+            if (rescueMission.Status != RescueMissionSettings.INPROGRESS_STATUS)
+            {
+                _logger.LogWarning("[RescueMissionService] RescueMission {MissionID} is not in InProgress status. Current status: {Status}", request.RescueMissionID, rescueMission.Status);
+                return (null, $"Cannot report incident. Mission status must be InProgress, current status is {rescueMission.Status}.");
+            }
+
+            // Lấy RescueTeamID từ currentUserId qua bảng RescueTeamMembers
+            RescueTeamMemberEntity? teamMember = await _unitOfWork.RescueTeamMembers.GetAsync(
+                (RescueTeamMemberEntity m) => m.UserID == currentUserId && !m.IsDeleted);
+
+            if (teamMember == null)
+            {
+                _logger.LogWarning("[RescueMissionService - Sql Server] User {UserID} is not a member of any rescue team", currentUserId);
+                return (null, "You are not a member of any rescue team.");
+            }
+
+            // Đối chiếu RescueTeamID với mission
+            if (teamMember.RescueTeamID != rescueMission.RescueTeamID)
+            {
+                _logger.LogWarning("[RescueMissionService] User {UserID} belongs to TeamID: {UserTeamID}, but mission belongs to TeamID: {MissionTeamID}",
+                    currentUserId, teamMember.RescueTeamID, rescueMission.RescueTeamID);
+                return (null, "You do not belong to the rescue team assigned to this mission.");
+            }
+
+            RescueTeamEntity rescueTeam = rescueMission.RescueTeam!;
+
+            _logger.LogInformation("[RescueMissionService] Validated: User {UserID} belongs to Team {TeamName} (ID: {TeamID})", currentUserId, rescueTeam.TeamName, rescueTeam.RescueTeamID);
+
+            await _unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+                DateTime createdTime = DateTime.UtcNow;
+
+                // Tạo IncidentReport
+                var incidentReport = new IncidentReportEntity
+                {
+                    IncidentReportID = Guid.NewGuid(),
+                    RescueMissionID = request.RescueMissionID,
+                    ReportedID = currentUserId,
+                    Title = request.Title,
+                    Description = request.Description,
+                    Latitiude = request.Latitude,
+                    Longitude = request.Longitude,
+                    Status = "Pending",
+                    CreatedTime = createdTime
+                };
+
+                await _unitOfWork.IncidentReports.AddAsync(incidentReport);
+
+                _logger.LogInformation("[RescueMissionService] IncidentReport created with ID: {IncidentID} for MissionID: {MissionID}", incidentReport.IncidentReportID, request.RescueMissionID);
+
+                // Update RescueMission: Status = Incident
+                rescueMission.Status = RescueMissionSettings.INCIDENT_STATUS;
+
+                _logger.LogInformation("[RescueMissionService] RescueMission {MissionID} status set to Incident", request.RescueMissionID);
+
+                int saveResult = await _unitOfWork.SaveChangesAsync();
+
+                if (saveResult <= 0)
+                {
+                    _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during report incident. MissionID: {MissionID}", request.RescueMissionID);
+                    await _unitOfWork.RollbackTransactionAsync();
+                    return (null, "Failed to save incident report.");
+                }
+
+                await _unitOfWork.CommitTransactionAsync();
+
+                _logger.LogInformation("[RescueMissionService] Transaction committed for ReportIncident. MissionID: {MissionID}", request.RescueMissionID);
+
+                // Gửi message qua Kafka
+                IncidentReportedMessage kafkaMessage = new IncidentReportedMessage
+                {
+                    IncidentReportID = incidentReport.IncidentReportID,
+                    RescueMissionID = rescueMission.RescueMissionID,
+                    RescueTeamID = rescueTeam.RescueTeamID,
+                    TeamName = rescueTeam.TeamName,
+                    ReportedID = currentUserId,
+                    Title = incidentReport.Title,
+                    Description = incidentReport.Description,
+                    Latitude = incidentReport.Latitiude,
+                    Longitude = incidentReport.Longitude,
+                    IncidentStatus = incidentReport.Status,
+                    MissionStatus = rescueMission.Status,
+                    CreatedTime = createdTime
+                };
+
+                await _kafkaProducer.ProduceAsync(
+                    topic: KafkaSettings.INCIDENT_ALERT_TOPIC,
+                    key: incidentReport.IncidentReportID.ToString(),
+                    message: kafkaMessage);
+
+                _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic} for IncidentID: {IncidentID}", KafkaSettings.INCIDENT_ALERT_TOPIC, incidentReport.IncidentReportID);
+
+                // Tạo response DTO
+                IncidentReportResponseDTO response = new IncidentReportResponseDTO
+                {
+                    IncidentReportID = incidentReport.IncidentReportID,
+                    RescueMissionID = rescueMission.RescueMissionID,
+                    ReportedID = currentUserId,
+                    Title = incidentReport.Title,
+                    Description = incidentReport.Description,
+                    Latitude = incidentReport.Latitiude,
+                    Longitude = incidentReport.Longitude,
+                    IncidentStatus = incidentReport.Status,
+                    MissionStatus = rescueMission.Status,
+                    CreatedTime = createdTime,
+                    Message = $"Incident reported for mission {rescueMission.RescueMissionID} by Team {rescueTeam.TeamName}. Mission status locked to Incident."
+                };
+
+                _logger.LogInformation("[RescueMissionService] Successfully reported incident with ID: {IncidentID} for MissionID: {MissionID}", incidentReport.IncidentReportID, request.RescueMissionID);
+
+                return (response, null);
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogError(ex, "[RescueMissionService - Error] ReportIncident failed. Transaction rolled back. MissionID: {MissionID}", request.RescueMissionID);
                 throw;
             }
         }
