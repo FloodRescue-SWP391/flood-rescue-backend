@@ -31,7 +31,7 @@ namespace FloodRescue.Repositories.Entites
         public User? Reported { get; set; }
 
         [Column("ResolvedBy", TypeName = "uniqueidentifier")]
-        public Guid ResolvedBy { get; set; }
+        public Guid? ResolvedBy { get; set; }
         [ForeignKey(nameof(ResolvedBy))]
         [JsonIgnore]
         public User? Resolver { get; set; }

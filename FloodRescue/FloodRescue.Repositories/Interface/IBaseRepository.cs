@@ -49,13 +49,5 @@ namespace FloodRescue.Repositories.Interface
         Task<List<TEntity>> GetAllAsync(
             Expression<Func<TEntity, bool>>? filter,
             params Expression<Func<TEntity, object>>[] includes);
-
-        /// <summary>
-        /// Trả về IQueryable để truy vấn linh hoạt, tạo ra câu truy vấn tối ưu
-        /// Rồi mới ToListAsync(), CountAsync() hay gì đó để biến thành sql
-        /// Phân trang xong, cộng dồn câu truy vấn lại với nhau rồi mới thực sự gọi câu lệnh sql truy vấn
-        /// </summary>
-        /// <returns></returns>
-        IQueryable<TEntity> GetQueryable();
     }
 }
