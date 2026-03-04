@@ -108,5 +108,10 @@ namespace FloodRescue.Repositories.Implements
 
             return await query.ToListAsync();
         }
+
+        public IQueryable<TEntity> GetQueryable()
+        {
+            return _dbSet.AsQueryable(); 
+        }
     }
 }

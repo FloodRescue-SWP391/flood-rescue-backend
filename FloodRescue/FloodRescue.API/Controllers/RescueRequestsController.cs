@@ -8,6 +8,7 @@ using FloodRescue.Services.SharedSetting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace FloodRescue.API.Controllers
 {
@@ -134,6 +135,39 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[RescueRequestsController - Error] TrackRequest failed. ShortCode: {ShortCode}", shortCode);
                 return StatusCode(500, ApiResponse<TrackRequestResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
+
+        [HttpGet("filter")]
+        public async Task<ActionResult<ApiResponse<PagedResult<RescueRequestListResponseDTO>>>> GetFilteredRescueRequests([FromQuery] RescueRequestFilterDTO filter)
+        {
+            _logger.LogInformation("[RescueRequestsController] GET filter called. Status: {Status}, Rescue Type: {Type}, Page: {Page}, Size {Size}", filter.Status, filter.RequestType, filter.PageNumber, filter.PageSize);
+
+
+            try
+            {
+                if (filter.PageNumber < 1)
+                {
+                    filter.PageNumber = 1;
+                }
+
+                if (filter.PageSize < 1 || filter.PageSize > 50)
+                {
+                    filter.PageSize = 10;
+                }
+
+
+                PagedResult<RescueRequestListResponseDTO> result = await _rescueRequestService.GetFilteredRescueRequestAsync(filter);
+
+                _logger.LogInformation("[RescueRequestsController] Filter result: DataCount: {Count}, TotalCount: {Total}",
+                   result.Data.Count, result.TotalCount);
+
+                return Ok(ApiResponse<PagedResult<RescueRequestListResponseDTO>>.Ok(result, "Get filtered rescue requests successfully", 200));
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, "[RescueRequestsController - Error] GET filter failed with error {error}.", ex.Message);
+                return StatusCode(500, ApiResponse<PagedResult<RescueRequestListResponseDTO>>.Fail("Internal server error", 500));
             }
         }
     }
