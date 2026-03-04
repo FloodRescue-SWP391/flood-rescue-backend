@@ -434,7 +434,9 @@ namespace FloodRescue.Services.Implements.RescueRequest
 
         public async Task<PagedResult<RescueRequestListResponseDTO>> GetFilteredRescueRequestAsync(RescueRequestFilterDTO filter)
         {
-            _logger.LogInformation("[RescueRequestService] GetFilterdRescueRequest called with Status: {Status}, Type: {Type}, Page: {Page}, Size: {Size}", filter.Status, filter.RequestType, filter.PageNumber, filter.PageSize);
+            _logger.LogInformation("[RescueRequestService] GetFilterdRescueRequest called with Status: {Status}, Type: {Type}, Page: {Page}, Size: {Size}",
+                 filter.Status != null ? string.Join(",", filter.Status) : "All",
+                 filter.RequestType, filter.PageNumber, filter.PageSize);
 
             //cache key là những tiêu chí lọc
             string cacheKey = BuildFilterCacheKey(filter);
@@ -457,9 +459,9 @@ namespace FloodRescue.Services.Implements.RescueRequest
             // "Pending", "InProgress"
             query = query.Where(rr => !rr.IsDeleted);
 
-            if (!string.IsNullOrEmpty(filter.Status))
+            if (filter.Status != null && filter.Status.Count > 0)
             {
-                query = query.Where(rr => rr.Status == filter.Status);
+                query = query.Where(rr => filter.Status.Contains(rr.Status));
             }
 
             //Filter theo RequestType của Rescue Request
@@ -521,7 +523,8 @@ namespace FloodRescue.Services.Implements.RescueRequest
 
         private string BuildFilterCacheKey(RescueRequestFilterDTO filter)
         {
-            return $"{RESCUE_REQUEST_FILTER_PREFIX}s={filter.Status}|t={filter.RequestType}|f={filter.FromDate:yyyyMMdd}|to={filter.ToDate:yyyyMMdd}|p={filter.PageNumber}|ps={filter.PageSize}";
+            string statusKey = filter.Status != null && filter.Status.Count > 0 ? string.Join(",", filter.Status.OrderBy(s => s)) : "";
+            return $"{RESCUE_REQUEST_FILTER_PREFIX}s={statusKey}|t={filter.RequestType}|f={filter.FromDate:yyyyMMdd}|to={filter.ToDate:yyyyMMdd}|p={filter.PageNumber}|ps={filter.PageSize}";
         }
 
 

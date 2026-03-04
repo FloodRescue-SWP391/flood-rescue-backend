@@ -8,7 +8,7 @@ namespace FloodRescue.Services.DTO.Request.RescueRequest
 {
     public class RescueRequestFilterDTO
     {
-        public string? Status { get; set; }
+        public List<string>? Status { get; set; }
         public string? RequestType { get; set; }
 
 
