@@ -206,6 +206,12 @@ namespace FloodRescue.Services.Mapper
 
             // mapper IncidentResolvedMessage -> IncidentResolvedNotification
             CreateMap<IncidentResolvedMessage, IncidentResolvedNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
+            CreateMap<RescueRequest, RescueRequestListResponseDTO>()
+                .ForMember(dest => dest.RequestType, opt => opt.MapFrom(src => src.RequestType));
+
+            CreateMap<RescueMission, RescueMissionListResponseDTO>()
+                .ForMember(dest => dest.CitizenAddress, opt => opt.MapFrom(src => src.RescueRequest != null ? src.RescueRequest.Address : null))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status));
 
             
         }
