@@ -206,7 +206,10 @@ namespace FloodRescue.Services.Mapper
 
             CreateMap<RescueRequest, RescueRequestListResponseDTO>()
                 .ForMember(dest => dest.RequestType, opt => opt.MapFrom(src => src.RequestType));
-                
+
+            CreateMap<RescueMission, RescueMissionListResponseDTO>()
+                .ForMember(dest => dest.CitizenAddress, opt => opt.MapFrom(src => src.RescueRequest != null ? src.RescueRequest.Address : null))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status));
 
             
         }

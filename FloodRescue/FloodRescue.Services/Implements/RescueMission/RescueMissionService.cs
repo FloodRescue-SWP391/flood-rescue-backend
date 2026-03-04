@@ -24,6 +24,8 @@ using RescueTeamEntity = FloodRescue.Repositories.Entites.RescueTeam;
 using RescueTeamMemberEntity = FloodRescue.Repositories.Entites.RescueTeamMember;
 using ReliefOrderEntity = FloodRescue.Repositories.Entites.ReliefOrder;
 using FloodRescue.Services.Interface.Cache;
+using FloodRescue.Services.BusinessModels;
+using Microsoft.EntityFrameworkCore;
 
 namespace FloodRescue.Services.Implements.RescueMission
 {
@@ -37,6 +39,9 @@ namespace FloodRescue.Services.Implements.RescueMission
 
         // Cache keys
         private const string PENDING_MISSIONS_KEY_PREFIX = "rescuemission:pending:team:";
+
+        private const string MISSION_FILTER_PREFIX = "rescuemission:filter";
+
         public RescueMissionService(IUnitOfWork unitOfWork,
             ILogger<RescueMissionService> logger,
             IKafkaProducerService kafkaProducer,
@@ -132,7 +137,13 @@ namespace FloodRescue.Services.Implements.RescueMission
                 response.Message = $"Rescue mission dispatched successfully for Team {rescueTeam.RescueTeamID} - Team Name {rescueTeam.TeamName}.";
 
                 await _unitOfWork.CommitTransactionAsync();
+
                 await _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}{request.RescueTeamID}");
+
+                await _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*");
+
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix {prefix}", MISSION_FILTER_PREFIX);
+
                 _logger.LogInformation("[RescueMissionService - Redis] Cleared pending missions cache for TeamID: {TeamID}", request.RescueTeamID);
                 return response;
                 
@@ -327,8 +338,15 @@ namespace FloodRescue.Services.Implements.RescueMission
                 response.Message = request.IsAccepted ? $"Rescue mission with ID {rescueMission.RescueMissionID} has been accepted by Team {rescueTeam.TeamName}." : $"Rescue mission with ID {rescueMission.RescueMissionID} has been declined by Team {rescueTeam.TeamName}.";
 
                 await _unitOfWork.CommitTransactionAsync();
+
                 await _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}{rescueTeam.RescueTeamID}");
+             
                 _logger.LogInformation("[RescueMissionService - Redis] Cleared pending missions cache for TeamID: {TeamID}", rescueTeam.RescueTeamID);
+
+                await _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*");
+
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix {prefix}", MISSION_FILTER_PREFIX);
+
                 return response;
 
             }
@@ -398,6 +416,10 @@ namespace FloodRescue.Services.Implements.RescueMission
                 }
 
                 await _unitOfWork.CommitTransactionAsync();
+
+                await _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*");
+
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix {prefix}", MISSION_FILTER_PREFIX);
 
                 _logger.LogInformation("[RescueMissionService] Transaction committed for CompleteMission. MissionID: {MissionID}", request.RescueMissionID);
 
@@ -550,6 +572,121 @@ namespace FloodRescue.Services.Implements.RescueMission
                 _logger.LogError(ex, "[RescueMissionService - Error] ConfirmPickup failed. Transaction rolled back. OrderID: {OrderID}, MissionID: {MissionID}", request.ReliefOrderID, request.RescueMissionID);
                 throw;
             }
+        }
+
+
+        public async Task<PagedResult<RescueMissionListResponseDTO>> GetFilteredMissionAsync(RescueMissionFilterDTO filter)
+        {
+            _logger.LogInformation("[RescueMissionService] GetFilteredMissions called. Statuses: {Statuses}, TeamID: {TeamID}, Page: {Page}, Size: {Size}",
+                filter.Statuses != null ? string.Join(",", filter.Statuses) : "All",
+                filter.RescueTeamID, filter.PageNumber, filter.PageSize);
+
+            string cacheKey = BuildMissionFilterCacheKey(filter);
+
+            PagedResult<RescueMissionListResponseDTO>? cached = await _cacheService.GetAsync<PagedResult<RescueMissionListResponseDTO>>(cacheKey);
+
+            if (cached != null)
+            {
+                _logger.LogInformation("[RescueMissionService - Redis] Cache hit for filter key: {Key}. TotalCount: {Count}", cacheKey, cached.TotalCount);
+                return cached;
+            }
+
+            _logger.LogInformation("[RescueMissionService - Redis] Cache miss for filter key: {Key}. Querying database.", cacheKey);
+
+            // Lấy bản vẽ query từ base repo để thiết kế bản vẽ query - tức câu lệnh query rồi mới thực hiện truy vấn
+            IQueryable<RescueMissionEntity> query = _unitOfWork.RescueMissions.GetQueryable();
+
+            query = query.Where(rm => !rm.IsDeleted);
+
+            if (filter.Statuses != null && filter.Statuses.Count > 0)
+            {
+                query = query.Where(rm => filter.Statuses.Contains(rm.Status));   
+            }
+
+            if (filter.RescueTeamID.HasValue)
+            {
+                query = query.Where(rm => rm.RescueTeamID == filter.RescueTeamID.Value);
+            }
+
+
+            //lọc theo các mốc thời gian
+
+            // mốc AssignedAt -> mốc thời gian Coordinator đã gắn các nhiệm vụ
+            if (filter.AssignedFromDate.HasValue)
+            {
+                query = query.Where(rm => rm.AssignedAt >= filter.AssignedFromDate.Value);
+            }
+
+            if (filter.AssignedToDate.HasValue)
+            {
+                query = query.Where(rm => rm.AssignedAt <= filter.AssignedToDate.Value);
+            }
+
+            // mốc StartTime thời điểm team bấm "chấp nhận" -> InProgress
+            // chưa đăng kí tức là start time chưa có trong bảng mission 
+            // nếu value start from date ngoài request được truyền vô mà rescue mission chưa có thì bị loại
+            // vd: filter.StartFromDate.HasValue != null NHƯNG RescueMission.StartTime.Value == null
+            if (filter.StartFromDate.HasValue)
+            {
+                query = query.Where(rm => rm.StartTime.HasValue && rm.StartTime.Value >= filter.StartFromDate.Value);
+            }
+
+            if (filter.StartToDate.HasValue)
+            {
+                query = query.Where(rm => rm.StartTime.HasValue && rm.StartTime.Value <= filter.StartToDate.Value);
+            }
+
+            // mốc EndTime thời điểm team bấm hoàn thành -> Completed
+            if (filter.EndFromDate.HasValue)
+            {
+                query = query.Where(rm => rm.EndTime.HasValue && rm.EndTime >= filter.EndFromDate.Value);
+            }
+
+            if (filter.EndToDate.HasValue)
+            {
+                query = query.Where(rm => rm.EndTime.HasValue && rm.EndTime.Value <= filter.EndToDate.Value);
+            }
+
+            int totalCount = await query.CountAsync();
+
+            List<RescueMissionEntity> entities = await query
+                                                        .OrderByDescending(rm => rm.AssignedAt)
+                                                        .Skip((filter.PageNumber - 1) * filter.PageSize)
+                                                        .Take(filter.PageSize)
+                                                        .AsNoTracking()
+                                                        .ToListAsync();
+
+            List<RescueMissionListResponseDTO> dtos = _mapper.Map<List<RescueMissionListResponseDTO>>(entities);
+
+            //Đóng gói sau đó Cache dữ liệu
+            PagedResult<RescueMissionListResponseDTO> result = new()
+            {
+                Data = dtos,
+                TotalCount = totalCount
+            };
+
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+
+            _logger.LogInformation("[RescueMissionService - Redis] Cached filter result. Key: {Key}, DataCount: {Count}, TotalCount: {Total}", cacheKey, dtos.Count, totalCount);
+
+            return result;
+
+        }
+
+        private string BuildMissionFilterCacheKey(RescueMissionFilterDTO filter)
+        {
+            string statusKey = filter.Statuses != null && filter.Statuses.Count > 0
+                ? string.Join(",", filter.Statuses.OrderBy(s => s))
+                : "";
+
+            string cacheKey = $"{MISSION_FILTER_PREFIX}s={statusKey}" +
+                               $"|t={filter.RescueTeamID}" +
+                               $"|af={filter.AssignedFromDate:yyyyMMdd}|at={filter.AssignedToDate:yyyyMMdd}" +
+                               $"|sf={filter.StartFromDate:yyyyMMdd}|st={filter.StartToDate:yyyyMMdd}" +
+                               $"|ef={filter.EndFromDate:yyyyMMdd}|et={filter.EndToDate:yyyyMMdd}" +
+                               $"|p={filter.PageNumber}|ps={filter.PageSize}";
+
+            return cacheKey;
         }
     }
 }
