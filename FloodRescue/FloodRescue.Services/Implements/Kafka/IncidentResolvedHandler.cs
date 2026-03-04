@@ -45,13 +45,15 @@ namespace FloodRescue.Services.Implements.Kafka
                 IncidentResolvedNotification notification = _mapper.Map<IncidentResolvedNotification>(kafkaMessage);
                 notification.Message = $"Mission {kafkaMessage.RescueMissionID} has been cancelled due to incident resolution. Team {kafkaMessage.TeamName} is now available and released from duty.";
 
-                // Bắn SignalR tới Rescue Team group (báo cho team biết nhiệm vụ đã hủy, đội đã được giải phóng)
+                // Bắn SignalR tới Rescue Team Leader của đội liên quan (báo cho leader biết nhiệm vụ đã hủy, đội đã được giải phóng)
+                var leaderGroupName = $"Team_{kafkaMessage.RescueTeamID}_Leader";
+
                 await _realtimeNotificationService.SendToGroupAsync(
-                    groupName: GroupSettings.RESCUE_TEAM_GROUP,
+                    groupName: leaderGroupName,
                     method: "IncidentResolved",
                     message: notification);
 
-                _logger.LogInformation("[IncidentResolvedHandler - SignalR] Sent IncidentResolvedNotification to RescueTeam group for IncidentID {IncidentID}", kafkaMessage.IncidentReportID);
+                _logger.LogInformation("[IncidentResolvedHandler - SignalR] Sent IncidentResolvedNotification to group {GroupName} for IncidentID {IncidentID}", leaderGroupName, kafkaMessage.IncidentReportID);
             }
             catch (JsonException ex)
             {
