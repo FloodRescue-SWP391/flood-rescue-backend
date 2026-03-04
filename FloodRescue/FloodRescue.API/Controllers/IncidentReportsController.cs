@@ -1,6 +1,8 @@
 ﻿using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.IncidentReportRequest;
+using FloodRescue.Services.DTO.Request.RescueMissionRequest;
 using FloodRescue.Services.DTO.Response.IncidentResponse;
+using FloodRescue.Services.DTO.Response.RescueMissionResponse;
 using FloodRescue.Services.Interface.IncidentReport;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -113,6 +115,53 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[IncidentReportsController - Error] ResolveIncident failed. IncidentID: {IncidentID}", request.IncidentReportID);
                 return StatusCode(500, ApiResponse<ResolvedIncidentResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
+
+
+         /// <summary>
+        /// Đội cứu hộ báo cáo sự cố trong khi đang thực hiện nhiệm vụ
+        /// POST /api/incidentreports/report
+        /// </summary>
+        [HttpPost("report")]
+        [Authorize(Roles = "Rescue Team Member")]
+        public async Task<ActionResult<ApiResponse<IncidentReportResponseDTO>>> ReportIncident([FromBody] IncidentReportRequestDTO request)
+        {
+            _logger.LogInformation("[IncidentReportsController] POST report-incident called. MissionID: {MissionID}", request.RescueMissionID);
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    _logger.LogWarning("[IncidentReportsController] ReportIncident validation failed. ModelState invalid.");
+                    return BadRequest(ApiResponse<IncidentReportResponseDTO>.Fail("Data is not valid, please check again.", 400));
+                }
+
+                // Lấy CurrentUserID từ JWT Token
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid currentUserId))
+                {
+                    _logger.LogWarning("[IncidentReportsController] Unable to extract UserID from JWT token.");
+                    return Unauthorized(ApiResponse<IncidentReportResponseDTO>.Fail("Invalid token. Please login again.", 401));
+                }
+
+                _logger.LogInformation("[IncidentReportsController] ReportIncident by UserID: {UserID} for MissionID: {MissionID}", currentUserId, request.RescueMissionID);
+
+                var (data, errorMessage) = await _incidentReportService.ReportIncidentAsync(request, currentUserId);
+
+                if (data == null)
+                {
+                    _logger.LogWarning("[IncidentReportsController] ReportIncident returned null. MissionID: {MissionID}. Error: {Error}", request.RescueMissionID, errorMessage);
+                    return BadRequest(ApiResponse<IncidentReportResponseDTO>.Fail(errorMessage ?? "Failed to report incident.", 400));
+                }
+
+                _logger.LogInformation("[IncidentReportsController] ReportIncident success. IncidentID: {IncidentID}, MissionID: {MissionID}", data.IncidentReportID, request.RescueMissionID);
+                return Ok(ApiResponse<IncidentReportResponseDTO>.Ok(data, "Incident reported successfully.", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[IncidentReportsController - Error] ReportIncident failed. MissionID: {MissionID}", request.RescueMissionID);
+                return StatusCode(500, ApiResponse<IncidentReportResponseDTO>.Fail("Internal server error", 500));
             }
         }
     }
