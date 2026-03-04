@@ -211,7 +211,12 @@ namespace FloodRescue.Services.Mapper
                 .ForMember(dest => dest.CitizenAddress, opt => opt.MapFrom(src => src.RescueRequest != null ? src.RescueRequest.Address : null))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status));
 
-            
+            // Mapping IncidentReport -> IncidentDetailResponseDTO
+            CreateMap<IncidentReport, IncidentDetailResponseDTO>()
+                .ForMember(dest => dest.Latitude, opt => opt.MapFrom(src => src.Latitiude)) // Fix typo từ entity
+                .ForMember(dest => dest.ReporterName, opt => opt.MapFrom(src => src.Reported != null ? src.Reported.FullName : "Unknown"))
+                .ForMember(dest => dest.ResolverName, opt => opt.MapFrom(src => src.Resolver != null ? src.Resolver.FullName : null))
+                .ForMember(dest => dest.TeamName, opt => opt.Ignore()); // Sẽ set thủ công vì cần query thêm
         }
     }
 }

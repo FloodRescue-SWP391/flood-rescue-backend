@@ -1,4 +1,5 @@
-﻿using FloodRescue.Repositories.Interface;
+﻿using AutoMapper;
+using FloodRescue.Repositories.Interface;
 using FloodRescue.Services.DTO.Response.IncidentResponse;
 using FloodRescue.Services.Implements.Cache;
 using FloodRescue.Services.Interface.Cache;
@@ -20,15 +21,17 @@ namespace FloodRescue.Services.Implements.IncidentReport
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<IncidentReportService> _logger;
         private readonly ICacheService _cacheService;
+        private readonly IMapper _mapper;
 
         // Cache keys
         private const string INCIDENT_HISTORY_KEY = "incident:history:all";
         private const string PENDING_INCIDENTS_KEY = "incident:pending:all";
-        public IncidentReportService(IUnitOfWork unitOfWork, ILogger<IncidentReportService> logger, ICacheService cacheService)
+        public IncidentReportService(IUnitOfWork unitOfWork, ILogger<IncidentReportService> logger, ICacheService cacheService, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
             _cacheService = cacheService;
+            _mapper = mapper;
         }
 
         /// <summary>
@@ -178,7 +181,48 @@ namespace FloodRescue.Services.Implements.IncidentReport
             _logger.LogInformation("[IncidentReportService - Redis] Cached {Count} pending incidents.", result.Count);
             return result;
         }
+        /// <summary>
+        /// Lấy chi tiết một sự cố theo ID
+        /// </summary>
+        public async Task<IncidentDetailResponseDTO?> GetIncidentDetailByIdAsync(Guid incidentReportId)
+        {
+            _logger.LogInformation("[IncidentReportService] GetIncidentDetailById called with ID: {Id}", incidentReportId);
+            // 1. Query IncidentReport với Include: RescueMission, Reported (User), Resolver (User)
+            IncidentReportEntity? incident = await _unitOfWork.IncidentReports.GetAsync(
+                filter: ir => ir.IncidentReportID == incidentReportId,
+                includes: new System.Linq.Expressions.Expression<Func<IncidentReportEntity, object>>[]
+                {
+                    ir => ir.RescueMission!,
+                    ir => ir.Reported!,
+                    ir => ir.Resolver!
+                }
+            );
+            // 2. Nếu không tìm thấy, trả về null (Controller sẽ trả 404)
+            if (incident == null)
+            {
+                _logger.LogWarning("[IncidentReportService] Incident not found with ID: {Id}", incidentReportId);
+                return null;
+            }
+            // 3. Lấy TeamName từ RescueMission -> RescueTeam
+            string teamName = "Unknown";
+            if (incident.RescueMission != null)
+            {
+                var mission = await _unitOfWork.RescueMissions.GetAsync(
+                    filter: m => m.RescueMissionID == incident.RescueMissionID,
+                    includes: m => m.RescueTeam!
+                );
 
+                if (mission?.RescueTeam != null)
+                {
+                    teamName = mission.RescueTeam.TeamName;
+                }
 
+            }
+            // 4. Mapping sang DTO bằng AutoMapper
+            IncidentDetailResponseDTO result = _mapper.Map<IncidentDetailResponseDTO>(incident);
+            result.TeamName = teamName; // Set TeamName thủ công vì cần query riêng
+            _logger.LogInformation("[IncidentReportService] GetIncidentDetailById success for ID: {Id}", incidentReportId);
+            return result;
+        }
     }
 }

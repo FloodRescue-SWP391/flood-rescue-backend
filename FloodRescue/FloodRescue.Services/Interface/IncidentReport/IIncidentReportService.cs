@@ -18,5 +18,11 @@ namespace FloodRescue.Services.Interface.IncidentReport
         /// Lấy lịch sử sự cố đã xử lý (Resolved) - Cho Coordinator/Admin
         /// </summary>
         Task<List<IncidentHistoryResponseDTO>> GetIncidentHistoryAsync();
+
+
+        /// <summary>
+        /// Lấy chi tiết một sự cố theo ID - Cho Coordinator/Admin
+        /// </summary>
+        Task<IncidentDetailResponseDTO?> GetIncidentDetailByIdAsync(Guid incidentReportId);
     }
 }
