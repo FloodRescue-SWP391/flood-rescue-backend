@@ -197,6 +197,40 @@ namespace FloodRescue.API.Controllers
                 return StatusCode(500, ApiResponse<CompleteMissionResponseDTO>.Fail("Internal server error", 500));
             }
         }
+
+
+        [HttpGet("filter")]
+        public async Task<ActionResult<ApiResponse<PagedResult<RescueMissionListResponseDTO>>>> GetFilterdMissions([FromQuery]RescueMissionFilterDTO filter)
+        {
+            _logger.LogInformation("[RescueMissionController] GET filter missions called. Statuses: {Statuses}, TeamID: {TeamID}, Page: {Page}, Size: {Size}",
+               filter.Statuses != null ? string.Join(",", filter.Statuses) : "All",
+               filter.RescueTeamID, filter.PageNumber, filter.PageSize);
+
+            try
+            {
+                if(filter.PageNumber < 1)
+                {
+                    filter.PageNumber = 1;
+                }
+
+                if (filter.PageSize < 1 || filter.PageSize > 50)
+                {
+                    filter.PageSize = 10;
+                }
+
+                PagedResult<RescueMissionListResponseDTO> result = await _rescueMissionService.GetFilteredMissionAsync(filter);
+
+                _logger.LogInformation("[RescueMissionController] Filter result: DataCount: {Count}, TotalCount: {Total}",
+                  result.Data.Count, result.TotalCount);
+
+                return Ok(ApiResponse<PagedResult<RescueMissionListResponseDTO>>.Ok(result, "Get filtered mission successfully", 200));
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex, "[RescueMissionController - Error] GET filter missions failed.");
+                return StatusCode(500, ApiResponse<PagedResult<RescueMissionListResponseDTO>>.Fail("Internal Server Error", 500));
+            }
+        }
     }
 }
 
