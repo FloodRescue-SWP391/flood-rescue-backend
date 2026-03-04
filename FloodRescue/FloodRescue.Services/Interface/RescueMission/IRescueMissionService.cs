@@ -21,5 +21,10 @@ namespace FloodRescue.Services.Interface.RescueMission
         Task<(List<PendingMissionResponseDTO>? Data, string? ErrorMessage)> GetPendingMissionsAsync(Guid currentUserId);
         Task<ConfirmPickupResponseDTO?> ConfirmPickupAsync(ConfirmPickUpRequestDTO request);
         Task<PagedResult<RescueMissionListResponseDTO>> GetFilteredMissionAsync(RescueMissionFilterDTO filter);
+
+        /// <summary>
+        /// Lấy chi tiết một nhiệm vụ theo ID - Cho Coordinator/Admin/RescueTeam (Team chỉ xem của mình)
+        /// </summary>
+        Task<(RescueMissionDetailResponseDTO? Data, string? ErrorMessage)> GetMissionDetailByIdAsync(Guid missionId, Guid currentUserId, string userRole);
     }
 }

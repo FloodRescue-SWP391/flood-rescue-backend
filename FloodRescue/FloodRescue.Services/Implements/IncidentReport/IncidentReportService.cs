@@ -26,6 +26,7 @@ namespace FloodRescue.Services.Implements.IncidentReport
         // Cache keys
         private const string INCIDENT_HISTORY_KEY = "incident:history:all";
         private const string PENDING_INCIDENTS_KEY = "incident:pending:all";
+        private const string INCIDENT_DETAIL_KEY_PREFIX = "incident:detail:";
         public IncidentReportService(IUnitOfWork unitOfWork, ILogger<IncidentReportService> logger, ICacheService cacheService, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
@@ -187,7 +188,16 @@ namespace FloodRescue.Services.Implements.IncidentReport
         public async Task<IncidentDetailResponseDTO?> GetIncidentDetailByIdAsync(Guid incidentReportId)
         {
             _logger.LogInformation("[IncidentReportService] GetIncidentDetailById called with ID: {Id}", incidentReportId);
-            // 1. Query IncidentReport với Include: RescueMission, Reported (User), Resolver (User)
+            // 1. Check cache first
+            string cacheKey = $"{INCIDENT_DETAIL_KEY_PREFIX}{incidentReportId}";
+            var cached = await _cacheService.GetAsync<IncidentDetailResponseDTO>(cacheKey);
+
+            if (cached != null)
+            {
+                _logger.LogInformation("[IncidentReportService - Redis] Cache hit for incident detail. ID: {Id}", incidentReportId);
+                return cached;
+            }
+            // 2. Query IncidentReport với Include: RescueMission, Reported (User), Resolver (User)
             IncidentReportEntity? incident = await _unitOfWork.IncidentReports.GetAsync(
                 filter: ir => ir.IncidentReportID == incidentReportId,
                 includes: new System.Linq.Expressions.Expression<Func<IncidentReportEntity, object>>[]
@@ -197,13 +207,13 @@ namespace FloodRescue.Services.Implements.IncidentReport
                     ir => ir.Resolver!
                 }
             );
-            // 2. Nếu không tìm thấy, trả về null (Controller sẽ trả 404)
+            // 3. Nếu không tìm thấy, trả về null (Controller sẽ trả 404)
             if (incident == null)
             {
                 _logger.LogWarning("[IncidentReportService] Incident not found with ID: {Id}", incidentReportId);
                 return null;
             }
-            // 3. Lấy TeamName từ RescueMission -> RescueTeam
+            // 4. Lấy TeamName từ RescueMission -> RescueTeam
             string teamName = "Unknown";
             if (incident.RescueMission != null)
             {
@@ -218,9 +228,12 @@ namespace FloodRescue.Services.Implements.IncidentReport
                 }
 
             }
-            // 4. Mapping sang DTO bằng AutoMapper
+            // 5. Mapping sang DTO bằng AutoMapper
             IncidentDetailResponseDTO result = _mapper.Map<IncidentDetailResponseDTO>(incident);
             result.TeamName = teamName; // Set TeamName thủ công vì cần query riêng
+            // 6. Cache the result
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("[IncidentReportService - Redis] Cached incident detail for ID: {Id}", incidentReportId);
             _logger.LogInformation("[IncidentReportService] GetIncidentDetailById success for ID: {Id}", incidentReportId);
             return result;
         }

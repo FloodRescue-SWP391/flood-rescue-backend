@@ -24,6 +24,7 @@ using FloodRescue.Services.DTO.Kafka;
 using FloodRescue.Services.DTO.SignalR;
 using FloodRescue.Services.DTO.Response.RescueMissionResponse;
 using System.Net;
+using FloodRescue.Services.DTO.Response.IncidentResponse;
 
 namespace FloodRescue.Services.Mapper
 {
@@ -217,6 +218,12 @@ namespace FloodRescue.Services.Mapper
                 .ForMember(dest => dest.ReporterName, opt => opt.MapFrom(src => src.Reported != null ? src.Reported.FullName : "Unknown"))
                 .ForMember(dest => dest.ResolverName, opt => opt.MapFrom(src => src.Resolver != null ? src.Resolver.FullName : null))
                 .ForMember(dest => dest.TeamName, opt => opt.Ignore()); // Sẽ set thủ công vì cần query thêm
+
+            CreateMap<RescueMission, RescueMissionDetailResponseDTO>()
+                .ForMember(dest => dest.TeamName, opt => opt.MapFrom(src => src.RescueTeam != null ? src.RescueTeam.TeamName : "Unknown"))
+                .ForMember(dest => dest.RequestInfo, opt => opt.Ignore()); // Sẽ map thủ công từ RescueRequest
+                                                                           // Mapping RescueRequest -> VictimInfoDTO
+            CreateMap<RescueRequest, VictimInfoDTO>();
         }
     }
 }

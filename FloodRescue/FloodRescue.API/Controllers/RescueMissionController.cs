@@ -63,7 +63,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPost("dispatch")]
-         [Authorize(Roles = "Rescue Coordinator")]
+        [Authorize(Roles = "Rescue Coordinator")]
         public async Task<ActionResult<ApiResponse<DispatchMissionResponseDTO>>> DispatchMission([FromBody] DispatchMissionRequestDTO request)
         {
             _logger.LogInformation("[RescueMissionController] POST dispatch called. RequestID: {RequestID}, TeamID: {TeamID}", request.RescueRequestID, request.RescueTeamID);
@@ -87,7 +87,7 @@ namespace FloodRescue.API.Controllers
                 return Ok(ApiResponse<DispatchMissionResponseDTO>.Ok(result, "Dispatch Mission Successfully", 200));
 
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "[RescueMissionController - Error] Dispatch failed. RequestID: {RequestID}, TeamID: {TeamID}", request.RescueRequestID, request.RescueTeamID);
                 return StatusCode(500, ApiResponse<DispatchMissionResponseDTO>.Fail("Internal server error", 500));
@@ -106,7 +106,7 @@ namespace FloodRescue.API.Controllers
                 {
                     _logger.LogWarning("[RescueMissionController] Respond validation failed. ModelState invalid.");
                     return BadRequest(ApiResponse<RespondMissionResponseDTO>.Fail("Data is not valid, please check again.", 400));
-    
+
                 }
 
                 if (!request.IsAccepted && string.IsNullOrWhiteSpace(request.RejectReason))
@@ -123,12 +123,12 @@ namespace FloodRescue.API.Controllers
                     return NotFound(ApiResponse<RespondMissionResponseDTO>.Fail("Can not respond mission, mission may not found or not assigned status, please check again", 404));
                 }
 
-                string successMessage = request.IsAccepted ? "Mission accepted successfully." : "Mission rejected successfully.";       
+                string successMessage = request.IsAccepted ? "Mission accepted successfully." : "Mission rejected successfully.";
                 _logger.LogInformation("[RescueMissionController] Respond success. MissionID: {MissionID}, Result: {Result}", request.RescueMissionID, successMessage);
-                return Ok(ApiResponse<RespondMissionResponseDTO>.Ok(result, successMessage, 200));  
+                return Ok(ApiResponse<RespondMissionResponseDTO>.Ok(result, successMessage, 200));
 
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "[RescueMissionController - Error] Respond failed. MissionID: {MissionID}", request.RescueMissionID);
                 return StatusCode(500, ApiResponse<RespondMissionResponseDTO>.Fail("Internal server error", 500));
@@ -200,7 +200,7 @@ namespace FloodRescue.API.Controllers
 
 
         [HttpGet("filter")]
-        public async Task<ActionResult<ApiResponse<PagedResult<RescueMissionListResponseDTO>>>> GetFilterdMissions([FromQuery]RescueMissionFilterDTO filter)
+        public async Task<ActionResult<ApiResponse<PagedResult<RescueMissionListResponseDTO>>>> GetFilterdMissions([FromQuery] RescueMissionFilterDTO filter)
         {
             _logger.LogInformation("[RescueMissionController] GET filter missions called. Statuses: {Statuses}, TeamID: {TeamID}, Page: {Page}, Size: {Size}",
                filter.Statuses != null ? string.Join(",", filter.Statuses) : "All",
@@ -208,7 +208,7 @@ namespace FloodRescue.API.Controllers
 
             try
             {
-                if(filter.PageNumber < 1)
+                if (filter.PageNumber < 1)
                 {
                     filter.PageNumber = 1;
                 }
@@ -225,10 +225,59 @@ namespace FloodRescue.API.Controllers
 
                 return Ok(ApiResponse<PagedResult<RescueMissionListResponseDTO>>.Ok(result, "Get filtered mission successfully", 200));
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "[RescueMissionController - Error] GET filter missions failed.");
                 return StatusCode(500, ApiResponse<PagedResult<RescueMissionListResponseDTO>>.Fail("Internal Server Error", 500));
+            }
+        }
+        /// <summary>
+        /// Lấy chi tiết một nhiệm vụ theo ID - Cho Coordinator/Admin/RescueTeam
+        /// GET /api/rescuemission/{id}
+        /// </summary>
+        [HttpGet("{id:guid}")]
+        [Authorize(Roles = "Rescue Coordinator,Admin,Rescue Team Member")]
+        public async Task<ActionResult<ApiResponse<RescueMissionDetailResponseDTO>>> GetMissionDetail(Guid id)
+        {
+            _logger.LogInformation("[RescueMissionController] GET mission detail called with ID: {Id}", id);
+
+            try
+            {
+                // 1. Lấy UserID từ JWT Token
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid currentUserId))
+                {
+                    _logger.LogWarning("[RescueMissionController] Unable to extract UserID from JWT token.");
+                    return Unauthorized(ApiResponse<RescueMissionDetailResponseDTO>.Fail("Invalid token. Please login again.", 401));
+                }
+
+                // 2. Lấy Role từ JWT Token
+                var roleClaim = User.FindFirst(ClaimTypes.Role);
+                string userRole = roleClaim?.Value ?? string.Empty;
+
+                // 3. Gọi service
+                var (data, errorMessage) = await _rescueMissionService.GetMissionDetailByIdAsync(id, currentUserId, userRole);
+
+                // 4. Xử lý kết quả
+                if (errorMessage == "Mission not found")
+                {
+                    _logger.LogWarning("[RescueMissionController] Mission not found with ID: {Id}", id);
+                    return NotFound(ApiResponse<RescueMissionDetailResponseDTO>.Fail(errorMessage, 404));
+                }
+
+                if (errorMessage != null)
+                {
+                    _logger.LogWarning("[RescueMissionController] GetMissionDetail failed: {Error}", errorMessage);
+                    return StatusCode(403, ApiResponse<RescueMissionDetailResponseDTO>.Fail(errorMessage, 403));
+                }
+
+                _logger.LogInformation("[RescueMissionController] GetMissionDetail success for ID: {Id}", id);
+                return Ok(ApiResponse<RescueMissionDetailResponseDTO>.Ok(data!, "Get mission detail successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueMissionController - Error] GetMissionDetail failed for ID: {Id}", id);
+                return StatusCode(500, ApiResponse<RescueMissionDetailResponseDTO>.Fail("Internal server error", 500));
             }
         }
     }
