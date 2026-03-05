@@ -1,6 +1,7 @@
 ﻿using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.RescueMissionRequest;
 using FloodRescue.Services.DTO.Response.RescueMissionResponse;
+using FloodRescue.Services.DTO.Response.RescueTeamResponse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,5 +27,10 @@ namespace FloodRescue.Services.Interface.RescueMission
         /// Lấy chi tiết một nhiệm vụ theo ID - Cho Coordinator/Admin/RescueTeam (Team chỉ xem của mình)
         /// </summary>
         Task<(RescueMissionDetailResponseDTO? Data, string? ErrorMessage)> GetMissionDetailByIdAsync(Guid missionId, Guid currentUserId, string userRole);
+
+        /// <summary>
+        /// Lấy danh sách thành viên của một đội cứu hộ (Đội trưởng luôn ở đầu)
+        /// </summary>
+        Task<(List<RescueTeamMemberResponseDTO>? Data, string? ErrorMessage)> GetTeamMembersAsync(Guid teamId, Guid currentUserId, string userRole);
     }
 }

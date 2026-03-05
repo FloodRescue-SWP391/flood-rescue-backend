@@ -39,6 +39,7 @@ namespace FloodRescue.Services.Implements.IncidentReport
         // Cache keys
         private const string INCIDENT_HISTORY_KEY = "incident:history:all";
         private const string PENDING_INCIDENTS_KEY = "incident:pending:all";
+        private const string INCIDENT_DETAIL_KEY_PREFIX = "incident:detail:";
         public IncidentReportService(IUnitOfWork unitOfWork, ILogger<IncidentReportService> logger, ICacheService cacheService, IKafkaProducerService kafkaProducer,IMapper mapper)
         {
             _unitOfWork = unitOfWork;

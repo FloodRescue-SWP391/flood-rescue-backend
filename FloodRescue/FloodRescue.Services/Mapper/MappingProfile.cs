@@ -94,14 +94,14 @@ namespace FloodRescue.Services.Mapper
                     destinationMember: destination => destination.ActionMessage,
                     opt => opt.MapFrom(src => "Please proceed to the rescue location immediately in 5 minutes.")
                 );
-            
-            
+
+
             CreateMap<RescueRequest, MissionAssignedMessage>()
                 .ForMember(dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
 
 
             CreateMap<RescueTeam, MissionAssignedMessage>();
-  
+
             CreateMap<RescueMission, MissionAssignedMessage>()
                 .ForMember(dest => dest.MissionID, opt => opt.MapFrom(src => src.RescueMissionID))
                 .ForMember(dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
@@ -135,7 +135,7 @@ namespace FloodRescue.Services.Mapper
             CreateMap<RescueMission, TeamRejectedMessage>()
                 .ForMember(destinationMember: dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status))
                 .ForMember(destinationMember: dest => dest.CoordinatorID, opt => opt.MapFrom(src => src.CoordinatorID));
-    
+
             CreateMap<RescueRequest, TeamRejectedMessage>().ForMember(destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
 
             CreateMap<RescueTeam, TeamRejectedMessage>();
@@ -183,11 +183,11 @@ namespace FloodRescue.Services.Mapper
                 .ForMember(dest => dest.ImageUrls, opt => opt.Ignore());
 
             // Mapping RescueRequest -> RescueRequestKafkaMessage
-            CreateMap<RescueRequest, RescueRequestKafkaMessage>(); 
+            CreateMap<RescueRequest, RescueRequestKafkaMessage>();
 
             // mapper ReliefOrder -> ReliefOrderMessage
             // mapper Rescue Request -> ReliefOrderMessage chủ yếu để xài description và RescueRequestID
-            CreateMap<ReliefOrder, ReliefOrderMessage>(); 
+            CreateMap<ReliefOrder, ReliefOrderMessage>();
 
             //Soạn notification phải có description rồi mới gửi cho manager, còn rescue team thì không cần
             //Trong auto mapper không cần description
@@ -231,6 +231,11 @@ namespace FloodRescue.Services.Mapper
                 .ForMember(dest => dest.RequestInfo, opt => opt.Ignore()); // Sẽ map thủ công từ RescueRequest
                                                                            // Mapping RescueRequest -> VictimInfoDTO
             CreateMap<RescueRequest, VictimInfoDTO>();
+
+            // Mapping RescueTeamMember -> RescueTeamMemberResponseDTO
+            CreateMap<RescueTeamMember, RescueTeamMemberResponseDTO>()
+            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : string.Empty))
+            .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.User != null ? src.User.Phone : string.Empty));
         }
     }
 }

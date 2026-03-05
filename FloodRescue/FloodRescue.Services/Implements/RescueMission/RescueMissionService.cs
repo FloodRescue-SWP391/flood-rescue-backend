@@ -2,31 +2,31 @@
 using Azure;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
+using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Kafka;
 using FloodRescue.Services.DTO.Request.RescueMissionRequest;
 using FloodRescue.Services.DTO.Response.RescueMissionResponse;
+using FloodRescue.Services.DTO.Response.RescueTeamResponse;
 using FloodRescue.Services.DTO.SignalR;
+using FloodRescue.Services.Interface.Cache;
 using FloodRescue.Services.Interface.Kafka;
 using FloodRescue.Services.Interface.RealTimeNoti;
 using FloodRescue.Services.Interface.RescueMission;
 using FloodRescue.Services.SharedSetting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using System.Linq.Expressions;
-
+using ReliefOrderEntity = FloodRescue.Repositories.Entites.ReliefOrder;
 using RescueMissionEntity = FloodRescue.Repositories.Entites.RescueMission;
 using RescueRequestEntity = FloodRescue.Repositories.Entites.RescueRequest;
 using RescueTeamEntity = FloodRescue.Repositories.Entites.RescueTeam;
 using RescueTeamMemberEntity = FloodRescue.Repositories.Entites.RescueTeamMember;
-using ReliefOrderEntity = FloodRescue.Repositories.Entites.ReliefOrder;
-using FloodRescue.Services.Interface.Cache;
-using FloodRescue.Services.BusinessModels;
-using Microsoft.EntityFrameworkCore;
 
 namespace FloodRescue.Services.Implements.RescueMission
 {
@@ -44,6 +44,8 @@ namespace FloodRescue.Services.Implements.RescueMission
         private const string MISSION_FILTER_PREFIX = "rescuemission:filter";
 
         private const string MISSION_DETAIL_KEY_PREFIX = "rescuemission:detail:";
+
+        private const string TEAM_MEMBERS_KEY_PREFIX = "rescueteam:members:";
 
         public RescueMissionService(IUnitOfWork unitOfWork,
             ILogger<RescueMissionService> logger,
@@ -115,7 +117,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                 if (saveResult <= 0)
                 {
                     _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during dispatch. RequestID: {RequestID}, TeamID: {TeamID}", request.RescueRequestID, request.RescueTeamID);
-                    await _unitOfWork.RollbackTransactionAsync();  
+                    await _unitOfWork.RollbackTransactionAsync();
                     return null;
                 }
 
@@ -128,7 +130,7 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 await _kafkaProducer.ProduceAsync(topic: KafkaSettings.MISSION_ASSIGN_TOPIC, key: newMission.RescueMissionID.ToString(), message: kafkaMessage);
 
-                _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic}", KafkaSettings.MISSION_ASSIGN_TOPIC);               
+                _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic}", KafkaSettings.MISSION_ASSIGN_TOPIC);
 
                 _logger.LogInformation("[RescueMissionService] Successfully dispatched mission with ID: {MissionID} for Request ID: {RequestID} and Team ID: {TeamID}", newMission.RescueMissionID, request.RescueRequestID, request.RescueTeamID);
 
@@ -150,9 +152,9 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 _logger.LogInformation("[RescueMissionService - Redis] Cleared pending missions cache for TeamID: {TeamID}", request.RescueTeamID);
                 return response;
-                
+
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 await _unitOfWork.RollbackTransactionAsync();
 
@@ -269,15 +271,15 @@ namespace FloodRescue.Services.Implements.RescueMission
                     return null;
                 }
 
-                RescueTeamEntity rescueTeam = rescueMission.RescueTeam!;    
-                RescueRequestEntity rescueRequest = rescueMission.RescueRequest!;   
+                RescueTeamEntity rescueTeam = rescueMission.RescueTeam!;
+                RescueRequestEntity rescueRequest = rescueMission.RescueRequest!;
 
                 DateTime respondedAt = DateTime.UtcNow;
 
                 if (request.IsAccepted)
                 {
-                    rescueMission.Status = RescueMissionSettings.INPROGRESS_STATUS;    
-                    rescueMission.StartTime = respondedAt;  
+                    rescueMission.Status = RescueMissionSettings.INPROGRESS_STATUS;
+                    rescueMission.StartTime = respondedAt;
                     _logger.LogInformation("[RescueMissionService] Rescue Mission with ID: {MissionID} accepted and set to InProgress - Team {TeamName}", request.RescueMissionID, rescueTeam.TeamName);
 
                     // mappper rescue mission -> team accept message
@@ -288,10 +290,10 @@ namespace FloodRescue.Services.Implements.RescueMission
                     _mapper.Map(rescueTeam, kafkaMessage);
 
                     //gán field ngoài mapper
-                    kafkaMessage.AcceptedAt = respondedAt;  
+                    kafkaMessage.AcceptedAt = respondedAt;
 
                     await _kafkaProducer.ProduceAsync(topic: KafkaSettings.TEAM_ACCEPTED_TOPIC, key: rescueMission.RescueMissionID.ToString(), message: kafkaMessage);
-                    
+
                     _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic}", KafkaSettings.TEAM_ACCEPTED_TOPIC);
 
                 }
@@ -300,9 +302,9 @@ namespace FloodRescue.Services.Implements.RescueMission
                     //mapper rescue mission -> team reject message  
                     //mapper rescue request -> team reject message  
                     //mapper rescue team -> team reject message
-                  
+
                     rescueMission.Status = RescueMissionSettings.DECLINED_STATUS;
-                    rescueRequest.Status = RescueRequestSettings.PENDING_STATUS;   
+                    rescueRequest.Status = RescueRequestSettings.PENDING_STATUS;
                     rescueTeam.CurrentStatus = RescueTeamSettings.AVAILABLE_STATUS;
 
                     _logger.LogInformation("[RescueMissionService] Rescue Mission with ID: {MissionID} declined - Team {TeamName} set to Available, Request set to Pending", request.RescueMissionID, rescueTeam.TeamName);
@@ -312,7 +314,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                     _mapper.Map(rescueTeam, kafkaMessage);
 
                     await _kafkaProducer.ProduceAsync(topic: KafkaSettings.TEAM_REJECTED_TOPIC, key: rescueMission.RescueMissionID.ToString(), message: kafkaMessage);
-                    
+
                     _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic}", KafkaSettings.TEAM_REJECTED_TOPIC);
                 }
 
@@ -320,12 +322,12 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 if (saveResult <= 0)
                 {
-                    _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during respond. MissionID: {MissionID}", request.RescueMissionID);  
+                    _logger.LogError("[RescueMissionService - Error] SaveChanges returned 0 rows during respond. MissionID: {MissionID}", request.RescueMissionID);
                     await _unitOfWork.RollbackTransactionAsync();
                     return null;
                 }
 
-               
+
 
                 _logger.LogInformation("[RescueMissionService] Successfully responded to mission with ID: {MissionID}", request.RescueMissionID);
 
@@ -338,13 +340,13 @@ namespace FloodRescue.Services.Implements.RescueMission
                 _mapper.Map(rescueRequest, response);
                 _mapper.Map(rescueTeam, response);
 
-                response.RespondedAt = respondedAt; 
+                response.RespondedAt = respondedAt;
                 response.Message = request.IsAccepted ? $"Rescue mission with ID {rescueMission.RescueMissionID} has been accepted by Team {rescueTeam.TeamName}." : $"Rescue mission with ID {rescueMission.RescueMissionID} has been declined by Team {rescueTeam.TeamName}.";
 
                 await _unitOfWork.CommitTransactionAsync();
 
                 await _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}{rescueTeam.RescueTeamID}");
-             
+
                 _logger.LogInformation("[RescueMissionService - Redis] Cleared pending missions cache for TeamID: {TeamID}", rescueTeam.RescueTeamID);
 
                 await _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*");
@@ -604,7 +606,7 @@ namespace FloodRescue.Services.Implements.RescueMission
 
             if (filter.Statuses != null && filter.Statuses.Count > 0)
             {
-                query = query.Where(rm => filter.Statuses.Contains(rm.Status));   
+                query = query.Where(rm => filter.Statuses.Contains(rm.Status));
             }
 
             if (filter.RescueTeamID.HasValue)
@@ -766,6 +768,87 @@ namespace FloodRescue.Services.Implements.RescueMission
             }
             _logger.LogInformation("[RescueMissionService] GetMissionDetailById success for MissionID: {MissionID}", missionId);
             return (result, null);
+        }
+
+        public async Task<(List<RescueTeamMemberResponseDTO>? Data, string? ErrorMessage)> GetTeamMembersAsync(Guid teamId, Guid currentUserId, string userRole)
+        {
+            _logger.LogInformation("[RescueMissionService] GetTeamMembers called. TeamID: {TeamID}, UserID: {UserID}, Role: {Role}", teamId, currentUserId, userRole);
+
+
+            // 1. Check cache first
+            string cacheKey = $"{TEAM_MEMBERS_KEY_PREFIX}{teamId}";
+            var cached = await _cacheService.GetAsync<List<RescueTeamMemberResponseDTO>>(cacheKey);
+
+            if (cached != null)
+            {
+                _logger.LogInformation("[RescueMissionService - Redis] Cache hit for team members. TeamID: {TeamID}, Count: {Count}", teamId, cached.Count);
+
+                // Nếu là Rescue Team Member, cần verify authorization
+                if (userRole == "Rescue Team Member")
+                {
+                    RescueTeamMemberEntity? currentMember = await _unitOfWork.RescueTeamMembers.GetAsync(
+                        m => m.UserID == currentUserId && !m.IsDeleted);
+
+                    if (currentMember == null || currentMember.RescueTeamID != teamId)
+                    {
+                        _logger.LogWarning("[RescueMissionService] User {UserID} is not authorized to view members of TeamID: {TeamID}", currentUserId, teamId);
+                        return (null, "You are not authorized to view members of this team.");
+                    }
+                }
+
+                return (cached, null);
+            }
+
+            _logger.LogInformation("[RescueMissionService - Redis] Cache miss. Querying DB for team members. TeamID: {TeamID}", teamId);
+
+            // 2. Validate: Kiểm tra team có tồn tại không
+            RescueTeamEntity? rescueTeam = await _unitOfWork.RescueTeams.GetAsync(
+                t => t.RescueTeamID == teamId && !t.IsDeleted);
+
+            if (rescueTeam == null)
+            {
+                _logger.LogWarning("[RescueMissionService] RescueTeam with ID: {TeamID} not found", teamId);
+                return (null, "Rescue team not found.");
+            }
+
+            // 3. Authorization check cho Rescue Team Member
+            if (userRole == "Rescue Team Member")
+            {
+                RescueTeamMemberEntity? currentMember = await _unitOfWork.RescueTeamMembers.GetAsync(
+                    m => m.UserID == currentUserId && !m.IsDeleted);
+
+                if (currentMember == null || currentMember.RescueTeamID != teamId)
+                {
+                    _logger.LogWarning("[RescueMissionService] User {UserID} is not authorized to view members of TeamID: {TeamID}", currentUserId, teamId);
+                    return (null, "You are not authorized to view members of this team.");
+                }
+            }
+
+            // 4. Query: Lấy danh sách thành viên, Include User để lấy FullName và Phone
+            List<RescueTeamMemberEntity> members = await _unitOfWork.RescueTeamMembers.GetAllAsync(
+                filter: m => m.RescueTeamID == teamId && !m.IsDeleted,
+                includes: m => m.User!
+            );
+
+            if (members == null || !members.Any())
+            {
+                _logger.LogInformation("[RescueMissionService] No members found for TeamID: {TeamID}", teamId);
+                return (new List<RescueTeamMemberResponseDTO>(), null);
+            }
+
+            // 5. Sắp xếp: Đội trưởng (IsLeader = true) lên đầu
+            var orderedMembers = members.OrderByDescending(m => m.IsLeader).ToList();
+
+            // 6. Mapping sang DTO bằng AutoMapper
+            List<RescueTeamMemberResponseDTO> result = _mapper.Map<List<RescueTeamMemberResponseDTO>>(orderedMembers);
+
+            // 7. Cache the result
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(10));
+            _logger.LogInformation("[RescueMissionService - Redis] Cached {Count} members for TeamID: {TeamID}", result.Count, teamId);
+
+            return (result, null);
+
+
         }
     }
 }

@@ -35,6 +35,7 @@ namespace FloodRescue.Services.Implements.RescueTeam
 
         private const string ALL_RESCUETEAMS_KEY = "RescueTeams:all";
         private const string RESCUETEAM_KEY_PREFIX = "RescueTeam:";
+
         public async Task<RescueTeamResponseDTO> CreateRescueTeamAsync(RescueTeamRequestDTO rescueTeamDTO)
         {
             _logger.LogInformation("[RescueTeamService] Request to create new Rescue Team. Name: {RescueTeamName}", rescueTeamDTO.TeamName);

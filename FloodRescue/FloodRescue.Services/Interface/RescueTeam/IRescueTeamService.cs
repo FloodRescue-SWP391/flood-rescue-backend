@@ -17,5 +17,6 @@ namespace FloodRescue.Services.Interface.RescueTeam
 
         Task<RescueTeamResponseDTO?> UpdateRescueTeamAsync(Guid rescueTeamId, RescueTeamRequestDTO rescueTeamDTO);
         Task<bool> DeleteRescueTeamAsync(Guid rescueTeamId);
+
     }
 }
