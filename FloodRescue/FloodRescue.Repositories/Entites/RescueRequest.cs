@@ -66,13 +66,6 @@ namespace FloodRescue.Repositories.Entites
         [Column("CreatedTime", TypeName = "datetime2(7)")]
         public DateTime CreatedTime { get; set; } = DateTime.UtcNow;
 
-        // Foreign Key
-        [Column("CoordinatorID", TypeName = "uniqueidentifier")]
-        public Guid? CoordinatorID { get; set; } // Nullable (N)
-
-        [ForeignKey(nameof(CoordinatorID))]
-        [JsonIgnore]
-        public User? Coordinator { get; set; }
 
         [Column("IsDeleted", TypeName = "BIT")]
         public bool IsDeleted { get; set; }

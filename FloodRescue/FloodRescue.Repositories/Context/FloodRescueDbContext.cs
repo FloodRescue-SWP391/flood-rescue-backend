@@ -72,13 +72,13 @@ namespace FloodRescue.Repositories.Context
                 .HasForeignKey(ir => ir.ResolvedBy)
                 .OnDelete(DeleteBehavior.Restrict);
 
-
-            // RescueRequest - Prevent cascade delete conflicts
-            modelBuilder.Entity<RescueRequest>()
-                .HasOne(rr => rr.Coordinator)
+            // RescueMission - Prevent cascade delete for Coordinator (FK to User)
+            modelBuilder.Entity<RescueMission>()
+                .HasOne(rm => rm.Coordinator)
                 .WithMany()
-                .HasForeignKey(rr => rr.CoordinatorID)
+                .HasForeignKey(rm => rm.CoordinatorID)
                 .OnDelete(DeleteBehavior.Restrict);
+
 
             // RescueTeamMember - Prevent cascade delete conflicts
             modelBuilder.Entity<RescueTeamMember>()

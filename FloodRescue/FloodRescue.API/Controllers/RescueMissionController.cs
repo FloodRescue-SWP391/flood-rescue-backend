@@ -69,13 +69,22 @@ namespace FloodRescue.API.Controllers
             _logger.LogInformation("[RescueMissionController] POST dispatch called. RequestID: {RequestID}, TeamID: {TeamID}", request.RescueRequestID, request.RescueTeamID);
             try
             {
+                // 1. Lấy UserID từ JWT Token
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid currentUserId))
+                {
+                    _logger.LogWarning("[RescueMissionController] Unable to extract UserID from JWT token.");
+                    return Unauthorized(ApiResponse<List<PendingMissionResponseDTO>>.Fail("Invalid token. Please login again.", 401));
+                }
+
                 if (!ModelState.IsValid)
                 {
                     _logger.LogWarning("[RescueMissionController] Dispatch validation failed. ModelState invalid.");
                     return BadRequest(ApiResponse<DispatchMissionResponseDTO>.Fail("Data is not valid, please check again.", 400));
                 }
 
-                DispatchMissionResponseDTO? result = await _rescueMissionService.DispatchMissionAsync(request);
+                DispatchMissionResponseDTO? result = await _rescueMissionService.DispatchMissionAsync(request, currentUserId);
 
                 if (result == null)
                 {
