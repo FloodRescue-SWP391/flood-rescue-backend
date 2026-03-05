@@ -119,11 +119,11 @@ namespace FloodRescue.Services.Mapper
             // mapper rescue team -> team accept message    
 
             CreateMap<RescueMission, TeamAcceptedMessage>()
-                .ForMember(destinationMember: dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
+                .ForMember(destinationMember: dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status))
+                .ForMember(dest => dest.CoordinatorID, opt => opt.MapFrom(src => src.CoordinatorID));
 
             CreateMap<RescueRequest, TeamAcceptedMessage>()
-                .ForMember(destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode))
-                .ForMember(destinationMember: dest => dest.CoordinatorID, opt => opt.MapFrom(src => src.CoordinatorID));
+                .ForMember(destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
 
             CreateMap<RescueTeam, TeamAcceptedMessage>();
 
@@ -132,10 +132,10 @@ namespace FloodRescue.Services.Mapper
             //mapper rescue team -> team reject message
 
             CreateMap<RescueMission, TeamRejectedMessage>()
-                .ForMember(destinationMember: dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
-
-            CreateMap<RescueRequest, TeamRejectedMessage>().ForMember(destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode))
-                                                            .ForMember(destinationMember: dest => dest.CoordinatorID, opt => opt.MapFrom(src => src.CoordinatorID));
+                .ForMember(destinationMember: dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status))
+                .ForMember(destinationMember: dest => dest.CoordinatorID, opt => opt.MapFrom(src => src.CoordinatorID));
+    
+            CreateMap<RescueRequest, TeamRejectedMessage>().ForMember(destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
 
             CreateMap<RescueTeam, TeamRejectedMessage>();
 

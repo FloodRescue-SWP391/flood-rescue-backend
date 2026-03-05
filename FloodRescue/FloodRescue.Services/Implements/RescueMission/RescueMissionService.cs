@@ -55,7 +55,7 @@ namespace FloodRescue.Services.Implements.RescueMission
 
         }
 
-        public async Task<DispatchMissionResponseDTO?> DispatchMissionAsync(DispatchMissionRequestDTO request)
+        public async Task<DispatchMissionResponseDTO?> DispatchMissionAsync(DispatchMissionRequestDTO request, Guid coordinatorID)
         {
 
             _logger.LogInformation("[RescueMissionService] Starting Dispatch with Request ID: {RequestID}, Team ID: {TeamID}", request.RescueRequestID, request.RescueTeamID);
@@ -92,6 +92,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                     RescueMissionID = Guid.NewGuid(),
                     RescueRequestID = request.RescueRequestID,
                     RescueTeamID = request.RescueTeamID,
+                    CoordinatorID = coordinatorID,
                     Status = RescueMissionSettings.ASSIGNED_STATUS,
                     AssignedAt = DateTime.UtcNow,
                     StartTime = null,
@@ -435,7 +436,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                     MissionStatus = rescueMission.Status,
                     RequestStatus = rescueRequest.Status,
                     EndTime = completedTime,
-                    CoordinatorID = rescueRequest.CoordinatorID
+                    CoordinatorID = rescueMission.CoordinatorID
                 };
 
                 await _kafkaProducer.ProduceAsync(
@@ -542,7 +543,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                     TeamName = rescueTeam.TeamName,
                     OrderStatus = reliefOrder.Status,
                     PickedUpTime = pickedUpTime,
-                    CoordinatorID = rescueRequest.CoordinatorID
+                    CoordinatorID = rescueMission.CoordinatorID
                 };
 
                 await _kafkaProducer.ProduceAsync(

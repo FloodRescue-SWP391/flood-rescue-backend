@@ -51,7 +51,7 @@ namespace FloodRescue.Services.Implements.ReliefOrder
         }
 
 
-        public async Task<ReliefOrderResponseDTO?> CreateReliefOrderAsync(ReliefOrderRequestDTO request)
+        public async Task<ReliefOrderResponseDTO?> CreateReliefOrderAsync(ReliefOrderRequestDTO request, Guid coordinatorID)
         {
             RescueRequestEntity? rescueRequest = await _unitOfWork.RescueRequests.GetAsync(r => r.RescueRequestID == request.RescueRequestID && !r.IsDeleted);
 
@@ -104,7 +104,7 @@ namespace FloodRescue.Services.Implements.ReliefOrder
 
                 _logger.LogInformation("[ReliefOrderService] Start to call Dispatch Mission Async with Rescue Request ID: {ID} - Rescue Team ID {teamID}", request.RescueRequestID, request.RescueTeamID);
 
-                var dispatchResult = await _rescueMissionService.DispatchMissionAsync(dispatchDto);
+                var dispatchResult = await _rescueMissionService.DispatchMissionAsync(dispatchDto, coordinatorID);
 
                 if (dispatchResult == null)
                 {
