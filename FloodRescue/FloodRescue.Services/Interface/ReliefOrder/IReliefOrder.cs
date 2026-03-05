@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.ReliefOrderRequest;
 using FloodRescue.Services.DTO.Response.ReliefOrder;
 using FloodRescue.Services.DTO.Response.ReliefOrderResponse;
@@ -14,5 +15,6 @@ namespace FloodRescue.Services.Interface.ReliefOrder
         Task<ReliefOrderResponseDTO?> CreateReliefOrderAsync(ReliefOrderRequestDTO request, Guid coordinatorID);
         Task<List<PendingOrderResponseDTO>> GetPendingOrdersAsync();
         Task<ReliefOrderResponseDTO?> PrepareReliefOrderAsync(PrepareOrderRequestDTO request, Guid managerID);
+        Task<PagedResult<ReliefOrderListResponseDTO>> GetFilteredOrdersAsync(ReliefOrderFilterDTO filter);
     }
 }
