@@ -18,6 +18,7 @@ using InventoryEntity = FloodRescue.Repositories.Entites.Inventory;
 using ReliefOrderDetailEntity = FloodRescue.Repositories.Entites.ReliefOrderDetail;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using FloodRescue.Services.DTO.Request.ReliefOrderRequest;
 
@@ -33,6 +34,7 @@ namespace FloodRescue.Services.Implements.ReliefOrder
         private readonly ILogger<ReliefOrderService> _logger;
 
         private const string PENDING_ORDERS_CACHE_KEY = "relieforder:pending";
+        private const string ORDER_DETAIL_KEY_PREFIX = "relieforder:detail:";
 
         public ReliefOrderService(
             IUnitOfWork unitOfWork,
@@ -335,6 +337,72 @@ namespace FloodRescue.Services.Implements.ReliefOrder
                 await _unitOfWork.RollbackTransactionAsync();
                 throw;
             }
+        }
+
+        public async Task<ReliefOrderDetailResponseDTO?> GetOrderDetailAsync(Guid reliefOrderId)
+        {
+            _logger.LogInformation("[ReliefOrderService] GetOrderDetail called for ReliefOrderID: {ID}", reliefOrderId);
+
+            // Check cache
+            string cacheKey = $"{ORDER_DETAIL_KEY_PREFIX}{reliefOrderId}";
+
+            var cached = await _cacheService.GetAsync<ReliefOrderDetailResponseDTO>(cacheKey);
+            if (cached != null)
+            {
+                _logger.LogInformation("[ReliefOrderService - Redis] Cache hit for order detail. ReliefOrderID: {ID}", reliefOrderId);
+                return cached;
+            }
+
+            _logger.LogInformation("[ReliefOrderService - Redis] Cache miss for order detail. Querying database. ReliefOrderID: {ID}", reliefOrderId);
+
+            // Query ReliefOrder theo ID, Include RescueTeam để lấy TeamName
+            ReliefOrderEntity? reliefOrder = await _unitOfWork.ReliefOrders.GetAsync(
+                (ReliefOrderEntity ro) => ro.ReliefOrderID == reliefOrderId && !ro.IsDeleted,
+                ro => ro.RescueTeam!);
+
+            if (reliefOrder == null)
+            {
+                _logger.LogWarning("[ReliefOrderService - Sql Server] ReliefOrder with ID: {ID} not found", reliefOrderId);
+                return null;
+            }
+
+            _logger.LogInformation("[ReliefOrderService - Sql Server] Found ReliefOrder {ID} with status {Status}", reliefOrderId, reliefOrder.Status);
+
+            // Query ReliefOrderDetails với Include ReliefItem -> ThenInclude Category (nested 2 cấp)
+            List<ReliefOrderDetailEntity> orderDetails = await _unitOfWork.ReliefOrderDetails.GetQueryable()
+                .Where(d => d.ReliefOrderID == reliefOrderId)
+                .Include(d => d.ReliefItem!)
+                    .ThenInclude(i => i.Category!)
+                .AsNoTracking()
+                .ToListAsync();
+
+            _logger.LogInformation("[ReliefOrderService - Sql Server] Found {Count} item(s) in ReliefOrder {ID}", orderDetails.Count, reliefOrderId);
+
+            // Mapping sang DTO
+            ReliefOrderDetailResponseDTO result = new()
+            {
+                ReliefOrderID = reliefOrder.ReliefOrderID,
+                Status = reliefOrder.Status,
+                CreatedTime = reliefOrder.CreatedTime,
+                PreparedTime = reliefOrder.PreparedTime,
+                PickedUpTime = reliefOrder.PickedUpTime,
+                AssignedTeamID = reliefOrder.RescueTeamID,
+                TeamName = reliefOrder.RescueTeam?.TeamName,
+                Description = reliefOrder.Description,
+                Items = orderDetails.Select(d => new ReliefOrderItemDTO
+                {
+                    ItemID = d.ReliefItemID,
+                    ItemName = d.ReliefItem?.ReliefItemName ?? "Unknown",
+                    CategoryName = d.ReliefItem?.Category?.CategoryName ?? "Unknown",
+                    Quantity = d.Quantity
+                }).ToList()
+            };
+
+            // Cache kết quả
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("[ReliefOrderService - Redis] Cached order detail for ReliefOrderID: {ID}", reliefOrderId);
+
+            return result;
         }
     }
 }
