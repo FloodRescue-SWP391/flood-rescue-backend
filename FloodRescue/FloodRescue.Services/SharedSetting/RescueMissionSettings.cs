@@ -18,6 +18,8 @@ public static class RescueMissionSettings
     // Concelled
     public const string CANCELLED_STATUS = "Cancelled";
 
+     public const string INCIDENT_STATUS = "Incident";
+
     //Completed
     //public const string COMPLETED_STATUS = "Completed";
 

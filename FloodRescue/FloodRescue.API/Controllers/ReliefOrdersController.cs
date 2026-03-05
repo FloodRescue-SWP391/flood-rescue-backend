@@ -1,7 +1,8 @@
-using FloodRescue.Services.BusinessModels;
+﻿using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.ReliefOrderRequest;
 using FloodRescue.Services.DTO.Response.ReliefOrder;
 using FloodRescue.Services.DTO.Response.ReliefOrderResponse;
+using FloodRescue.Services.DTO.Response.RescueMissionResponse;
 using FloodRescue.Services.Interface.ReliefOrder;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -30,13 +31,22 @@ namespace FloodRescue.API.Controllers
             
             try
             {
+                // 1. Lấy UserID từ JWT Token
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid currentUserId))
+                {
+                    _logger.LogWarning("[RescueMissionController] Unable to extract UserID from JWT token.");
+                    return Unauthorized(ApiResponse<List<PendingMissionResponseDTO>>.Fail("Invalid token. Please login again.", 401));
+                }
+
                 if (!ModelState.IsValid)
                 {
                     _logger.LogWarning("[ReliefOrdersController] Respond validation failed. ModelState invalid.");
                     return BadRequest(ApiResponse<ReliefOrderResponseDTO>.Fail("Data is not valid, please check again.", 400));
                 }
 
-                ReliefOrderResponseDTO? result = await _service.CreateReliefOrderAsync(request);
+                ReliefOrderResponseDTO? result = await _service.CreateReliefOrderAsync(request, currentUserId);
 
                 if(result == null)
                 {

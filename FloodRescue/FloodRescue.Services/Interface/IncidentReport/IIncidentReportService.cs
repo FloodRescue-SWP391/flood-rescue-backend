@@ -1,4 +1,7 @@
-﻿using FloodRescue.Services.DTO.Response.IncidentResponse;
+﻿using FloodRescue.Services.DTO.Request.IncidentReportRequest;
+using FloodRescue.Services.DTO.Request.RescueMissionRequest;
+using FloodRescue.Services.DTO.Response.IncidentResponse;
+using FloodRescue.Services.DTO.Response.RescueMissionResponse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,5 +27,14 @@ namespace FloodRescue.Services.Interface.IncidentReport
         /// Lấy chi tiết một sự cố theo ID - Cho Coordinator/Admin
         /// </summary>
         Task<IncidentDetailResponseDTO?> GetIncidentDetailByIdAsync(Guid incidentReportId);
+            /// <summary>
+        /// Đội cứu hộ báo cáo sự cố trong khi đang thực hiện nhiệm vụ
+        /// </summary>
+        Task<(IncidentReportResponseDTO? Data, string? ErrorMessage)> ReportIncidentAsync(IncidentReportRequestDTO request, Guid currentUserId);
+
+        /// <summary>
+        /// Coordinator xử lý sự cố: đóng incident, hủy mission, giải phóng team, đưa request về Processing
+        /// </summary>
+        Task<(ResolvedIncidentResponseDTO? Data, string? ErrorMessage)> ResolveIncidentAsync(ResolvedIncidentRequestDTO request, Guid currentUserId);
     }
 }
