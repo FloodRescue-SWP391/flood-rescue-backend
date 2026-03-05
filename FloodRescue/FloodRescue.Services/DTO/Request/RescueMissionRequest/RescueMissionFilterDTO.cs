@@ -17,6 +17,7 @@ namespace FloodRescue.Services.DTO.Request.RescueMissionRequest
         public DateTime? StartToDate { get; set; }
         public DateTime? EndFromDate { get; set; }
         public DateTime? EndToDate { get; set; }
+        public Guid? CoordinatorID {get; set;}
         public int PageSize { get; set; } = 10;
 
 

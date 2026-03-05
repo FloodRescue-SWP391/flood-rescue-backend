@@ -609,6 +609,11 @@ namespace FloodRescue.Services.Implements.RescueMission
                 query = query.Where(rm => rm.RescueTeamID == filter.RescueTeamID.Value);
             }
 
+            if (filter.CoordinatorID.HasValue)
+            {
+                query = query.Where(rm => rm.CoordinatorID == filter.CoordinatorID.Value);
+            }
+
 
             //lọc theo các mốc thời gian
 
@@ -685,6 +690,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                                $"|af={filter.AssignedFromDate:yyyyMMdd}|at={filter.AssignedToDate:yyyyMMdd}" +
                                $"|sf={filter.StartFromDate:yyyyMMdd}|st={filter.StartToDate:yyyyMMdd}" +
                                $"|ef={filter.EndFromDate:yyyyMMdd}|et={filter.EndToDate:yyyyMMdd}" +
+                               $"|rc={filter.CoordinatorID}" +
                                $"|p={filter.PageNumber}|ps={filter.PageSize}";
 
             return cacheKey;
