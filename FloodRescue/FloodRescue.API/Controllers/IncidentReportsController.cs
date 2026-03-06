@@ -1,6 +1,5 @@
 ﻿using FloodRescue.Services.BusinessModels;
-using FloodRescue.Services.DTO.Request.IncidentReportRequest;
-using FloodRescue.Services.DTO.Request.RescueMissionRequest;
+using FloodRescue.Services.DTO.Request.IncidentReportRequest;using FloodRescue.Services.DTO.Request.RescueMissionRequest;
 using FloodRescue.Services.DTO.Response.IncidentResponse;
 using FloodRescue.Services.DTO.Response.RescueMissionResponse;
 using FloodRescue.Services.Interface.IncidentReport;
@@ -162,6 +161,31 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[IncidentReportsController - Error] ReportIncident failed. MissionID: {MissionID}", request.RescueMissionID);
                 return StatusCode(500, ApiResponse<IncidentReportResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
+
+        /// <summary>
+        /// Lấy danh sách sự cố có lọc theo trạng thái, thời gian và phân trang
+        /// GET /api/incidentreports/filter?statuses=Pending&amp;statuses=Resolved&amp;pageNumber=1&amp;pageSize=10
+        /// </summary>
+        [HttpGet("filter")]
+        [Authorize(Roles = "Rescue Coordinator")]
+        public async Task<ActionResult<ApiResponse<PagedResult<IncidentListResponseDTO>>>> GetFilteredIncidents([FromQuery] IncidentFilterDTO filter)
+        {
+            _logger.LogInformation("[IncidentReportsController] GET filter incidents called. Statuses: {Statuses}, Page: {Page}, Size: {Size}",
+                filter.Statuses != null ? string.Join(",", filter.Statuses) : "All",
+                filter.PageNumber, filter.PageSize);
+            try
+            {
+                PagedResult<IncidentListResponseDTO> result = await _incidentReportService.GetFilteredIncidentsAsync(filter);
+
+                _logger.LogInformation("[IncidentReportsController] GetFilteredIncidents success. DataCount: {Count}, TotalCount: {Total}", result.Data.Count, result.TotalCount);
+                return Ok(ApiResponse<PagedResult<IncidentListResponseDTO>>.Ok(result, "Get filtered incidents successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[IncidentReportsController - Error] GET filter incidents failed.");
+                return StatusCode(500, ApiResponse<PagedResult<IncidentListResponseDTO>>.Fail("Internal server error", 500));
             }
         }
     }
