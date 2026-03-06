@@ -6,6 +6,7 @@ using FloodRescue.Services.Implements.Auth;
 using FloodRescue.Services.Implements.BackgroundJob;
 using FloodRescue.Services.Implements.Cache;
 using FloodRescue.Services.Implements.Category;
+using FloodRescue.Services.Implements.Gmail;
 using FloodRescue.Services.Implements.IncidentReport;
 using FloodRescue.Services.Implements.Inventory;
 using FloodRescue.Services.Implements.Kafka;
@@ -20,6 +21,7 @@ using FloodRescue.Services.Interface.Auth;
 using FloodRescue.Services.Interface.BackgroundJob;
 using FloodRescue.Services.Interface.Cache;
 using FloodRescue.Services.Interface.Category;
+using FloodRescue.Services.Interface.Email;
 using FloodRescue.Services.Interface.IncidentReport;
 using FloodRescue.Services.Interface.Inventory;
 using FloodRescue.Services.Interface.Kafka;
@@ -152,6 +154,10 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IInventoryService, InventoryService>();
             builder.Services.AddScoped<IKafkaHandler, RescueRequestKafkaHandler>();
             builder.Services.AddScoped<IIncidentReportService, IncidentReportService>();
+
+            //Đăng ký Gmail Service
+            builder.Services.AddScoped<IGmailService, GmailService>();
+
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
                 options.UseSqlServer(
@@ -175,7 +181,7 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IKafkaHandler, IncidentResolvedHandler>();
 
 
-
+           
             // Đăng ký Redis Cache để inject được vào Cache Service
             // - đăng ký đồng thời handshake với redis server
             builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexer.Connect(redisConnectionString!));

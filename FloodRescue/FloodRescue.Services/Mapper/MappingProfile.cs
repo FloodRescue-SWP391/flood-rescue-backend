@@ -171,6 +171,7 @@ namespace FloodRescue.Services.Mapper
             // ShortCode, Status, CreatedTime → service tự set nên Ignore
             CreateMap<CreateRescueRequestDTO, RescueRequest>()
                 .ForMember(dest => dest.CitizenPhone, opt => opt.MapFrom(src => src.PhoneNumber))
+                .ForMember(dest => dest.CitizenEmail, opt => opt.MapFrom(src => src.CitizenEmail))
                 .ForMember(dest => dest.ShortCode, opt => opt.Ignore())
                 .ForMember(dest => dest.Status, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())

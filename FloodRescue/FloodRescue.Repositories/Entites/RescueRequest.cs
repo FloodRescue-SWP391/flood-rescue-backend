@@ -27,6 +27,11 @@ namespace FloodRescue.Repositories.Entites
         [Column("CitizenPhone", TypeName = "nvarchar(15)")]
         public string CitizenPhone { get; set; } = string.Empty;
 
+        [EmailAddress(ErrorMessage = "Invalid email address")]
+        [MaxLength(255)]
+        [Column("CitizenEmail", TypeName = "nvarchar(300)")]
+        public string CitizenEmail { get; set; } = string.Empty;
+
         [Column("Address", TypeName = "nvarchar(225)")]
         public string? Address { get; set; } // Nullable (N)
 
