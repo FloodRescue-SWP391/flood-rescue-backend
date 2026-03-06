@@ -66,6 +66,7 @@ jobs:
                 DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
                 DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
                 JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+                FLOOD_RESCUE_APP_PASSWORD: ${{ secrets.PASSWORD_APPLICATION_GOOGLE__FLOOD_RESCUE_APP }}
               run: docker compose up -d --remove-orphans
 
             - name: 5. Cleanup Old Images
