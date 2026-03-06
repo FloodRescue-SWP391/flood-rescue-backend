@@ -103,5 +103,52 @@ namespace FloodRescue.Services.Implements.UserManagement
 
             return (response, null);
         }
+
+        public async Task<(bool Success, string? ErrorMessage)> DeactivateUserAsync(Guid userId, Guid currentUserId)
+        {
+            _logger.LogInformation("[UserService] DeactivateUser called for UserID: {UserID} by AdminID: {AdminID}", userId, currentUserId);
+
+            // Critical Check: Không cho phép Admin tự khóa chính tài khoản của mình
+            if (currentUserId == userId)
+            {
+                _logger.LogWarning("[UserService] Admin {AdminID} attempted to deactivate their own account", currentUserId);
+                return (false, "Bạn không thể tự khóa tài khoản của chính mình.");
+            }
+
+            // Tìm User trong DB theo ID
+            UserEntity? user = await _unitOfWork.Users.GetAsync(
+                (UserEntity u) => u.UserID == userId && !u.IsDeleted);
+
+            if (user == null)
+            {
+                _logger.LogWarning("[UserService - Sql Server] User with ID: {UserID} not found or already deactivated", userId);
+                return (false, "Không tìm thấy nhân sự này.");
+            }
+
+            // Không cho phép khóa tài khoản Admin khác
+            if (user.RoleID == "AD")
+            {
+                _logger.LogWarning("[UserService] Attempted to deactivate Admin account. UserID: {UserID}", userId);
+                return (false, "Không thể khóa tài khoản Admin.");
+            }
+
+            _logger.LogInformation("[UserService] Deactivating user. UserID: {UserID}, Username: {Username}, Role: {RoleID}",
+                userId, user.Username, user.RoleID);
+
+            // Soft Delete: Gán IsDeleted = true
+            user.IsDeleted = true;
+
+            int saveResult = await _unitOfWork.SaveChangesAsync();
+
+            if (saveResult <= 0)
+            {
+                _logger.LogError("[UserService - Error] SaveChanges returned 0 rows during deactivate user. UserID: {UserID}", userId);
+                return (false, "Khóa tài khoản nhân sự thất bại.");
+            }
+
+            _logger.LogInformation("[UserService] Successfully deactivated user. UserID: {UserID}, Username: {Username}", userId, user.Username);
+
+            return (true, null);
+        }
     }
 }
