@@ -73,7 +73,9 @@ namespace FloodRescue.Services.Mapper
             // Mapping ReliefItem DTOs
             CreateMap<CreateReliefItemRequestDTO, ReliefItem>();
 
-            CreateMap<ReliefItem, ReliefItemResponseDTO>();
+            CreateMap<ReliefItem, ReliefItemResponseDTO>()
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.CategoryName : string.Empty))
+                .ForMember(dest => dest.UnitName, opt => opt.MapFrom(src => src.Unit != null ? src.Unit.UnitName : string.Empty));
 
             // Mapping ReliefOrder DTOs
             CreateMap<ReliefOrder, ReliefOrderResponseDTO>();

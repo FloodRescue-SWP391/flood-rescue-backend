@@ -78,7 +78,7 @@ namespace FloodRescue.Services.Implements.ReliefItem
                 return cache;
             }
             _logger.LogInformation("[ReliefItemService - Redis] Cache miss. Fetching from database.");
-            var list = await _unitOfWork.ReliefItems.GetAllAsync(r => !r.IsDeleted, r => r.Category!);
+            var list = await _unitOfWork.ReliefItems.GetAllAsync(r => !r.IsDeleted,r => r.Category!, r => r.Unit!);
 
             List<ReliefItemResponseDTO> responseDTO = _mapper.Map<List<ReliefItemResponseDTO>>(list);
 
@@ -98,7 +98,7 @@ namespace FloodRescue.Services.Implements.ReliefItem
                 return cache;
             }
             _logger.LogInformation("[ReliefItemService - Redis] Cache miss for ReliefItem ID: {ReliefItemId}", id);
-            var item = await _unitOfWork.ReliefItems.GetAsync(r => r.ReliefItemID == id && !r.IsDeleted, r => r.Category!);
+            var item = await _unitOfWork.ReliefItems.GetAsync(r => r.ReliefItemID == id && !r.IsDeleted, r => r.Category!, r => r.Unit!);
             if (item != null)
             {
                 ReliefItemResponseDTO responseDTO = _mapper.Map<ReliefItemResponseDTO>(item);
