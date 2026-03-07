@@ -51,7 +51,7 @@ namespace FloodRescue.Services.Implements.RescueMission
 
         }
 
-        public async Task<DispatchMissionResponseDTO?> DispatchMissionAsync(DispatchMissionRequestDTO request)
+        public async Task<DispatchMissionResponseDTO?> DispatchMissionAsync(DispatchMissionRequestDTO request, Guid coordinatorID)
         {
 
             _logger.LogInformation("[RescueMissionService] Starting Dispatch with Request ID: {RequestID}, Team ID: {TeamID}", request.RescueRequestID, request.RescueTeamID);
@@ -88,6 +88,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                     RescueMissionID = Guid.NewGuid(),
                     RescueRequestID = request.RescueRequestID,
                     RescueTeamID = request.RescueTeamID,
+                    CoordinatorID = coordinatorID,
                     Status = RescueMissionSettings.ASSIGNED_STATUS,
                     AssignedAt = DateTime.UtcNow,
                     StartTime = null,
@@ -414,7 +415,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                     MissionStatus = rescueMission.Status,
                     RequestStatus = rescueRequest.Status,
                     EndTime = completedTime,
-                    CoordinatorID = rescueRequest.CoordinatorID
+                    CoordinatorID = rescueMission.CoordinatorID
                 };
 
                 await _kafkaProducer.ProduceAsync(
@@ -521,7 +522,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                     TeamName = rescueTeam.TeamName,
                     OrderStatus = reliefOrder.Status,
                     PickedUpTime = pickedUpTime,
-                    CoordinatorID = rescueRequest.CoordinatorID
+                    CoordinatorID = rescueMission.CoordinatorID
                 };
 
                 await _kafkaProducer.ProduceAsync(
@@ -585,8 +586,16 @@ namespace FloodRescue.Services.Implements.RescueMission
                 return (null, "You are not a member of any rescue team.");
             }
 
-            // Đối chiếu RescueTeamID với mission
-            if (teamMember.RescueTeamID != rescueMission.RescueTeamID)
+            if (filter.CoordinatorID.HasValue)
+            {
+                query = query.Where(rm => rm.CoordinatorID == filter.CoordinatorID.Value);
+            }
+
+
+            //lọc theo các mốc thời gian
+
+            // mốc AssignedAt -> mốc thời gian Coordinator đã gắn các nhiệm vụ
+            if (filter.AssignedFromDate.HasValue)
             {
                 _logger.LogWarning("[RescueMissionService] User {UserID} belongs to TeamID: {UserTeamID}, but mission belongs to TeamID: {MissionTeamID}",
                     currentUserId, teamMember.RescueTeamID, rescueMission.RescueTeamID);
@@ -689,6 +698,64 @@ namespace FloodRescue.Services.Implements.RescueMission
                 _logger.LogError(ex, "[RescueMissionService - Error] ReportIncident failed. Transaction rolled back. MissionID: {MissionID}", request.RescueMissionID);
                 throw;
             }
+
+            if (filter.StartToDate.HasValue)
+            {
+                query = query.Where(rm => rm.StartTime.HasValue && rm.StartTime.Value <= filter.StartToDate.Value);
+            }
+
+            // mốc EndTime thời điểm team bấm hoàn thành -> Completed
+            if (filter.EndFromDate.HasValue)
+            {
+                query = query.Where(rm => rm.EndTime.HasValue && rm.EndTime >= filter.EndFromDate.Value);
+            }
+
+            if (filter.EndToDate.HasValue)
+            {
+                query = query.Where(rm => rm.EndTime.HasValue && rm.EndTime.Value <= filter.EndToDate.Value);
+            }
+
+            int totalCount = await query.CountAsync();
+
+            List<RescueMissionEntity> entities = await query
+                                                        .OrderByDescending(rm => rm.AssignedAt)
+                                                        .Skip((filter.PageNumber - 1) * filter.PageSize)
+                                                        .Take(filter.PageSize)
+                                                        .AsNoTracking()
+                                                        .ToListAsync();
+
+            List<RescueMissionListResponseDTO> dtos = _mapper.Map<List<RescueMissionListResponseDTO>>(entities);
+
+            //Đóng gói sau đó Cache dữ liệu
+            PagedResult<RescueMissionListResponseDTO> result = new()
+            {
+                Data = dtos,
+                TotalCount = totalCount
+            };
+
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+
+            _logger.LogInformation("[RescueMissionService - Redis] Cached filter result. Key: {Key}, DataCount: {Count}, TotalCount: {Total}", cacheKey, dtos.Count, totalCount);
+
+            return result;
+
+        }
+
+        private string BuildMissionFilterCacheKey(RescueMissionFilterDTO filter)
+        {
+            string statusKey = filter.Statuses != null && filter.Statuses.Count > 0
+                ? string.Join(",", filter.Statuses.OrderBy(s => s))
+                : "";
+
+            string cacheKey = $"{MISSION_FILTER_PREFIX}s={statusKey}" +
+                               $"|t={filter.RescueTeamID}" +
+                               $"|af={filter.AssignedFromDate:yyyyMMdd}|at={filter.AssignedToDate:yyyyMMdd}" +
+                               $"|sf={filter.StartFromDate:yyyyMMdd}|st={filter.StartToDate:yyyyMMdd}" +
+                               $"|ef={filter.EndFromDate:yyyyMMdd}|et={filter.EndToDate:yyyyMMdd}" +
+                               $"|rc={filter.CoordinatorID}" +
+                               $"|p={filter.PageNumber}|ps={filter.PageSize}";
+
+            return cacheKey;
         }
     }
 }

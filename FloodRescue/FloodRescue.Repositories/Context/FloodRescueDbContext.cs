@@ -33,6 +33,7 @@ namespace FloodRescue.Repositories.Context
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<CitizenNotification> CitizenNotifications { get; set; }
         public DbSet<RescueRequestImage> RescueRequestImages { get; set; }
+        public DbSet<Unit> Units { get; set; }
         #endregion
 
 
@@ -72,13 +73,13 @@ namespace FloodRescue.Repositories.Context
                 .HasForeignKey(ir => ir.ResolvedBy)
                 .OnDelete(DeleteBehavior.Restrict);
 
-
-            // RescueRequest - Prevent cascade delete conflicts
-            modelBuilder.Entity<RescueRequest>()
-                .HasOne(rr => rr.Coordinator)
+            // RescueMission - Prevent cascade delete for Coordinator (FK to User)
+            modelBuilder.Entity<RescueMission>()
+                .HasOne(rm => rm.Coordinator)
                 .WithMany()
-                .HasForeignKey(rr => rr.CoordinatorID)
+                .HasForeignKey(rm => rm.CoordinatorID)
                 .OnDelete(DeleteBehavior.Restrict);
+
 
             // RescueTeamMember - Prevent cascade delete conflicts
             modelBuilder.Entity<RescueTeamMember>()
@@ -100,6 +101,15 @@ namespace FloodRescue.Repositories.Context
                 new Role { RoleID = "IM", RoleName = "Inventory Manager", IsDeleted = false },
                 new Role { RoleID = "RT", RoleName = "Rescue Team Member", IsDeleted = false }  
             );
+
+            modelBuilder.Entity<Unit>().HasData(
+            new Unit { UnitID = 1, UnitName = "Thùng", IsDeleted = false },
+            new Unit { UnitID = 2, UnitName = "Hộp", IsDeleted = false },
+            new Unit { UnitID = 3, UnitName = "Chai", IsDeleted = false },
+            new Unit { UnitID = 4, UnitName = "Gói", IsDeleted = false },
+            new Unit { UnitID = 5, UnitName = "Bịch", IsDeleted = false },
+            new Unit { UnitID = 6, UnitName = "Cái", IsDeleted = false }
+        );
         }
     }
 }

@@ -73,7 +73,9 @@ namespace FloodRescue.Services.Mapper
             // Mapping ReliefItem DTOs
             CreateMap<CreateReliefItemRequestDTO, ReliefItem>();
 
-            CreateMap<ReliefItem, ReliefItemResponseDTO>();
+            CreateMap<ReliefItem, ReliefItemResponseDTO>()
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.CategoryName : string.Empty))
+                .ForMember(dest => dest.UnitName, opt => opt.MapFrom(src => src.Unit != null ? src.Unit.UnitName : string.Empty));
 
             // Mapping ReliefOrder DTOs
             CreateMap<ReliefOrder, ReliefOrderResponseDTO>();
@@ -119,11 +121,11 @@ namespace FloodRescue.Services.Mapper
             // mapper rescue team -> team accept message    
 
             CreateMap<RescueMission, TeamAcceptedMessage>()
-                .ForMember(destinationMember: dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
+                .ForMember(destinationMember: dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status))
+                .ForMember(dest => dest.CoordinatorID, opt => opt.MapFrom(src => src.CoordinatorID));
 
             CreateMap<RescueRequest, TeamAcceptedMessage>()
-                .ForMember(destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode))
-                .ForMember(destinationMember: dest => dest.CoordinatorID, opt => opt.MapFrom(src => src.CoordinatorID));
+                .ForMember(destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
 
             CreateMap<RescueTeam, TeamAcceptedMessage>();
 
@@ -132,10 +134,10 @@ namespace FloodRescue.Services.Mapper
             //mapper rescue team -> team reject message
 
             CreateMap<RescueMission, TeamRejectedMessage>()
-                .ForMember(destinationMember: dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status));
-
-            CreateMap<RescueRequest, TeamRejectedMessage>().ForMember(destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode))
-                                                            .ForMember(destinationMember: dest => dest.CoordinatorID, opt => opt.MapFrom(src => src.CoordinatorID));
+                .ForMember(destinationMember: dest => dest.MissionStatus, opt => opt.MapFrom(src => src.Status))
+                .ForMember(destinationMember: dest => dest.CoordinatorID, opt => opt.MapFrom(src => src.CoordinatorID));
+    
+            CreateMap<RescueRequest, TeamRejectedMessage>().ForMember(destinationMember: dest => dest.RequestShortCode, opt => opt.MapFrom(src => src.ShortCode));
 
             CreateMap<RescueTeam, TeamRejectedMessage>();
 
@@ -171,6 +173,7 @@ namespace FloodRescue.Services.Mapper
             // ShortCode, Status, CreatedTime → service tự set nên Ignore
             CreateMap<CreateRescueRequestDTO, RescueRequest>()
                 .ForMember(dest => dest.CitizenPhone, opt => opt.MapFrom(src => src.PhoneNumber))
+                .ForMember(dest => dest.CitizenEmail, opt => opt.MapFrom(src => src.CitizenEmail))
                 .ForMember(dest => dest.ShortCode, opt => opt.Ignore())
                 .ForMember(dest => dest.Status, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
@@ -204,8 +207,19 @@ namespace FloodRescue.Services.Mapper
             // mapper DeliveryStartedMessage -> DeliveryStartedNotification
             CreateMap<DeliveryStartedMessage, DeliveryStartedNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
 
+            // mapper IncidentResolvedMessage -> IncidentResolvedNotification
+            CreateMap<IncidentResolvedMessage, IncidentResolvedNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
+
             // mapper IncidentReportedMessage -> IncidentReportedNotification
             CreateMap<IncidentReportedMessage, IncidentReportedNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
+
+
+            CreateMap<RescueRequest, RescueRequestListResponseDTO>()
+                .ForMember(dest => dest.RequestType, opt => opt.MapFrom(src => src.RequestType));
+
+            CreateMap<RescueMission, RescueMissionListResponseDTO>()
+                .ForMember(dest => dest.CitizenAddress, opt => opt.MapFrom(src => src.RescueRequest != null ? src.RescueRequest.Address : null))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status));
 
             
         }

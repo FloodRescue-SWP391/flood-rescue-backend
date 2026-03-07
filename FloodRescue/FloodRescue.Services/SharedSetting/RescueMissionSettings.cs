@@ -20,6 +20,8 @@ public static class RescueMissionSettings
     // Incident
     public const string INCIDENT_STATUS = "Incident";
 
+     public const string INCIDENT_STATUS = "Incident";
+
     //Completed
     //public const string COMPLETED_STATUS = "Completed";
 

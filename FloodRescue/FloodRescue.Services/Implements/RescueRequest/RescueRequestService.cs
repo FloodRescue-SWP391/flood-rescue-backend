@@ -49,7 +49,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
         }
         public async Task<(CreateRescueRequestResponseDTO? Data, string? ErrorMessage)> CreateRescueRequestAsync(CreateRescueRequestDTO request)
         {
-            _logger.LogInformation("[RescueRequestService] Creating new RescueRequest. Phone: {Phone}, Type: {Type}", request.PhoneNumber, request.RequestType);
+            _logger.LogInformation("[RescueRequestService] Creating new RescueRequest. Phone: {Phone}, Email: {Email}, Type: {Type}", request.PhoneNumber, request.CitizenEmail ,request.RequestType);
 
             await _unitOfWork.BeginTransactionAsync();
 
@@ -95,12 +95,14 @@ namespace FloodRescue.Services.Implements.RescueRequest
 
                 // 5. Dùng AutoMapper map DTO -> Entity
                 //    PhoneNumber -> CitizenPhone (đã config ForMember trong MappingProfile)
+                //    CitizenEmail -> CitizenEmail (đã config ForMember trong MappingProfile)   
+                //    Các trường ShortCode, Status, CreatedTime sẽ không map từ DTO mà set thủ công sau
                 //    ShortCode, Status, CreatedTime đã Ignore → service tự set
                 RescueRequestEntity rescueRequest = _mapper.Map<RescueRequestEntity>(request);
                 rescueRequest.ShortCode = shortCode;
                 rescueRequest.Status = RescueRequestSettings.PENDING_STATUS;
                 rescueRequest.CreatedTime = DateTime.UtcNow;
-                // 6. Lưu rescueRequést vào DB
+                // 6. Lưu RescueRequest vào DB
                 await _unitOfWork.RescueRequests.AddAsync(rescueRequest);
                 _logger.LogInformation("[RescueRequestService - Sql Server] Added RescueRequest to context. ID: {Id}", rescueRequest.RescueRequestID);
 

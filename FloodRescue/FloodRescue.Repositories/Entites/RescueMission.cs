@@ -38,6 +38,14 @@ namespace FloodRescue.Repositories.Entites
         [JsonIgnore] // Tránh loop dữ liệu
         public RescueRequest? RescueRequest { get; set; }
 
+        // Coordinator who dispatched this mission
+        [Column("CoordinatorID", TypeName = "uniqueidentifier")]
+        public Guid? CoordinatorID { get; set; }
+
+        [ForeignKey(nameof(CoordinatorID))]
+        [JsonIgnore]
+        public User? Coordinator { get; set; }
+
         [Column("Status", TypeName = "varchar(20)")]
         public string Status { get; set; } = string.Empty;
 

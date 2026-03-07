@@ -1,4 +1,5 @@
 ﻿using FloodRescue.Services.DTO.Request.RescueRequest;
+using FloodRescue.Services.Interface.Email;
 using FloodRescue.Services.Interface.Kafka;
 using FloodRescue.Services.Interface.RealTimeNoti;
 using FloodRescue.Services.SharedSetting;
@@ -16,10 +17,15 @@ namespace FloodRescue.Services.Implements.Kafka
     {
         private readonly ILogger<RescueRequestKafkaHandler> _logger;
         private readonly IRealtimeNotificationService _notificationService;
-        public RescueRequestKafkaHandler(ILogger<RescueRequestKafkaHandler> logger, IRealtimeNotificationService notificationService)
+        private readonly IGmailService _gmailService;   
+        //private readonly ISmsService _smsService;
+
+        public RescueRequestKafkaHandler(ILogger<RescueRequestKafkaHandler> logger, IRealtimeNotificationService notificationService, IGmailService gmailService)
         {
             _logger = logger;
             _notificationService = notificationService;
+            _gmailService = gmailService;
+            //_smsService = smsService;
         }
         // Topic lấy từ KafkaSettings đã tạo sẵn trong SharedSetting
         public string Topic => KafkaSettings.RESCUE_REQUEST_CREATED_TOPIC;
@@ -43,7 +49,10 @@ namespace FloodRescue.Services.Implements.Kafka
                     kafkaMessage.RescueRequestID, kafkaMessage.ShortCode, kafkaMessage.CitizenPhone);
 
                 // 2. Gửi SMS thông báo cho citizen (PLACEHOLDER - tích hợp Twilio/Vonage sau)
-                await SendSmsNotificationAsync(kafkaMessage);
+                await SendGmailNotificationAsync(kafkaMessage);
+
+                _logger.LogInformation("[RescueRequestKafkaHandler - Kafka Consumer] Send Rescue Request ID {ID} with Short Code {ShortCode} to Citizen Phone {Citizen} sucessfully",
+                   kafkaMessage.RescueRequestID, kafkaMessage.ShortCode, kafkaMessage.CitizenPhone);
 
                 // 3. Gửi realtime notification cho Coordinator qua SignalR (dùng IRealtimeNotificationService đã có)
                 await _notificationService.SendToGroupAsync(
@@ -51,6 +60,7 @@ namespace FloodRescue.Services.Implements.Kafka
                     "NewRescueRequest",
                     new
                     {
+                        kafkaMessage.CitizenEmail,
                         kafkaMessage.RescueRequestID,
                         kafkaMessage.ShortCode,
                         kafkaMessage.RequestType,
@@ -80,21 +90,51 @@ namespace FloodRescue.Services.Implements.Kafka
         /// Placeholder cho SMS service - sau này inject ISmsService vào để gửi thật
         /// Hiện tại chỉ ghi log
         /// </summary>
-        private Task SendSmsNotificationAsync(RescueRequestKafkaMessage kafkaMessage)
+        private async Task SendGmailNotificationAsync(RescueRequestKafkaMessage kafkaMessage)
         {
-            // TODO: Tích hợp SMS service (Twilio, Vonage, SpeedSMS, ...)
-            // Ví dụ: await _smsService.SendAsync(kafkaMessage.CitizenPhone, smsContent);
+            if (string.IsNullOrEmpty(kafkaMessage.CitizenEmail))
+            {
+                _logger.LogWarning("[RescueRequestKafkaHandler - Email] No email provided for ShortCode: {ShortCode}. Skipping email notification.",
+                    kafkaMessage.ShortCode);
+                return;
+            }
 
-            string smsContent = $"[FloodRescue] Yêu cầu cứu hộ của bạn đã được tiếp nhận. " +
-                                $"Mã theo dõi: {kafkaMessage.ShortCode}. " +
-                                $"Loại: {kafkaMessage.RequestType}. " +
-                                $"Trạng thái: Pending. " +
-                                $"Chúng tôi sẽ liên hệ sớm nhất.";
+            try
+            {
+                string subject = $"[FloodRescue] Yêu cầu cứu hộ #{kafkaMessage.ShortCode} đã được tiếp nhận";
 
-            _logger.LogInformation("[RescueRequestKafkaHandler - SMS] Sending SMS to {Phone}: {Content}",
-                kafkaMessage.CitizenPhone, smsContent);
+                // Rút gọn thành chuỗi text bình thường, có dấu đầy đủ
+                string body = $@"Chào bạn,
+Yêu cầu cứu hộ của bạn đã được hệ thống tiếp nhận thành công
+Thông tin chi tiết:
+- Mã tra cứu của bạn là: {kafkaMessage.ShortCode}.
+- Số người cần hỗ trợ là: {kafkaMessage.PeopleCount}.
+Chúng tôi sẽ liên hệ với bạn qua số điện thoại {kafkaMessage.CitizenPhone} trong thời gian sớm nhất.
+Vui lòng giữ an toàn!
+Trân trọng!";
 
-            return Task.CompletedTask;
+                bool result = await _gmailService.SendGmailAsync(kafkaMessage.CitizenEmail, subject, body);
+
+                if (result)
+                {
+                    _logger.LogInformation("[RescueRequestKafkaHandler - Email] Email sent successfully to {Email} for ShortCode: {ShortCode}",
+                        kafkaMessage.CitizenEmail, kafkaMessage.ShortCode);
+                }
+                else
+                {
+                    _logger.LogWarning("[RescueRequestKafkaHandler - Email] Email failed to send to {Email} for ShortCode: {ShortCode}. Continuing with SignalR notification.",
+                        kafkaMessage.CitizenEmail, kafkaMessage.ShortCode);
+                }
+
+            }
+            catch(Exception ex)
+            {
+                // Email fail không được crash Consumer — phải chạy tiếp để gửi SignalR ở bước 3
+                _logger.LogError(ex, "[RescueRequestKafkaHandler - Email Error] Failed to send email to {Email}. Consumer will continue processing.",
+                    kafkaMessage.CitizenEmail);
+
+            }
+          
         }
 
     }

@@ -11,8 +11,8 @@ namespace FloodRescue.Services.DTO.Request.ReliefItem
         [Required]
         public int CategoryID { get; set; }
 
+
         [Required]
-        [MaxLength(50)]
-        public string Unit { get; set; } = string.Empty;
+        public int UnitID { get; set; }
     }
 }
