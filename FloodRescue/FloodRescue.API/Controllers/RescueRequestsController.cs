@@ -58,28 +58,29 @@ namespace FloodRescue.API.Controllers
             }
         }
 
-        [HttpGet("track/{shortCode}")]
-        public async Task<ActionResult<ApiResponse<CreateRescueRequestResponseDTO>>> GetByShortCode(string shortCode)
-        {
-            _logger.LogInformation("[RescueRequestsController] GET track called. ShortCode: {ShortCode}", shortCode);
-            try
-            {
-                CreateRescueRequestResponseDTO? result = await _rescueRequestService.GetByShortCodeAsync(shortCode);
-                if (result == null)
-                {
-                    _logger.LogWarning("[RescueRequestsController] Rescue request not found. ShortCode: {ShortCode}", shortCode);
-                    return NotFound(ApiResponse<CreateRescueRequestResponseDTO>.Fail("Rescue request not found", 404));
-                }
+        // [HttpGet("track/{shortCode}")]
+        // [AllowAnonymous]
+        // public async Task<ActionResult<ApiResponse<CreateRescueRequestResponseDTO>>> GetByShortCode([FromRoute] string shortCode)
+        // {
+        //     _logger.LogInformation("[RescueRequestsController] GET track called. ShortCode: {ShortCode}", shortCode);
+        //     try
+        //     {
+        //         CreateRescueRequestResponseDTO? result = await _rescueRequestService.GetByShortCodeAsync(shortCode);
+        //         if (result == null)
+        //         {
+        //             _logger.LogWarning("[RescueRequestsController] Rescue request not found. ShortCode: {ShortCode}", shortCode);
+        //             return NotFound(ApiResponse<CreateRescueRequestResponseDTO>.Fail("Rescue request not found", 404));
+        //         }
 
-                _logger.LogInformation("[RescueRequestsController] Rescue request found. ShortCode: {ShortCode}", shortCode);
-                return Ok(ApiResponse<CreateRescueRequestResponseDTO>.Ok(result, "Get rescue request successfully", 200));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[RescueRequestsController - Error] GET track failed. ShortCode: {ShortCode}", shortCode);
-                return StatusCode(500, ApiResponse<CreateRescueRequestResponseDTO>.Fail("Internal server error", 500));
-            }
-        }
+        //         _logger.LogInformation("[RescueRequestsController] Rescue request found. ShortCode: {ShortCode}", shortCode);
+        //         return Ok(ApiResponse<CreateRescueRequestResponseDTO>.Ok(result, "Get rescue request successfully", 200));
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError(ex, "[RescueRequestsController - Error] GET track failed. ShortCode: {ShortCode}", shortCode);
+        //         return StatusCode(500, ApiResponse<CreateRescueRequestResponseDTO>.Fail("Internal server error", 500));
+        //     }
+        // }
 
         [HttpGet]
         public async Task<ActionResult<ApiResponse<List<CreateRescueRequestResponseDTO>>>> GetAllRescueRequests()
@@ -103,9 +104,9 @@ namespace FloodRescue.API.Controllers
         /// Không cần đăng nhập - Thông tin được che giấu để bảo vệ quyền riêng tư
         /// GET /api/rescuerequests/track?shortCode=FR-1234
         /// </summary>
-        [HttpGet("track")]
+        [HttpGet("track/{shortCode}")]
         [AllowAnonymous]  // Không cần đăng nhập
-        public async Task<ActionResult<ApiResponse<TrackRequestResponseDTO>>> TrackRequest([FromQuery] string shortCode)
+        public async Task<ActionResult<ApiResponse<TrackRequestResponseDTO>>> TrackRequest([FromRoute] string shortCode)
         {
             _logger.LogInformation("[RescueRequestsController] GET track request called. ShortCode: {ShortCode}", shortCode);
 
