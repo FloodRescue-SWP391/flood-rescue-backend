@@ -163,6 +163,8 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[ReliefOrdersController - Error] GET order detail failed. ReliefOrderID: {ID}", id);
                 return StatusCode(500, ApiResponse<ReliefOrderDetailResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
         /// Lấy danh sách Relief Orders có lọc theo trạng thái, thời gian và phân trang
         /// GET /api/ReliefOrders/filter?statuses=Pending&amp;statuses=Prepared&amp;pageNumber=1&amp;pageSize=10
         /// </summary>
