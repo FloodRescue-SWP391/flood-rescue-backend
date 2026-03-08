@@ -35,6 +35,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
         // Add this constant with the other cache keys (around line 30)
         private const string TRACK_REQUEST_KEY_PREFIX = "rescuerequest:track:";
         private const string RESCUE_REQUEST_FILTER_PREFIX = "rescuerequest:filter:";
+        private const string REQUEST_DETAIL_KEY_PREFIX = "rescuerequest:detail:";
 
         // Danh sách các RequestType hợp lệ lấy từ RescueRequestSetting
         private static readonly HashSet<string> ValidRequestTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -535,6 +536,75 @@ namespace FloodRescue.Services.Implements.RescueRequest
             return $"{RESCUE_REQUEST_FILTER_PREFIX}s={statusKey}|t={filter.RequestType}|f={filter.FromDate:yyyyMMdd}|to={filter.ToDate:yyyyMMdd}|p={filter.PageNumber}|ps={filter.PageSize}";
         }
 
+        public async Task<RescueRequestDetailResponseDTO?> GetRequestDetailAsync(Guid requestId)
+        {
+            _logger.LogInformation("[RescueRequestService] GetRequestDetail called for RescueRequestID: {ID}", requestId);
+
+            // Check cache
+            string cacheKey = $"{REQUEST_DETAIL_KEY_PREFIX}{requestId}";
+
+            var cached = await _cacheService.GetAsync<RescueRequestDetailResponseDTO>(cacheKey);
+            if (cached != null)
+            {
+                _logger.LogInformation("[RescueRequestService - Redis] Cache hit for request detail. RescueRequestID: {ID}", requestId);
+                return cached;
+            }
+
+            _logger.LogInformation("[RescueRequestService - Redis] Cache miss for request detail. Querying database. RescueRequestID: {ID}", requestId);
+
+            // Query RescueRequest theo ID
+            RescueRequestEntity? rescueRequest = await _unitOfWork.RescueRequests.GetAsync(
+                (RescueRequestEntity rr) => rr.RescueRequestID == requestId && !rr.IsDeleted);
+
+            if (rescueRequest == null)
+            {
+                _logger.LogWarning("[RescueRequestService - Sql Server] RescueRequest with ID: {ID} not found", requestId);
+                return null;
+            }
+
+            _logger.LogInformation("[RescueRequestService - Sql Server] Found RescueRequest {ID} with status {Status}", requestId, rescueRequest.Status);
+
+            // Query RescueRequestImages
+            List<RescueRequestImage> images = await _unitOfWork.RescueRequestImages.GetAllAsync(
+                (RescueRequestImage img) => img.RescueRequestID == requestId);
+
+            _logger.LogInformation("[RescueRequestService - Sql Server] Found {Count} image(s) for RescueRequest {ID}", images.Count, requestId);
+
+            // Query RescueMissions gán cho request này
+            List<Repositories.Entites.RescueMission> missions = await _unitOfWork.RescueMissions.GetAllAsync(
+                (Repositories.Entites.RescueMission m) => m.RescueRequestID == requestId && !m.IsDeleted);
+
+            _logger.LogInformation("[RescueRequestService - Sql Server] Found {Count} mission(s) for RescueRequest {ID}", missions.Count, requestId);
+
+            // Mapping sang DTO
+            RescueRequestDetailResponseDTO result = new()
+            {
+                RescueRequestID = rescueRequest.RescueRequestID,
+                ShortCode = rescueRequest.ShortCode,
+                CitizenName = rescueRequest.CitizenName,
+                CitizenPhone = rescueRequest.CitizenPhone,
+                Address = rescueRequest.Address,
+                LocationLatitude = rescueRequest.LocationLatitude,
+                LocationLongitude = rescueRequest.LocationLongitude,
+                RequestType = rescueRequest.RequestType,
+                Status = rescueRequest.Status,
+                Description = rescueRequest.Description,
+                Images = images.Select(img => img.ImageUrl).ToList(),
+                RejectedNote = rescueRequest.RejectedNote,
+                CreatedTime = rescueRequest.CreatedTime,
+                AssignedMissions = missions.Select(m => new AssignedMissionDTO
+                {
+                    MissionID = m.RescueMissionID,
+                    Status = m.Status
+                }).ToList()
+            };
+
+            // Cache kết quả
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+            _logger.LogInformation("[RescueRequestService - Redis] Cached request detail for RescueRequestID: {ID}", requestId);
+
+            return result;
+        }
 
     }
 }

@@ -170,5 +170,34 @@ namespace FloodRescue.API.Controllers
                 return StatusCode(500, ApiResponse<PagedResult<RescueRequestListResponseDTO>>.Fail("Internal server error", 500));
             }
         }
+
+        /// <summary>
+        /// Coordinator xem chi tiết 1 rescue request
+        /// GET /api/RescueRequests/{id}
+        /// </summary>
+        [HttpGet("{id}")]
+        [Authorize(Roles = "Rescue Coordinator")]
+        public async Task<ActionResult<ApiResponse<RescueRequestDetailResponseDTO>>> GetRequestDetail(Guid id)
+        {
+            _logger.LogInformation("[RescueRequestsController] GET request detail called. RescueRequestID: {ID}", id);
+            try
+            {
+                RescueRequestDetailResponseDTO? result = await _rescueRequestService.GetRequestDetailAsync(id);
+
+                if (result == null)
+                {
+                    _logger.LogWarning("[RescueRequestsController] RescueRequest not found. ID: {ID}", id);
+                    return NotFound(ApiResponse<RescueRequestDetailResponseDTO>.Fail("Rescue Request not found.", 404));
+                }
+
+                _logger.LogInformation("[RescueRequestsController] GetRequestDetail success. RescueRequestID: {ID}, Missions: {Count}", id, result.AssignedMissions.Count);
+                return Ok(ApiResponse<RescueRequestDetailResponseDTO>.Ok(result, "Get rescue request detail successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueRequestsController - Error] GET request detail failed. RescueRequestID: {ID}", id);
+                return StatusCode(500, ApiResponse<RescueRequestDetailResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
     }
 }
