@@ -35,5 +35,11 @@ namespace FloodRescue.Services.Interface.RescueRequest
         Task<(TrackRequestResponseDTO? Data, string? ErrorMessage)> TrackRequestByShortCodeAsync(string shortCode);
 
         Task<PagedResult<RescueRequestListResponseDTO>> GetFilteredRescueRequestAsync(RescueRequestFilterDTO filter);
+
+        /// <summary>
+        /// Coordinator xem chi tiết 1 rescue request (có cache)
+        /// Include RescueRequestImages + RescueMissions
+        /// </summary>
+        Task<RescueRequestDetailResponseDTO?> GetRequestDetailAsync(Guid requestId);
     }
 }
