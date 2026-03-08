@@ -20,7 +20,7 @@ namespace FloodRescue.Services.DTO.Response.RescueRequestResponse
         /// SĐT đã được masking: "0901234567" → "090****567"
         /// </summary>
         public string CitizenPhone { get; set; } = string.Empty;
-
+    
         public string RequestType { get; set; } = string.Empty;
 
         /// <summary>
@@ -45,5 +45,15 @@ namespace FloodRescue.Services.DTO.Response.RescueRequestResponse
         /// Tên đội cứu hộ đang xử lý (nếu có)
         /// </summary>
         public string? TeamName { get; set; }
+
+        /// <summary>
+        /// Thông tin đội trưởng (nếu có mission)
+        /// </summary>
+        public TeamMemberDTO? TeamLeader { get; set; }
+
+        /// <summary>
+        /// Danh sách thành viên đội cứu hộ (nếu có mission)
+        /// </summary>
+        public List<TeamMemberDTO>? Members { get; set; }
     }
 }

@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Twilio.Rest.Api.V2010.Account.Usage.Record;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using RescueRequestEntity = FloodRescue.Repositories.Entites.RescueRequest;
 namespace FloodRescue.Services.Implements.RescueRequest
@@ -321,6 +322,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
             // 2. Check cache first
             string cacheKey = $"{TRACK_REQUEST_KEY_PREFIX}{shortCode}";
             var cached = await _cacheService.GetAsync<TrackRequestResponseDTO>(cacheKey);
+
             if (cached != null)
             {
                 _logger.LogInformation("[RescueRequestService - Redis] Cache hit for TrackRequest ShortCode: {ShortCode}", shortCode);
@@ -342,6 +344,8 @@ namespace FloodRescue.Services.Implements.RescueRequest
             // 4. Query RescueMission (nếu có) - Lấy mission KHÔNG bị Cancelled/Declined
             string? missionStatus = null;
             string? teamName = null;
+            TeamMemberDTO? teamLeader = null;
+            List<TeamMemberDTO>? membersDTO = null;
 
             var mission = await _unitOfWork.RescueMissions.GetAsync(
                 filter: m => m.RescueRequestID == rescueRequest.RescueRequestID
@@ -351,11 +355,35 @@ namespace FloodRescue.Services.Implements.RescueRequest
                 includes: m => m.RescueTeam!
             );
 
+          
+
+
+
+
             if (mission != null)
             {
                 missionStatus = mission.Status;
                 teamName = mission.RescueTeam?.TeamName;
+
+                // 1 query duy nhất: lấy tất cả members + include User → có đủ FullName, Phone
+                var teamMembers = await _unitOfWork.RescueTeamMembers.GetAllAsync(
+                    filter: (RescueTeamMember rtm) => rtm.RescueTeamID == mission.RescueTeamID && !rtm.IsDeleted,
+                    includes: rtm => rtm.User!
+                );
+
+                membersDTO = teamMembers.Select(tm => new TeamMemberDTO
+                {
+                    UserID = tm.UserID,
+                    FullName = tm.User!.FullName ?? string.Empty,
+                    Phone = tm.User.Phone ?? string.Empty,
+                    IsLeader = tm.IsLeader
+                }).ToList();
+
+
+                teamLeader = membersDTO.FirstOrDefault(m => m.IsLeader);
+
             }
+
 
             // 5. Masking sensitive data
             string maskedName = MaskName(rescueRequest.CitizenName);
@@ -373,9 +401,11 @@ namespace FloodRescue.Services.Implements.RescueRequest
                 RejectedNote = rescueRequest.RejectedNote,
                 CreatedTime = rescueRequest.CreatedTime,
                 MissionStatus = missionStatus,
-                TeamName = teamName
+                TeamName = teamName,
+                TeamLeader = teamLeader,    
+                Members = membersDTO
             };
-
+   
             // 7. Cache the response (shorter TTL since mission status can change)
             await _cacheService.SetAsync(cacheKey, response, TimeSpan.FromMinutes(5));
             _logger.LogInformation("[RescueRequestService - Redis] Cached TrackRequest ShortCode: {ShortCode}", shortCode);
