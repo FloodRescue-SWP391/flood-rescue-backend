@@ -109,7 +109,24 @@ namespace FloodRescue.Repositories.Context
             new Unit { UnitID = 4, UnitName = "Gói", IsDeleted = false },
             new Unit { UnitID = 5, UnitName = "Bịch", IsDeleted = false },
             new Unit { UnitID = 6, UnitName = "Cái", IsDeleted = false }
-        );
+           );
+
+            modelBuilder.Entity<Category>().HasData(
+                new Category { CategoryID = 1, CategoryName = "Nước uống", IsDeleted = false},
+                new Category { CategoryID = 2, CategoryName = "Đồ ăn", IsDeleted = false},
+                new Category { CategoryID = 3, CategoryName = "Thuốc", IsDeleted = false}
+            );
+
+            modelBuilder.Entity<ReliefItem>().HasData(
+                new ReliefItem { ReliefItemID = 1, ReliefItemName = "Aquafina", CategoryID = 1, UnitID = 1, IsDeleted = false },
+                new ReliefItem { ReliefItemID  = 2, ReliefItemName = "Lavie", CategoryID = 1, UnitID = 1, IsDeleted = false },
+                new ReliefItem { ReliefItemID  = 3, ReliefItemName = "Ionlife", CategoryID = 1, UnitID = 1, IsDeleted = false },
+                new ReliefItem { ReliefItemID  = 4, ReliefItemName = "Lương Khô", CategoryID = 2, UnitID = 4, IsDeleted = false },
+                new ReliefItem { ReliefItemID  = 5, ReliefItemName = "Bánh Mì", CategoryID = 2, UnitID = 6, IsDeleted = false },
+                new ReliefItem { ReliefItemID  = 6, ReliefItemName = "Mì Tôm", CategoryID = 2, UnitID = 1, IsDeleted = false }
+            );
+
+           
         }
     }
 }
