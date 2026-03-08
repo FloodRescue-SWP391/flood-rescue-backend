@@ -10,7 +10,8 @@ namespace FloodRescue.Services.DTO.Response.RescueRequestResponse
     public class RescueRequestListResponseDTO
     {
         public Guid RescueRequestID { get; set;  }
-        public string? CitizenName { get; set; }
+        public string ShortCode {get; set;} = string.Empty;
+        public string CitizenName { get; set; } = string.Empty;
         public string CitizenPhone { get; set; } = string.Empty;
         public string? Address { get; set;  }
         public string RequestType { get; set; } = string.Empty;

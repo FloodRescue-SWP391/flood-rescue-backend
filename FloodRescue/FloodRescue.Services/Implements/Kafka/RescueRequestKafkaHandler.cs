@@ -60,6 +60,7 @@ namespace FloodRescue.Services.Implements.Kafka
                     "NewRescueRequest",
                     new
                     {
+                        kafkaMessage.CitizenName,
                         kafkaMessage.CitizenEmail,
                         kafkaMessage.RescueRequestID,
                         kafkaMessage.ShortCode,
@@ -104,14 +105,15 @@ namespace FloodRescue.Services.Implements.Kafka
                 string subject = $"[FloodRescue] Yêu cầu cứu hộ #{kafkaMessage.ShortCode} đã được tiếp nhận";
 
                 // Rút gọn thành chuỗi text bình thường, có dấu đầy đủ
-                string body = $@"Chào bạn,
-Yêu cầu cứu hộ của bạn đã được hệ thống tiếp nhận thành công
-Thông tin chi tiết:
-- Mã tra cứu của bạn là: {kafkaMessage.ShortCode}.
-- Số người cần hỗ trợ là: {kafkaMessage.PeopleCount}.
-Chúng tôi sẽ liên hệ với bạn qua số điện thoại {kafkaMessage.CitizenPhone} trong thời gian sớm nhất.
-Vui lòng giữ an toàn!
-Trân trọng!";
+                string body = $@"Chào bạn {kafkaMessage.CitizenName}, <br/>
+Yêu cầu cứu hộ của bạn đã được hệ thống tiếp nhận thành công <br/>
+Thông tin chi tiết: <br/>
+Mã tra cứu của bạn là: {kafkaMessage.ShortCode}. <br/>
+Số người cần hỗ trợ là: {kafkaMessage.PeopleCount}. <br/>
+Chúng tôi sẽ liên hệ với bạn qua số điện thoại {kafkaMessage.CitizenPhone} trong thời gian sớm nhất. <br/>
+Bạn có thể nhập mã {kafkaMessage.ShortCode} vào thanh tra cứu để theo dõi yêu cầu của mình. <br/>
+Vui lòng giữ an toàn! <br/>
+Trân trọng!"; 
 
                 bool result = await _gmailService.Value.SendGmailAsync(kafkaMessage.CitizenEmail, subject, body);
 

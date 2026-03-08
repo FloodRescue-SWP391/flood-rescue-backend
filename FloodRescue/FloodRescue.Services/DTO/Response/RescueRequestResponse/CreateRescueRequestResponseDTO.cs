@@ -11,6 +11,7 @@ namespace FloodRescue.Services.DTO.Response.RescueRequestResponse
         public Guid RescueRequestID { get; set; }
         public string ShortCode { get; set; } = string.Empty;
         public string RequestType { get; set; } = string.Empty;
+        public string CitizenName {get; set;} = string.Empty;
         public string Status { get; set; } = string.Empty;
         public string CitizenPhone { get; set; } = string.Empty;
         public string CitizenEmail { get; set; } = string.Empty;    
