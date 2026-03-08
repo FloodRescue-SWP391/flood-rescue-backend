@@ -17,10 +17,10 @@ namespace FloodRescue.Services.Implements.Kafka
     {
         private readonly ILogger<RescueRequestKafkaHandler> _logger;
         private readonly IRealtimeNotificationService _notificationService;
-        private readonly IGmailService _gmailService;   
+        private readonly Lazy<IGmailService> _gmailService;   
         //private readonly ISmsService _smsService;
 
-        public RescueRequestKafkaHandler(ILogger<RescueRequestKafkaHandler> logger, IRealtimeNotificationService notificationService, IGmailService gmailService)
+        public RescueRequestKafkaHandler(ILogger<RescueRequestKafkaHandler> logger, IRealtimeNotificationService notificationService, Lazy<IGmailService> gmailService)
         {
             _logger = logger;
             _notificationService = notificationService;
@@ -113,7 +113,7 @@ Chúng tôi sẽ liên hệ với bạn qua số điện thoại {kafkaMessage.C
 Vui lòng giữ an toàn!
 Trân trọng!";
 
-                bool result = await _gmailService.SendGmailAsync(kafkaMessage.CitizenEmail, subject, body);
+                bool result = await _gmailService.Value.SendGmailAsync(kafkaMessage.CitizenEmail, subject, body);
 
                 if (result)
                 {

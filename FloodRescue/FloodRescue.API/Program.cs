@@ -152,11 +152,11 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IRescueTeamService, RescueTeamService>();
             builder.Services.AddScoped<IRescueRequestService, RescueRequestService>();
             builder.Services.AddScoped<IInventoryService, InventoryService>();
-            builder.Services.AddScoped<IKafkaHandler, RescueRequestKafkaHandler>();
             builder.Services.AddScoped<IIncidentReportService, IncidentReportService>();
 
             //Đăng ký Gmail Service
             builder.Services.AddScoped<IGmailService, GmailService>();
+            builder.Services.AddScoped<Lazy<IGmailService>>(sp => new Lazy<IGmailService>(() => sp.GetRequiredService<IGmailService>()));
 
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
@@ -170,6 +170,7 @@ namespace FloodRescue.API
             builder.Services.AddHostedService<KafkaConsumerService>();
 
             //Chỗ này sau này để đăng ký các IKafkaHandler implementation - hiện giờ chưa tạo - addScoped
+            builder.Services.AddScoped<IKafkaHandler, RescueRequestKafkaHandler>();
             builder.Services.AddScoped<IKafkaHandler, ReliefOrderHandler>();
             builder.Services.AddScoped<IKafkaHandler, DispatchMissionKafkaHandler>();
             builder.Services.AddScoped<IKafkaHandler, TeamAcceptedHandler>();
@@ -179,9 +180,10 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IKafkaHandler, DeliveryStartedHandler>();
             builder.Services.AddScoped<IKafkaHandler, IncidentReportedHandler>();
             builder.Services.AddScoped<IKafkaHandler, IncidentResolvedHandler>();
+            builder.Services.AddScoped<IKafkaHandler, TeamLocationKafkaHandler>();
 
 
-           
+
             // Đăng ký Redis Cache để inject được vào Cache Service
             // - đăng ký đồng thời handshake với redis server
             builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexer.Connect(redisConnectionString!));

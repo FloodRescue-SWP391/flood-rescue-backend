@@ -25,6 +25,9 @@ using RescueTeamMemberEntity = FloodRescue.Repositories.Entites.RescueTeamMember
 using ReliefOrderEntity = FloodRescue.Repositories.Entites.ReliefOrder;
 using IncidentReportEntity = FloodRescue.Repositories.Entites.IncidentReport;
 using FloodRescue.Services.Interface.Cache;
+using FloodRescue.Services.BusinessModels;
+using Microsoft.EntityFrameworkCore;
+using FloodRescue.Services.DTO.Cache;
 
 namespace FloodRescue.Services.Implements.RescueMission
 {
@@ -264,8 +267,22 @@ namespace FloodRescue.Services.Implements.RescueMission
                 if (request.IsAccepted)
                 {
                     rescueMission.Status = RescueMissionSettings.INPROGRESS_STATUS;    
-                    rescueMission.StartTime = respondedAt;  
+                    rescueMission.StartTime = respondedAt;
+
+                    //Sau khi đội cứu hộ đồng ý thì cập nhật vị trí của rescue team - 1 vị trí cố định vào database
+
+                    var cacheLocation = await _cacheService.GetAsync<TeamLocationCacheDTO>($"Track:TeamLocation:{rescueTeam.RescueTeamID}");
+
+                    if(cacheLocation != null)
+                    {
+                        rescueTeam.CurrentLatitude = cacheLocation.Latitude;
+                        rescueTeam.CurrentLongitude = cacheLocation.Longitude;
+                        _logger.LogInformation("[RescueMissionService] Updated RescueTeam {TeamID} location to Latitude: {Latitude}, Longitude: {Longitude} from cache after accepting mission", rescueTeam.RescueTeamID, cacheLocation.Latitude, cacheLocation.Longitude);
+                    }
+                    
                     _logger.LogInformation("[RescueMissionService] Rescue Mission with ID: {MissionID} accepted and set to InProgress - Team {TeamName}", request.RescueMissionID, rescueTeam.TeamName);
+
+                   
 
                     // mappper rescue mission -> team accept message
                     // mapper rescue request -> team accept message 
@@ -321,6 +338,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                 //mapper rescue team -> respond mission response dto    
                 //mappper respond mission requesst dto -> respond mission response dto - map tay 
 
+
                 RespondMissionResponseDTO response = _mapper.Map<RespondMissionResponseDTO>(rescueMission);
                 _mapper.Map(rescueRequest, response);
                 _mapper.Map(rescueTeam, response);
@@ -375,6 +393,15 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 // Update RescueTeam: CurrentStatus = Available
                 rescueTeam.CurrentStatus = RescueTeamSettings.AVAILABLE_STATUS;
+
+                var cachedLocation = await _cacheService.GetAsync<TeamLocationCacheDTO>($"Tracking:TeamLocation:{rescueTeam.RescueTeamID}");
+                if (cachedLocation != null)
+                {
+                    rescueTeam.CurrentLatitude = cachedLocation.Latitude;
+                    rescueTeam.CurrentLongitude = cachedLocation.Longitude;
+                    _logger.LogInformation("[RescueMissionService - Redis] Snapshot team end location from Redis. TeamID: {TeamID}, Lat: {Lat}, Lng: {Lng}",
+                        rescueTeam.RescueTeamID, cachedLocation.Latitude, cachedLocation.Longitude);
+                }
 
                 _logger.LogInformation("[RescueMissionService] RescueTeam {TeamID} - {TeamName} set to Available", rescueTeam.RescueTeamID, rescueTeam.TeamName);
 
