@@ -188,5 +188,34 @@ namespace FloodRescue.API.Controllers
                 return StatusCode(500, ApiResponse<PagedResult<IncidentListResponseDTO>>.Fail("Internal server error", 500));
             }
         }
+        /// <summary>
+        /// Lấy chi tiết một sự cố theo ID - Cho Coordinator/Admin
+        /// GET /api/incidentreports/{id}
+        /// </summary>
+        [HttpGet("{id:guid}")]
+        [Authorize(Roles = "Rescue Coordinator,Admin")]
+        public async Task<ActionResult<ApiResponse<IncidentDetailResponseDTO>>> GetIncidentDetail(Guid id)
+        {
+            _logger.LogInformation("[IncidentReportsController] GET incident detail called with ID: {Id}", id);
+
+            try
+            {
+                IncidentDetailResponseDTO? result = await _incidentReportService.GetIncidentDetailByIdAsync(id);
+
+                if (result == null)
+                {
+                    _logger.LogWarning("[IncidentReportsController] Incident not found with ID: {Id}", id);
+                    return NotFound(ApiResponse<IncidentDetailResponseDTO>.Fail("Incident not found", 404));
+                }
+
+                _logger.LogInformation("[IncidentReportsController] GetIncidentDetail success for ID: {Id}", id);
+                return Ok(ApiResponse<IncidentDetailResponseDTO>.Ok(result, "Get incident detail successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[IncidentReportsController - Error] GetIncidentDetail failed for ID: {Id}", id);
+                return StatusCode(500, ApiResponse<IncidentDetailResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
     }
 }

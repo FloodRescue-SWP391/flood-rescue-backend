@@ -2,31 +2,32 @@
 using Azure;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
+using FloodRescue.Services.BusinessModels;
+using FloodRescue.Services.DTO.Cache;
 using FloodRescue.Services.DTO.Kafka;
 using FloodRescue.Services.DTO.Request.RescueMissionRequest;
 using FloodRescue.Services.DTO.Response.RescueMissionResponse;
+using FloodRescue.Services.DTO.Response.RescueTeamResponse;
 using FloodRescue.Services.DTO.SignalR;
+using FloodRescue.Services.Interface.Cache;
 using FloodRescue.Services.Interface.Kafka;
 using FloodRescue.Services.Interface.RealTimeNoti;
 using FloodRescue.Services.Interface.RescueMission;
 using FloodRescue.Services.SharedSetting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-
+using ReliefOrderEntity = FloodRescue.Repositories.Entites.ReliefOrder;
 using RescueMissionEntity = FloodRescue.Repositories.Entites.RescueMission;
 using RescueRequestEntity = FloodRescue.Repositories.Entites.RescueRequest;
 using RescueTeamEntity = FloodRescue.Repositories.Entites.RescueTeam;
 using RescueTeamMemberEntity = FloodRescue.Repositories.Entites.RescueTeamMember;
-using ReliefOrderEntity = FloodRescue.Repositories.Entites.ReliefOrder;
-using FloodRescue.Services.Interface.Cache;
-using FloodRescue.Services.BusinessModels;
-using Microsoft.EntityFrameworkCore;
-using FloodRescue.Services.DTO.Cache;
 
 namespace FloodRescue.Services.Implements.RescueMission
 {
@@ -42,7 +43,8 @@ namespace FloodRescue.Services.Implements.RescueMission
         private const string PENDING_MISSIONS_KEY_PREFIX = "rescuemission:pending:team:";
 
         private const string MISSION_FILTER_PREFIX = "rescuemission:filter";
-
+        private const string MISSION_DETAIL_KEY_PREFIX = "rescuemission:detail:";
+        private const string TEAM_MEMBERS_KEY_PREFIX = "rescueteam:members:";
         public RescueMissionService(IUnitOfWork unitOfWork,
             ILogger<RescueMissionService> logger,
             IKafkaProducerService kafkaProducer,
@@ -719,6 +721,154 @@ namespace FloodRescue.Services.Implements.RescueMission
                                $"|p={filter.PageNumber}|ps={filter.PageSize}";
 
             return cacheKey;
+        }
+
+        public async Task<(RescueMissionDetailResponseDTO? Data, string? ErrorMessage)> GetMissionDetailByIdAsync(Guid missionId, Guid currentUserId, string userRole)
+        {
+            _logger.LogInformation("[RescueMissionService] GetMissionDetailById called. MissionID: {MissionID}, UserID: {UserID}, Role: {Role}", missionId, currentUserId, userRole);
+
+            // 1. Check cache first (cho Coordinator/Admin - không cần authorization check)
+            string cacheKey = $"{MISSION_DETAIL_KEY_PREFIX}{missionId}";
+
+            if (userRole != "Rescue Team Member")
+            {
+                var cached = await _cacheService.GetAsync<RescueMissionDetailResponseDTO>(cacheKey);
+                if (cached != null)
+                {
+                    _logger.LogInformation("[RescueMissionService - Redis] Cache hit for mission detail. MissionID: {MissionID}", missionId);
+                    return (cached, null);
+                }
+                _logger.LogInformation("[RescueMissionService - Redis] Cache miss for mission detail. MissionID: {MissionID}", missionId);
+            }
+
+            // 2. Query RescueMission với Include: RescueTeam, RescueRequest
+            RescueMissionEntity? mission = await _unitOfWork.RescueMissions.GetAsync(
+                filter: m => m.RescueMissionID == missionId && !m.IsDeleted,
+                includes: new System.Linq.Expressions.Expression<Func<RescueMissionEntity, object>>[]
+                {
+            m => m.RescueTeam!,
+            m => m.RescueRequest!
+                }
+            );
+
+            // 3. Nếu không tìm thấy
+            if (mission == null)
+            {
+                _logger.LogWarning("[RescueMissionService] Mission not found with ID: {MissionID}", missionId);
+                return (null, "Mission not found");
+            }
+
+            // 4. Nếu là RescueTeam, chỉ được xem mission của chính team mình
+            if (userRole == "Rescue Team Member")
+            {
+                // Kiểm tra user có thuộc team này không
+                RescueTeamMemberEntity? teamMember = await _unitOfWork.RescueTeamMembers.GetAsync(
+                    m => m.UserID == currentUserId && !m.IsDeleted
+                );
+
+                if (teamMember == null || teamMember.RescueTeamID != mission.RescueTeamID)
+                {
+                    _logger.LogWarning("[RescueMissionService] User {UserID} is not authorized to view mission {MissionID}", currentUserId, missionId);
+                    return (null, "You are not authorized to view this mission");
+                }
+            }
+
+            // 5. Mapping sang DTO bằng AutoMapper
+            RescueMissionDetailResponseDTO result = _mapper.Map<RescueMissionDetailResponseDTO>(mission);
+
+            // 6. Map nested object RequestInfo từ RescueRequest
+            if (mission.RescueRequest != null)
+            {
+                result.RequestInfo = _mapper.Map<VictimInfoDTO>(mission.RescueRequest);
+            }
+
+            // 7. Cache kết quả (chỉ cho Coordinator/Admin)
+            if (userRole != "Rescue Team Member")
+            {
+                await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+                _logger.LogInformation("[RescueMissionService - Redis] Cached mission detail for MissionID: {MissionID}", missionId);
+            }
+            _logger.LogInformation("[RescueMissionService] GetMissionDetailById success for MissionID: {MissionID}", missionId);
+            return (result, null);
+        }
+
+
+        public async Task<(List<RescueTeamMemberResponseDTO>? Data, string? ErrorMessage)> GetTeamMembersAsync(Guid teamId, Guid currentUserId, string userRole)
+        {
+            _logger.LogInformation("[RescueMissionService] GetTeamMembers called. TeamID: {TeamID}, UserID: {UserID}, Role: {Role}", teamId, currentUserId, userRole);
+
+            // 1. Check cache first
+            string cacheKey = $"{TEAM_MEMBERS_KEY_PREFIX}{teamId}";
+            var cached = await _cacheService.GetAsync<List<RescueTeamMemberResponseDTO>>(cacheKey);
+
+            if (cached != null)
+            {
+                _logger.LogInformation("[RescueMissionService - Redis] Cache hit for team members. TeamID: {TeamID}, Count: {Count}", teamId, cached.Count);
+
+                // Nếu là Rescue Team Member, cần verify authorization
+                if (userRole == "Rescue Team Member")
+                {
+                    RescueTeamMemberEntity? currentMember = await _unitOfWork.RescueTeamMembers.GetAsync(
+                        m => m.UserID == currentUserId && !m.IsDeleted);
+
+                    if (currentMember == null || currentMember.RescueTeamID != teamId)
+                    {
+                        _logger.LogWarning("[RescueMissionService] User {UserID} is not authorized to view members of TeamID: {TeamID}", currentUserId, teamId);
+                        return (null, "You are not authorized to view members of this team.");
+                    }
+                }
+
+                return (cached, null);
+            }
+
+            _logger.LogInformation("[RescueMissionService - Redis] Cache miss. Querying DB for team members. TeamID: {TeamID}", teamId);
+
+            // 2. Validate: Kiểm tra team có tồn tại không
+            RescueTeamEntity? rescueTeam = await _unitOfWork.RescueTeams.GetAsync(
+                t => t.RescueTeamID == teamId && !t.IsDeleted);
+
+            if (rescueTeam == null)
+            {
+                _logger.LogWarning("[RescueMissionService] RescueTeam with ID: {TeamID} not found", teamId);
+                return (null, "Rescue team not found.");
+            }
+
+            // 3. Authorization check cho Rescue Team Member
+            if (userRole == "Rescue Team Member")
+            {
+                RescueTeamMemberEntity? currentMember = await _unitOfWork.RescueTeamMembers.GetAsync(
+                    m => m.UserID == currentUserId && !m.IsDeleted);
+
+                if (currentMember == null || currentMember.RescueTeamID != teamId)
+                {
+                    _logger.LogWarning("[RescueMissionService] User {UserID} is not authorized to view members of TeamID: {TeamID}", currentUserId, teamId);
+                    return (null, "You are not authorized to view members of this team.");
+                }
+            }
+
+            // 4. Query: Lấy danh sách thành viên, Include User để lấy FullName và Phone
+            List<RescueTeamMemberEntity> members = await _unitOfWork.RescueTeamMembers.GetAllAsync(
+                filter: m => m.RescueTeamID == teamId && !m.IsDeleted,
+                includes: m => m.User!
+            );
+
+            if (members == null || !members.Any())
+            {
+                _logger.LogInformation("[RescueMissionService] No members found for TeamID: {TeamID}", teamId);
+                return (new List<RescueTeamMemberResponseDTO>(), null);
+            }
+
+            // 5. Sắp xếp: Đội trưởng (IsLeader = true) lên đầu
+            var orderedMembers = members.OrderByDescending(m => m.IsLeader).ToList();
+
+            // 6. Mapping sang DTO bằng AutoMapper
+            List<RescueTeamMemberResponseDTO> result = _mapper.Map<List<RescueTeamMemberResponseDTO>>(orderedMembers);
+
+            // 7. Cache the result
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(10));
+            _logger.LogInformation("[RescueMissionService - Redis] Cached {Count} members for TeamID: {TeamID}", result.Count, teamId);
+
+            return (result, null);
         }
     }
 }
