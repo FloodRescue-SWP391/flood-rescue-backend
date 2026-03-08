@@ -24,6 +24,7 @@ namespace FloodRescue.Services.SharedSetting
         public const string RELIEF_ORDER_CREATED_TOPIC = "relief-order-created-topic";
 
         public const string MISSION_COMPLETED_TOPIC = "mission-completed-topic";
+
         public const string ORDER_PREPARED_TOPIC = "order-prepared-topic";
 
         public const string DELIVERY_STARTED_TOPIC = "delivery-started-topic";
@@ -32,13 +33,15 @@ namespace FloodRescue.Services.SharedSetting
 
         public const string INCIDENT_ALERT_TOPIC = "incident-alert-topic";
 
+        public const string TEAM_LOCATION_TRACKING_TOPIC = "team-location-tracking-topic";  
+
 
         //Topic đóng CMT
         //public const string RESCUE_REQUEST_TOPIC = "rescue-request-topic";
         //public const string RESCUE_REQUEST_ACCEPTED_TOPIC = "rescue-request-accepted-topic";
         //public const string RESCUE_REQUEST_REJECTED_TOPIC = "rescue-request-rejected-topic";
         //public const string NOTIFICATION_TOPIC = "notification-topic";   
-         //public const string NOTIFICATION_TOPIC = "notification-topic";
+        //public const string NOTIFICATION_TOPIC = "notification-topic";
 
     }
 

@@ -6,6 +6,7 @@ using FloodRescue.Services.Implements.Auth;
 using FloodRescue.Services.Implements.BackgroundJob;
 using FloodRescue.Services.Implements.Cache;
 using FloodRescue.Services.Implements.Category;
+using FloodRescue.Services.Implements.Gmail;
 using FloodRescue.Services.Implements.IncidentReport;
 using FloodRescue.Services.Implements.Inventory;
 using FloodRescue.Services.Implements.Kafka;
@@ -20,6 +21,7 @@ using FloodRescue.Services.Interface.Auth;
 using FloodRescue.Services.Interface.BackgroundJob;
 using FloodRescue.Services.Interface.Cache;
 using FloodRescue.Services.Interface.Category;
+using FloodRescue.Services.Interface.Email;
 using FloodRescue.Services.Interface.IncidentReport;
 using FloodRescue.Services.Interface.Inventory;
 using FloodRescue.Services.Interface.Kafka;
@@ -150,8 +152,12 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IRescueTeamService, RescueTeamService>();
             builder.Services.AddScoped<IRescueRequestService, RescueRequestService>();
             builder.Services.AddScoped<IInventoryService, InventoryService>();
-            builder.Services.AddScoped<IKafkaHandler, RescueRequestKafkaHandler>();
             builder.Services.AddScoped<IIncidentReportService, IncidentReportService>();
+
+            //Đăng ký Gmail Service
+            builder.Services.AddScoped<IGmailService, GmailService>();
+            builder.Services.AddScoped<Lazy<IGmailService>>(sp => new Lazy<IGmailService>(() => sp.GetRequiredService<IGmailService>()));
+
             //Đăng ký DbContext
             builder.Services.AddDbContext<FloodRescueDbContext>(options =>
                 options.UseSqlServer(
@@ -164,6 +170,7 @@ namespace FloodRescue.API
             builder.Services.AddHostedService<KafkaConsumerService>();
 
             //Chỗ này sau này để đăng ký các IKafkaHandler implementation - hiện giờ chưa tạo - addScoped
+            builder.Services.AddScoped<IKafkaHandler, RescueRequestKafkaHandler>();
             builder.Services.AddScoped<IKafkaHandler, ReliefOrderHandler>();
             builder.Services.AddScoped<IKafkaHandler, DispatchMissionKafkaHandler>();
             builder.Services.AddScoped<IKafkaHandler, TeamAcceptedHandler>();
@@ -173,6 +180,7 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IKafkaHandler, DeliveryStartedHandler>();
             builder.Services.AddScoped<IKafkaHandler, IncidentReportedHandler>();
             builder.Services.AddScoped<IKafkaHandler, IncidentResolvedHandler>();
+            builder.Services.AddScoped<IKafkaHandler, TeamLocationKafkaHandler>();
 
 
 

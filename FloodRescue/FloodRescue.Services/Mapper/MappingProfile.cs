@@ -73,7 +73,9 @@ namespace FloodRescue.Services.Mapper
             // Mapping ReliefItem DTOs
             CreateMap<CreateReliefItemRequestDTO, ReliefItem>();
 
-            CreateMap<ReliefItem, ReliefItemResponseDTO>();
+            CreateMap<ReliefItem, ReliefItemResponseDTO>()
+                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.CategoryName : string.Empty))
+                .ForMember(dest => dest.UnitName, opt => opt.MapFrom(src => src.Unit != null ? src.Unit.UnitName : string.Empty));
 
             // Mapping ReliefOrder DTOs
             CreateMap<ReliefOrder, ReliefOrderResponseDTO>();
@@ -171,6 +173,7 @@ namespace FloodRescue.Services.Mapper
             // ShortCode, Status, CreatedTime → service tự set nên Ignore
             CreateMap<CreateRescueRequestDTO, RescueRequest>()
                 .ForMember(dest => dest.CitizenPhone, opt => opt.MapFrom(src => src.PhoneNumber))
+                .ForMember(dest => dest.CitizenEmail, opt => opt.MapFrom(src => src.CitizenEmail))
                 .ForMember(dest => dest.ShortCode, opt => opt.Ignore())
                 .ForMember(dest => dest.Status, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedTime, opt => opt.Ignore())
