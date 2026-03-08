@@ -29,6 +29,10 @@ namespace FloodRescue.Services.DTO.Request.RescueRequest
 
         [EmailAddress(ErrorMessage = "Email format is invalid")]
         public string CitizenEmail { get; set; } = string.Empty;   
+        
+
+        [Required]
+        public string CitizenName {get; set;} = string.Empty;
 
         public int PeopleCount { get; set; }
 

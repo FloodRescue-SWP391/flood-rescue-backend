@@ -92,6 +92,12 @@ namespace FloodRescue.Services.Implements.RescueRequest
                     _logger.LogWarning("[RescueRequestService] Phone number is empty");
                     return (null, "Phone number is required");
                 }
+
+                if (string.IsNullOrEmpty(request.CitizenName))
+                {
+                    _logger.LogWarning("[RescueRequestService] Citizen Name is empty");
+                    return (null, "Citizen name is required");
+                }
                 // ===== TẠO RESCUE REQUEST =====
                 // 4. Tạo short code duy nhất (random + 4 số cuối SĐT)
                 string shortCode = await GenerateUniqueShortCodeAsync();
