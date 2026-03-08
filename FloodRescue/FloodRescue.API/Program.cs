@@ -16,6 +16,7 @@ using FloodRescue.Services.Implements.ReliefOrder;
 using FloodRescue.Services.Implements.RescueMission;
 using FloodRescue.Services.Implements.RescueRequest;
 using FloodRescue.Services.Implements.RescueTeam;
+using FloodRescue.Services.Implements.UserManagement;
 using FloodRescue.Services.Implements.Warehouse;
 using FloodRescue.Services.Interface.Auth;
 using FloodRescue.Services.Interface.BackgroundJob;
@@ -31,6 +32,7 @@ using FloodRescue.Services.Interface.ReliefOrder;
 using FloodRescue.Services.Interface.RescueMission;
 using FloodRescue.Services.Interface.RescueRequest;
 using FloodRescue.Services.Interface.RescueTeam;
+using FloodRescue.Services.Interface.UserManagement;
 using FloodRescue.Services.Interface.Warehouse;
 using FloodRescue.Services.Mapper;
 using Hangfire;
@@ -153,6 +155,7 @@ namespace FloodRescue.API
             builder.Services.AddScoped<IRescueRequestService, RescueRequestService>();
             builder.Services.AddScoped<IInventoryService, InventoryService>();
             builder.Services.AddScoped<IIncidentReportService, IncidentReportService>();
+            builder.Services.AddScoped<IUserService, UserService>();
 
             //Đăng ký Gmail Service
             builder.Services.AddScoped<IGmailService, GmailService>();
