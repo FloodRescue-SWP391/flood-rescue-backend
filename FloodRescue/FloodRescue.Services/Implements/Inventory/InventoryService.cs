@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using WarehouseEntity = FloodRescue.Repositories.Entites.Warehouse;
 using InventoryEntity = FloodRescue.Repositories.Entites.Inventory;
 using ReliefItemEntity = FloodRescue.Repositories.Entites.ReliefItem;
+using UnitEntity = FloodRescue.Repositories.Entites.Unit;
 namespace FloodRescue.Services.Implements.Inventory
 {
     public class InventoryService : IInventoryService
@@ -208,13 +209,20 @@ namespace FloodRescue.Services.Implements.Inventory
                 return (new List<InventoryItemResponseDTO>(), null);
             }
 
+            //Lấy ra các danh sách unit id từ bảng ReliefItem -> Invetories JOIN ReliefItem để lấy UnitID, sau đó Distinct để lấy danh sách unit id duy nhất
+            List<int> unitIds = validInventories.Where(inv => inv.ReliefItem != null).Select(inv => inv.ReliefItem!.UnitID).Distinct().ToList();
+
+            List<UnitEntity> units = await _unitOfWork.Units.GetAllAsync(u => unitIds.Contains(u.UnitID) && !u.IsDeleted);
+
+            Dictionary<int, string> unitDict = units.ToDictionary(u => u.UnitID, u => u.UnitName);  
+
             // 4. 
             List<InventoryItemResponseDTO> result = validInventories.Select(inv => new InventoryItemResponseDTO
             {
                 InventoryID = inv.InventoryID,
                 ReliefItemID = inv.ReliefItemID,
                 ReliefItemName = inv.ReliefItem?.ReliefItemName ?? string.Empty,
-                Unit = inv.ReliefItem?.Unit ?? string.Empty,
+                Unit = unitDict.GetValueOrDefault(inv.ReliefItem?.UnitID ?? 0, string.Empty),
                 Quantity = inv.Quantity,
                 LastUpdated = inv.LastUpdated
             }).ToList();
