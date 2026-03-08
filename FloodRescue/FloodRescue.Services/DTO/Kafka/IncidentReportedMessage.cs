@@ -1,3 +1,5 @@
+using System;
+
 namespace FloodRescue.Services.DTO.Kafka
 {
     public class IncidentReportedMessage

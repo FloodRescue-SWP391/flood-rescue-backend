@@ -1,5 +1,4 @@
-﻿using FloodRescue.Services.BusinessModels;
-using FloodRescue.Services.DTO.Request.RescueMissionRequest;
+﻿using FloodRescue.Services.DTO.Request.RescueMissionRequest;
 using FloodRescue.Services.DTO.Response.RescueMissionResponse;
 using System;
 using System.Collections.Generic;
@@ -20,6 +19,5 @@ namespace FloodRescue.Services.Interface.RescueMission
         /// </summary>
         Task<(List<PendingMissionResponseDTO>? Data, string? ErrorMessage)> GetPendingMissionsAsync(Guid currentUserId);
         Task<ConfirmPickupResponseDTO?> ConfirmPickupAsync(ConfirmPickUpRequestDTO request);
-        Task<PagedResult<RescueMissionListResponseDTO>> GetFilteredMissionAsync(RescueMissionFilterDTO filter);
     }
 }
