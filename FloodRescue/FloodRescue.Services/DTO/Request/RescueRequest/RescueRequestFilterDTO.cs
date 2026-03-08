@@ -11,7 +11,6 @@ namespace FloodRescue.Services.DTO.Request.RescueRequest
         public List<string>? Status { get; set; }
         public string? RequestType { get; set; }
 
-
         public DateTime? FromDate { get; set; }
         public DateTime? ToDate { get; set; }
 
