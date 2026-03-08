@@ -37,5 +37,10 @@ namespace FloodRescue.Services.Interface.IncidentReport
         /// Lấy danh sách sự cố có lọc theo trạng thái, thời gian và phân trang
         /// </summary>
         Task<PagedResult<IncidentListResponseDTO>> GetFilteredIncidentsAsync(IncidentFilterDTO filter);
+
+        /// <summary>
+        /// Lấy chi tiết một sự cố theo ID - Cho Coordinator/Admin
+        /// </summary>
+        Task<IncidentDetailResponseDTO?> GetIncidentDetailByIdAsync(Guid incidentReportId);
     }
 }

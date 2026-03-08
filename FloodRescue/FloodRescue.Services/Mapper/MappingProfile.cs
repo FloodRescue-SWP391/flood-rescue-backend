@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using FloodRescue.Repositories.Entites;
+using FloodRescue.Services.DTO.Kafka;
 using FloodRescue.Services.DTO.Request.Auth;
 using FloodRescue.Services.DTO.Request.Category;
 using FloodRescue.Services.DTO.Request.ReliefItem;
@@ -9,21 +10,21 @@ using FloodRescue.Services.DTO.Request.User;
 using FloodRescue.Services.DTO.Request.Warehouse;
 using FloodRescue.Services.DTO.Response.AuthResponse;
 using FloodRescue.Services.DTO.Response.Category;
+using FloodRescue.Services.DTO.Response.IncidentResponse;
 using FloodRescue.Services.DTO.Response.RegisterResponse;
 using FloodRescue.Services.DTO.Response.ReliefItem;
+using FloodRescue.Services.DTO.Response.ReliefOrder;
+using FloodRescue.Services.DTO.Response.RescueMissionResponse;
 using FloodRescue.Services.DTO.Response.RescueRequestResponse;
 using FloodRescue.Services.DTO.Response.RescueTeamResponse;
 using FloodRescue.Services.DTO.Response.Warehouse;
-using FloodRescue.Services.DTO.Response.ReliefOrder;
+using FloodRescue.Services.DTO.SignalR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using FloodRescue.Services.DTO.Kafka;
-using FloodRescue.Services.DTO.SignalR;
-using FloodRescue.Services.DTO.Response.RescueMissionResponse;
-using System.Net;
 
 namespace FloodRescue.Services.Mapper
 {
@@ -221,7 +222,26 @@ namespace FloodRescue.Services.Mapper
                 .ForMember(dest => dest.CitizenAddress, opt => opt.MapFrom(src => src.RescueRequest != null ? src.RescueRequest.Address : null))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status));
 
-            
+            // Mapping IncidentReport -> IncidentDetailResponseDTO
+            CreateMap<IncidentReport, IncidentDetailResponseDTO>()
+                .ForMember(dest => dest.Latitude, opt => opt.MapFrom(src => src.Latitiude)) // Fix typo từ entity
+                .ForMember(dest => dest.ReporterName, opt => opt.MapFrom(src => src.Reported != null ? src.Reported.FullName : "Unknown"))
+                .ForMember(dest => dest.ResolverName, opt => opt.MapFrom(src => src.Resolver != null ? src.Resolver.FullName : null))
+                .ForMember(dest => dest.TeamName, opt => opt.Ignore()); // Sẽ set thủ công vì cần query thêm
+
+
+            // Mapping RescueMission -> RescueMissionDetailResponseDTO
+            CreateMap<RescueMission, RescueMissionDetailResponseDTO>()
+                .ForMember(dest => dest.TeamName, opt => opt.MapFrom(src => src.RescueTeam != null ? src.RescueTeam.TeamName : "Unknown"))
+                .ForMember(dest => dest.RequestInfo, opt => opt.Ignore()); // Sẽ map thủ công từ RescueRequest
+
+            // Mapping RescueRequest -> VictimInfoDTO
+            CreateMap<RescueRequest, VictimInfoDTO>();
+
+            // Mapping RescueTeamMember -> RescueTeamMemberResponseDTO
+            CreateMap<RescueTeamMember, RescueTeamMemberResponseDTO>()
+                .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : string.Empty))
+                .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.User != null ? src.User.Phone : string.Empty));
         }
     }
 }
