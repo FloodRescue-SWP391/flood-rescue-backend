@@ -49,17 +49,23 @@ namespace FloodRescue.Services.Implements.UserManagement
                 return (null, "Không thể cập nhật tài khoản Admin.");
             }
 
-            // Validate RoleID tồn tại trong DB
-            RoleEntity? role = await _unitOfWork.Roles.GetAsync((RoleEntity r) => r.RoleID == request.RoleID && !r.IsDeleted);
-
-            if (role == null)
+            // Xử lý RoleID: nếu != null thì validate và update
+            string newRoleID = user.RoleID;
+            if (!string.IsNullOrWhiteSpace(request.RoleID))
             {
-                _logger.LogWarning("[UserService - Sql Server] Role with ID: {RoleID} not found", request.RoleID);
-                return (null, $"RoleID '{request.RoleID}' không tồn tại trong hệ thống.");
+                RoleEntity? role = await _unitOfWork.Roles.GetAsync((RoleEntity r) => r.RoleID == request.RoleID && !r.IsDeleted);
+
+                if (role == null)
+                {
+                    _logger.LogWarning("[UserService - Sql Server] Role with ID: {RoleID} not found", request.RoleID);
+                    return (null, $"RoleID '{request.RoleID}' không tồn tại trong hệ thống.");
+                }
+
+                newRoleID = request.RoleID;
             }
 
-            // Kiểm tra trùng số điện thoại (nếu SĐT thay đổi)
-            if (user.Phone != request.Phone)
+            // Xử lý Phone: nếu != null thì validate trùng và update
+            if (!string.IsNullOrWhiteSpace(request.Phone) && user.Phone != request.Phone)
             {
                 UserEntity? existingPhone = await _unitOfWork.Users.GetAsync(
                     (UserEntity u) => u.Phone == request.Phone && u.UserID != userId && !u.IsDeleted);
@@ -71,13 +77,20 @@ namespace FloodRescue.Services.Implements.UserManagement
                 }
             }
 
-            _logger.LogInformation("[UserService] Updating user. UserID: {UserID}, OldRole: {OldRole} -> NewRole: {NewRole}, OldPhone: {OldPhone} -> NewPhone: {NewPhone}",
-                userId, user.RoleID, request.RoleID, user.Phone, request.Phone);
+            _logger.LogInformation("[UserService] Updating user. UserID: {UserID}, FullName: {OldName} -> {NewName}, Role: {OldRole} -> {NewRole}, Phone: {OldPhone} -> {NewPhone}",
+                userId,
+                user.FullName, request.FullName ?? user.FullName,
+                user.RoleID, newRoleID,
+                user.Phone, request.Phone ?? user.Phone);
 
-            // Cập nhật thông tin
-            user.FullName = request.FullName;
-            user.Phone = request.Phone;
-            user.RoleID = request.RoleID;
+            // Cập nhật thông tin - chỉ update field != null, giữ nguyên field == null
+            if (!string.IsNullOrWhiteSpace(request.FullName))
+                user.FullName = request.FullName;
+
+            if (!string.IsNullOrWhiteSpace(request.Phone))
+                user.Phone = request.Phone;
+
+            user.RoleID = newRoleID;
 
             int saveResult = await _unitOfWork.SaveChangesAsync();
 
@@ -89,6 +102,9 @@ namespace FloodRescue.Services.Implements.UserManagement
 
             _logger.LogInformation("[UserService] Successfully updated user. UserID: {UserID}", userId);
 
+            // Lấy lại Role name để trả response (có thể đã thay đổi hoặc giữ nguyên)
+            RoleEntity? currentRole = await _unitOfWork.Roles.GetAsync((RoleEntity r) => r.RoleID == user.RoleID);
+
             // Tạo response
             UpdateUserResponseDTO response = new()
             {
@@ -97,7 +113,7 @@ namespace FloodRescue.Services.Implements.UserManagement
                 FullName = user.FullName,
                 Phone = user.Phone,
                 RoleID = user.RoleID,
-                RoleName = role.RoleName,
+                RoleName = currentRole?.RoleName ?? string.Empty,
                 Message = "Cập nhật thông tin nhân sự thành công."
             };
 
