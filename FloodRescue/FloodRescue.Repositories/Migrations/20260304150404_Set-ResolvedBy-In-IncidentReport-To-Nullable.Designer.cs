@@ -4,6 +4,7 @@ using FloodRescue.Repositories.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FloodRescue.Repositories.Migrations
 {
     [DbContext(typeof(FloodRescueDbContext))]
-    partial class FloodRescueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260304150404_Set-ResolvedBy-In-IncidentReport-To-Nullable")]
+    partial class SetResolvedByInIncidentReportToNullable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -281,15 +284,15 @@ namespace FloodRescue.Repositories.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("ReliefItemName");
 
-                    b.Property<int>("UnitID")
-                        .HasColumnType("int")
-                        .HasColumnName("UnitID");
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("Unit");
 
                     b.HasKey("ReliefItemID");
 
                     b.HasIndex("CategoryID");
-
-                    b.HasIndex("UnitID");
 
                     b.ToTable("ReliefItems");
                 });
@@ -389,10 +392,6 @@ namespace FloodRescue.Repositories.Migrations
                         .HasColumnType("datetime2(7)")
                         .HasColumnName("AssignedAt");
 
-                    b.Property<Guid?>("CoordinatorID")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("CoordinatorID");
-
                     b.Property<DateTime?>("EndTime")
                         .HasColumnType("datetime2(7)")
                         .HasColumnName("EndTime");
@@ -420,8 +419,6 @@ namespace FloodRescue.Repositories.Migrations
 
                     b.HasKey("RescueMissionID");
 
-                    b.HasIndex("CoordinatorID");
-
                     b.HasIndex("RescueRequestID");
 
                     b.HasIndex("RescueTeamID");
@@ -440,12 +437,6 @@ namespace FloodRescue.Repositories.Migrations
                         .HasColumnType("nvarchar(225)")
                         .HasColumnName("Address");
 
-                    b.Property<string>("CitizenEmail")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(300)")
-                        .HasColumnName("CitizenEmail");
-
                     b.Property<string>("CitizenName")
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("CitizenName");
@@ -455,6 +446,10 @@ namespace FloodRescue.Repositories.Migrations
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)")
                         .HasColumnName("CitizenPhone");
+
+                    b.Property<Guid?>("CoordinatorID")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("CoordinatorID");
 
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("datetime2(7)")
@@ -503,6 +498,8 @@ namespace FloodRescue.Repositories.Migrations
                         .HasColumnName("Status");
 
                     b.HasKey("RescueRequestID");
+
+                    b.HasIndex("CoordinatorID");
 
                     b.HasIndex("ShortCode")
                         .IsUnique();
@@ -655,68 +652,6 @@ namespace FloodRescue.Repositories.Migrations
                             RoleID = "RT",
                             IsDeleted = false,
                             RoleName = "Rescue Team Member"
-                        });
-                });
-
-            modelBuilder.Entity("FloodRescue.Repositories.Entites.Unit", b =>
-                {
-                    b.Property<int>("UnitID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("UnitID");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UnitID"));
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("BIT")
-                        .HasColumnName("IsDeleted");
-
-                    b.Property<string>("UnitName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("UnitName");
-
-                    b.HasKey("UnitID");
-
-                    b.ToTable("Units");
-
-                    b.HasData(
-                        new
-                        {
-                            UnitID = 1,
-                            IsDeleted = false,
-                            UnitName = "Thùng"
-                        },
-                        new
-                        {
-                            UnitID = 2,
-                            IsDeleted = false,
-                            UnitName = "Hộp"
-                        },
-                        new
-                        {
-                            UnitID = 3,
-                            IsDeleted = false,
-                            UnitName = "Chai"
-                        },
-                        new
-                        {
-                            UnitID = 4,
-                            IsDeleted = false,
-                            UnitName = "Gói"
-                        },
-                        new
-                        {
-                            UnitID = 5,
-                            IsDeleted = false,
-                            UnitName = "Bịch"
-                        },
-                        new
-                        {
-                            UnitID = 6,
-                            IsDeleted = false,
-                            UnitName = "Cái"
                         });
                 });
 
@@ -901,15 +836,7 @@ namespace FloodRescue.Repositories.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("FloodRescue.Repositories.Entites.Unit", "Unit")
-                        .WithMany()
-                        .HasForeignKey("UnitID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Category");
-
-                    b.Navigation("Unit");
                 });
 
             modelBuilder.Entity("FloodRescue.Repositories.Entites.ReliefOrder", b =>
@@ -958,11 +885,6 @@ namespace FloodRescue.Repositories.Migrations
 
             modelBuilder.Entity("FloodRescue.Repositories.Entites.RescueMission", b =>
                 {
-                    b.HasOne("FloodRescue.Repositories.Entites.User", "Coordinator")
-                        .WithMany()
-                        .HasForeignKey("CoordinatorID")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("FloodRescue.Repositories.Entites.RescueRequest", "RescueRequest")
                         .WithMany()
                         .HasForeignKey("RescueRequestID")
@@ -975,11 +897,19 @@ namespace FloodRescue.Repositories.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Coordinator");
-
                     b.Navigation("RescueRequest");
 
                     b.Navigation("RescueTeam");
+                });
+
+            modelBuilder.Entity("FloodRescue.Repositories.Entites.RescueRequest", b =>
+                {
+                    b.HasOne("FloodRescue.Repositories.Entites.User", "Coordinator")
+                        .WithMany()
+                        .HasForeignKey("CoordinatorID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Coordinator");
                 });
 
             modelBuilder.Entity("FloodRescue.Repositories.Entites.RescueRequestImage", b =>

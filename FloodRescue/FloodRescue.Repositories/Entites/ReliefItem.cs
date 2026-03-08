@@ -22,6 +22,7 @@ namespace FloodRescue.Repositories.Entites
         [MaxLength(100)]
         public string ReliefItemName { get; set; } = string.Empty;
 
+
         [Column("CategoryID", TypeName = "int")]
         [Required]
         public int CategoryID { get; set; }
@@ -30,10 +31,16 @@ namespace FloodRescue.Repositories.Entites
         [JsonIgnore]
         public Category? Category { get; set; }
 
-        [Column("Unit", TypeName = "nvarchar(50)")]
+
+        // Thay string Unit bằng FK → bảng Units
+        // Manager chọn từ dropdown → data đồng nhất 100%
+        [Column("UnitID", TypeName = "int")]
         [Required]
-        [MaxLength(50)]
-        public string Unit { get; set; } = string.Empty;
+        public int UnitID { get; set; }
+
+        [ForeignKey(nameof(UnitID))]
+        [JsonIgnore]
+        public Unit? Unit { get; set; }
 
         [Column("IsDeleted", TypeName = "BIT")]
         public bool IsDeleted { get; set; } = false;

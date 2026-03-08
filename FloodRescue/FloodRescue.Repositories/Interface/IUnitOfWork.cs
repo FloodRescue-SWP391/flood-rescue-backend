@@ -26,6 +26,7 @@ namespace FloodRescue.Repositories.Interface
         IBaseRepository<User> Users { get; }
         IBaseRepository<Warehouse> Warehouses { get; }
         IBaseRepository<RefreshToken> RefreshTokens { get; }
+        IBaseRepository<Unit> Units { get; }
 
         Task BeginTransactionAsync();
         Task CommitTransactionAsync();

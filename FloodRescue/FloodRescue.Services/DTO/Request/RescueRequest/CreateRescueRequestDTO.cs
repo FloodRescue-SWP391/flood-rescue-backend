@@ -27,6 +27,9 @@ namespace FloodRescue.Services.DTO.Request.RescueRequest
         [MaxLength(15)]
         public string PhoneNumber { get; set; } = string.Empty;
 
+        [EmailAddress(ErrorMessage = "Email format is invalid")]
+        public string CitizenEmail { get; set; } = string.Empty;   
+
         public int PeopleCount { get; set; }
 
         /// <summary>

@@ -1,5 +1,4 @@
-﻿using FloodRescue.Services.BusinessModels;
-using FloodRescue.Services.DTO.Request.RescueRequest;
+﻿using FloodRescue.Services.DTO.Request.RescueRequest;
 using FloodRescue.Services.DTO.Response.RescueRequestResponse;
 using System;
 using System.Collections.Generic;
@@ -33,7 +32,5 @@ namespace FloodRescue.Services.Interface.RescueRequest
         /// Trả về dữ liệu đã được masking (che giấu thông tin nhạy cảm)
         /// </summary>
         Task<(TrackRequestResponseDTO? Data, string? ErrorMessage)> TrackRequestByShortCodeAsync(string shortCode);
-
-        Task<PagedResult<RescueRequestListResponseDTO>> GetFilteredRescueRequestAsync(RescueRequestFilterDTO filter);
     }
 }

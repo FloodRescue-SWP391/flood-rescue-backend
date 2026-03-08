@@ -13,6 +13,7 @@ namespace FloodRescue.Services.DTO.Response.RescueRequestResponse
         public string RequestType { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public string CitizenPhone { get; set; } = string.Empty;
+        public string CitizenEmail { get; set; } = string.Empty;    
         public double LocationLatitude { get; set; }
         public double LocationLongitude { get; set; }
         public string? Description { get; set; }

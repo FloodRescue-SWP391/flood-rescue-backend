@@ -32,6 +32,7 @@ namespace FloodRescue.Repositories.Implements
         private IBaseRepository<User>? _users;
         private IBaseRepository<Warehouse>? _warehouses;
         private IBaseRepository<RefreshToken>? _refreshTokens;
+        private IBaseRepository<Unit>? _units;
 
         public UnitOfWork(FloodRescueDbContext context)
         {
@@ -74,6 +75,7 @@ namespace FloodRescue.Repositories.Implements
         public IBaseRepository<Warehouse> Warehouses => _warehouses ??= new BaseRepository<Warehouse>(_context);
 
         public IBaseRepository<RefreshToken> RefreshTokens => _refreshTokens ??= new BaseRepository<RefreshToken>(_context);
+        public IBaseRepository<Unit> Units => _units ??= new BaseRepository<Unit>(_context);
 
         //Dùng biến count để định nghĩa cha và con
         private int _transactionCount = 0;  

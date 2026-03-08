@@ -2,7 +2,6 @@
 using Confluent.Kafka;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
-using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.RescueRequest;
 using FloodRescue.Services.DTO.Response.RescueRequestResponse;
 using FloodRescue.Services.Implements.Kafka;
@@ -10,7 +9,6 @@ using FloodRescue.Services.Interface.Cache;
 using FloodRescue.Services.Interface.Kafka;
 using FloodRescue.Services.Interface.RescueRequest;
 using FloodRescue.Services.SharedSetting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -34,8 +32,6 @@ namespace FloodRescue.Services.Implements.RescueRequest
         private const string RESCUE_REQUEST_KEY_PREFIX = "rescuerequest:shortcode:";
         // Add this constant with the other cache keys (around line 30)
         private const string TRACK_REQUEST_KEY_PREFIX = "rescuerequest:track:";
-        private const string RESCUE_REQUEST_FILTER_PREFIX = "rescuerequest:filter:";
-
         // Danh sách các RequestType hợp lệ lấy từ RescueRequestSetting
         private static readonly HashSet<string> ValidRequestTypes = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -53,7 +49,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
         }
         public async Task<(CreateRescueRequestResponseDTO? Data, string? ErrorMessage)> CreateRescueRequestAsync(CreateRescueRequestDTO request)
         {
-            _logger.LogInformation("[RescueRequestService] Creating new RescueRequest. Phone: {Phone}, Type: {Type}", request.PhoneNumber, request.RequestType);
+            _logger.LogInformation("[RescueRequestService] Creating new RescueRequest. Phone: {Phone}, Email: {Email}, Type: {Type}", request.PhoneNumber, request.CitizenEmail ,request.RequestType);
 
             await _unitOfWork.BeginTransactionAsync();
 
@@ -99,12 +95,14 @@ namespace FloodRescue.Services.Implements.RescueRequest
 
                 // 5. Dùng AutoMapper map DTO -> Entity
                 //    PhoneNumber -> CitizenPhone (đã config ForMember trong MappingProfile)
+                //    CitizenEmail -> CitizenEmail (đã config ForMember trong MappingProfile)   
+                //    Các trường ShortCode, Status, CreatedTime sẽ không map từ DTO mà set thủ công sau
                 //    ShortCode, Status, CreatedTime đã Ignore → service tự set
                 RescueRequestEntity rescueRequest = _mapper.Map<RescueRequestEntity>(request);
                 rescueRequest.ShortCode = shortCode;
                 rescueRequest.Status = RescueRequestSettings.PENDING_STATUS;
                 rescueRequest.CreatedTime = DateTime.UtcNow;
-                // 6. Lưu rescueRequést vào DB
+                // 6. Lưu RescueRequest vào DB
                 await _unitOfWork.RescueRequests.AddAsync(rescueRequest);
                 _logger.LogInformation("[RescueRequestService - Sql Server] Added RescueRequest to context. ID: {Id}", rescueRequest.RescueRequestID);
 
@@ -429,104 +427,6 @@ namespace FloodRescue.Services.Implements.RescueRequest
             return phone[..3] + "****" + phone[^3..];
         }
 
-
         #endregion
-
-        public async Task<PagedResult<RescueRequestListResponseDTO>> GetFilteredRescueRequestAsync(RescueRequestFilterDTO filter)
-        {
-            _logger.LogInformation("[RescueRequestService] GetFilterdRescueRequest called with Status: {Status}, Type: {Type}, Page: {Page}, Size: {Size}",
-                 filter.Status != null ? string.Join(",", filter.Status) : "All",
-                 filter.RequestType, filter.PageNumber, filter.PageSize);
-
-            //cache key là những tiêu chí lọc
-            string cacheKey = BuildFilterCacheKey(filter);
-
-            //nếu cache có thì trả về ngay
-            PagedResult<RescueRequestListResponseDTO>? cached = await _cacheService.GetAsync<PagedResult<RescueRequestListResponseDTO>>(cacheKey);
-
-            if(cached != null)
-            {
-                _logger.LogInformation("[RescueRequestService - Redis] Cache hit for filter key: {key}. TotalCount: {Count}", cacheKey, cached.TotalCount);
-                return cached;
-            }
-
-            _logger.LogInformation("[RescueRequestService - Redis] Cache miss for filter key: {Key}. Querying database.", cacheKey);
-
-            //lấy ra 1 danh sách query chứa 1 list query với kiểu dữ liệu là RescueRequestEntity
-            IQueryable<RescueRequestEntity> query = _unitOfWork.RescueRequests.GetQueryable();
-
-            //Filter theo Status của Rescue Request
-            // "Pending", "InProgress"
-            query = query.Where(rr => !rr.IsDeleted);
-
-            if (filter.Status != null && filter.Status.Count > 0)
-            {
-                query = query.Where(rr => filter.Status.Contains(rr.Status));
-            }
-
-            //Filter theo RequestType của Rescue Request
-            // "Supply", "Rescue"
-            if (!string.IsNullOrEmpty(filter.RequestType))
-            {
-                query = query.Where(rr => rr.RequestType == filter.RequestType);
-            }
-
-            if (filter.FromDate.HasValue)
-            {
-                query = query.Where(rr => rr.CreatedTime >= filter.FromDate.Value);
-            }
-
-            if (filter.ToDate.HasValue)
-            {
-                query = query.Where(rr => rr.CreatedTime <= filter.ToDate.Value);
-            }
-
-
-            //biến này dùng để front end tính số trang - và phải đếm trước khi skip/take
-            int totalCount = await query.CountAsync();
-
-
-            //Phân trang
-            List<RescueRequestEntity> entities = await query.OrderByDescending(rr => rr.CreatedTime)
-                                                            .Skip((filter.PageNumber - 1) * filter.PageSize)
-                                                            .Take(filter.PageSize)
-                                                            .AsNoTracking()
-                                                            .ToListAsync();
-
-
-
-            List<RescueRequestListResponseDTO> dtos = _mapper.Map<List<RescueRequestListResponseDTO>>(entities);
-
-            PagedResult<RescueRequestListResponseDTO> result = new()
-            {
-                Data = dtos,
-                TotalCount = totalCount
-            };
-
-            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
-
-            _logger.LogInformation("[RescueRequestService - Redis] Cached filter result. Key: {Key}, DataCount: {Count}, TotalCount: {Total}", cacheKey, dtos.Count, totalCount);
-
-            return result;
-
-        }
-
-
-        /// <summary>
-        /// Tạo cache key duy nhất từ tổ hợp filter params
-        /// Mỗi tổ hợp filter khác nhau sẽ có cache key khác nhau
-        /// Vd: "rescuerequest:filter:s=Pending|t=Rescue|f=2026-01-01|to=2026-03-01|p=1|ps=10"
-        /// </summary>
-        /// <param name="filter"></param>
-        /// <returns></returns>
-        /// <exception cref="NotImplementedException"></exception>
-
-        private string BuildFilterCacheKey(RescueRequestFilterDTO filter)
-        {
-            string statusKey = filter.Status != null && filter.Status.Count > 0 ? string.Join(",", filter.Status.OrderBy(s => s)) : "";
-            return $"{RESCUE_REQUEST_FILTER_PREFIX}s={statusKey}|t={filter.RequestType}|f={filter.FromDate:yyyyMMdd}|to={filter.ToDate:yyyyMMdd}|p={filter.PageNumber}|ps={filter.PageSize}";
-        }
-
-
     }
 }

@@ -4,6 +4,7 @@ using FloodRescue.Repositories.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FloodRescue.Repositories.Migrations
 {
     [DbContext(typeof(FloodRescueDbContext))]
-    partial class FloodRescueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260306170646_Add-CitizenEmail-To-RescueRequest")]
+    partial class AddCitizenEmailToRescueRequest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -281,15 +284,15 @@ namespace FloodRescue.Repositories.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("ReliefItemName");
 
-                    b.Property<int>("UnitID")
-                        .HasColumnType("int")
-                        .HasColumnName("UnitID");
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("Unit");
 
                     b.HasKey("ReliefItemID");
 
                     b.HasIndex("CategoryID");
-
-                    b.HasIndex("UnitID");
 
                     b.ToTable("ReliefItems");
                 });
@@ -658,68 +661,6 @@ namespace FloodRescue.Repositories.Migrations
                         });
                 });
 
-            modelBuilder.Entity("FloodRescue.Repositories.Entites.Unit", b =>
-                {
-                    b.Property<int>("UnitID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("UnitID");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UnitID"));
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("BIT")
-                        .HasColumnName("IsDeleted");
-
-                    b.Property<string>("UnitName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("UnitName");
-
-                    b.HasKey("UnitID");
-
-                    b.ToTable("Units");
-
-                    b.HasData(
-                        new
-                        {
-                            UnitID = 1,
-                            IsDeleted = false,
-                            UnitName = "Thùng"
-                        },
-                        new
-                        {
-                            UnitID = 2,
-                            IsDeleted = false,
-                            UnitName = "Hộp"
-                        },
-                        new
-                        {
-                            UnitID = 3,
-                            IsDeleted = false,
-                            UnitName = "Chai"
-                        },
-                        new
-                        {
-                            UnitID = 4,
-                            IsDeleted = false,
-                            UnitName = "Gói"
-                        },
-                        new
-                        {
-                            UnitID = 5,
-                            IsDeleted = false,
-                            UnitName = "Bịch"
-                        },
-                        new
-                        {
-                            UnitID = 6,
-                            IsDeleted = false,
-                            UnitName = "Cái"
-                        });
-                });
-
             modelBuilder.Entity("FloodRescue.Repositories.Entites.User", b =>
                 {
                     b.Property<Guid>("UserID")
@@ -901,15 +842,7 @@ namespace FloodRescue.Repositories.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("FloodRescue.Repositories.Entites.Unit", "Unit")
-                        .WithMany()
-                        .HasForeignKey("UnitID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Category");
-
-                    b.Navigation("Unit");
                 });
 
             modelBuilder.Entity("FloodRescue.Repositories.Entites.ReliefOrder", b =>
