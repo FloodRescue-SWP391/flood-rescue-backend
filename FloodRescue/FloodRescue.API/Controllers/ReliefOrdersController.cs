@@ -138,6 +138,31 @@ namespace FloodRescue.API.Controllers
         }
 
         /// <summary>
+        /// Lấy chi tiết phiếu xuất kho theo ID — gồm thông tin vỏ phiếu và danh sách hàng hóa bên trong
+        /// GET /api/ReliefOrders/{id}
+        /// </summary>
+        [HttpGet("{id}")]
+        [Authorize(Roles = "Inventory Manager")]
+        public async Task<ActionResult<ApiResponse<ReliefOrderDetailResponseDTO>>> GetOrderDetail(Guid id)
+        {
+            _logger.LogInformation("[ReliefOrdersController] GET order detail called. ReliefOrderID: {ID}", id);
+            try
+            {
+                ReliefOrderDetailResponseDTO? result = await _service.GetOrderDetailAsync(id);
+
+                if (result == null)
+                {
+                    _logger.LogWarning("[ReliefOrdersController] ReliefOrder not found. ID: {ID}", id);
+                    return NotFound(ApiResponse<ReliefOrderDetailResponseDTO>.Fail("Relief Order not found.", 404));
+                }
+
+                _logger.LogInformation("[ReliefOrdersController] GetOrderDetail success. ReliefOrderID: {ID}, Items: {Count}", id, result.Items.Count);
+                return Ok(ApiResponse<ReliefOrderDetailResponseDTO>.Ok(result, "Get relief order detail successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ReliefOrdersController - Error] GET order detail failed. ReliefOrderID: {ID}", id);
+                return StatusCode(500, ApiResponse<ReliefOrderDetailResponseDTO>.Fail("Internal server error", 500));
         /// Lấy danh sách Relief Orders có lọc theo trạng thái, thời gian và phân trang
         /// GET /api/ReliefOrders/filter?statuses=Pending&amp;statuses=Prepared&amp;pageNumber=1&amp;pageSize=10
         /// </summary>
