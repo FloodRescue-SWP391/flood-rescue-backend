@@ -1,3 +1,4 @@
+using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.UserRequest;
 using FloodRescue.Services.DTO.Response.UserResponse;
 
@@ -14,5 +15,10 @@ namespace FloodRescue.Services.Interface.UserManagement
         /// Admin khóa tài khoản nhân sự (Soft Delete - IsDeleted = true)
         /// </summary>
         Task<(bool Success, string? ErrorMessage)> DeactivateUserAsync(Guid userId, Guid currentUserId);
+
+        /// <summary>
+        /// Lấy danh sách nhân sự hệ thống có lọc theo keyword, role, trạng thái và phân trang
+        /// </summary>
+        Task<PagedResult<UserListResponseDTO>> GetFilteredUsersAsync(UserFilterDTO filter);
     }
 }

@@ -97,5 +97,30 @@ namespace FloodRescue.API.Controllers
                 return StatusCode(500, ApiResponse<string>.Fail("Internal server error", 500));
             }
         }
+
+        /// <summary>
+        /// Admin lấy danh sách nhân sự hệ thống có lọc và phân trang
+        /// GET /api/users?searchKeyword=Nguyen&amp;roleID=RC&amp;isActive=true&amp;pageNumber=1&amp;pageSize=10
+        /// </summary>
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<ApiResponse<PagedResult<UserListResponseDTO>>>> GetFilteredUsers([FromQuery] UserFilterDTO filter)
+        {
+            _logger.LogInformation("[UsersController] GET filter users called. Keyword: {Keyword}, RoleID: {RoleID}, IsActive: {IsActive}, Page: {Page}, Size: {Size}",
+                filter.SearchKeyword ?? "None", filter.RoleID ?? "All",
+                filter.IsActive?.ToString() ?? "All", filter.PageNumber, filter.PageSize);
+            try
+            {
+                PagedResult<UserListResponseDTO> result = await _userService.GetFilteredUsersAsync(filter);
+
+                _logger.LogInformation("[UsersController] GetFilteredUsers success. DataCount: {Count}, TotalCount: {Total}", result.Data.Count, result.TotalCount);
+                return Ok(ApiResponse<PagedResult<UserListResponseDTO>>.Ok(result, "Get filtered users successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[UsersController - Error] GET filter users failed.");
+                return StatusCode(500, ApiResponse<PagedResult<UserListResponseDTO>>.Fail("Internal server error", 500));
+            }
+        }
     }
 }

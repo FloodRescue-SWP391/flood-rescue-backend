@@ -1,7 +1,10 @@
 using FloodRescue.Repositories.Interface;
+using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.UserRequest;
 using FloodRescue.Services.DTO.Response.UserResponse;
+using FloodRescue.Services.Interface.Cache;
 using FloodRescue.Services.Interface.UserManagement;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using UserEntity = FloodRescue.Repositories.Entites.User;
@@ -13,11 +16,15 @@ namespace FloodRescue.Services.Implements.UserManagement
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<UserService> _logger;
+        private readonly ICacheService _cacheService;
 
-        public UserService(IUnitOfWork unitOfWork, ILogger<UserService> logger)
+        private const string USER_FILTER_PREFIX = "user:filter:";
+
+        public UserService(IUnitOfWork unitOfWork, ILogger<UserService> logger, ICacheService cacheService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _cacheService = cacheService;
         }
 
         public async Task<(UpdateUserResponseDTO? Data, string? ErrorMessage)> UpdateSystemUserAsync(Guid userId, UpdateUserRequestDTO request)
@@ -165,6 +172,100 @@ namespace FloodRescue.Services.Implements.UserManagement
             _logger.LogInformation("[UserService] Successfully deactivated user. UserID: {UserID}, Username: {Username}", userId, user.Username);
 
             return (true, null);
+        }
+
+        public async Task<PagedResult<UserListResponseDTO>> GetFilteredUsersAsync(UserFilterDTO filter)
+        {
+            _logger.LogInformation("[UserService] GetFilteredUsers called. Keyword: {Keyword}, RoleID: {RoleID}, IsActive: {IsActive}, Page: {Page}, Size: {Size}",
+                filter.SearchKeyword ?? "None", filter.RoleID ?? "All",
+                filter.IsActive?.ToString() ?? "All", filter.PageNumber, filter.PageSize);
+
+            // Check cache
+            string cacheKey = BuildUserFilterCacheKey(filter);
+
+            PagedResult<UserListResponseDTO>? cached = await _cacheService.GetAsync<PagedResult<UserListResponseDTO>>(cacheKey);
+
+            if (cached != null)
+            {
+                _logger.LogInformation("[UserService - Redis] Cache hit for filter key: {Key}. TotalCount: {Count}", cacheKey, cached.TotalCount);
+                return cached;
+            }
+
+            _logger.LogInformation("[UserService - Redis] Cache miss for filter key: {Key}. Querying database.", cacheKey);
+
+            // Khởi tạo query - chỉ lấy nhân sự nội bộ (AD, RC, IM, RT), loại trừ Citizen
+            string[] systemRoles = { "AD", "RC", "IM", "RT" };
+            IQueryable<UserEntity> query = _unitOfWork.Users.GetQueryable()
+                .Where(u => systemRoles.Contains(u.RoleID));
+
+            // Lọc theo SearchKeyword (FullName hoặc Phone)
+            if (!string.IsNullOrWhiteSpace(filter.SearchKeyword))
+            {
+                string keyword = filter.SearchKeyword.Trim();
+                query = query.Where(u => u.FullName.Contains(keyword) || u.Phone.Contains(keyword));
+            }
+
+            // Lọc theo RoleID
+            if (!string.IsNullOrWhiteSpace(filter.RoleID))
+            {
+                query = query.Where(u => u.RoleID == filter.RoleID);
+            }
+
+            // Lọc theo trạng thái (IsActive = !IsDeleted)
+            if (filter.IsActive.HasValue)
+            {
+                bool isDeleted = !filter.IsActive.Value;
+                query = query.Where(u => u.IsDeleted == isDeleted);
+            }
+
+            // Tính tổng số dòng cho FE làm thanh phân trang
+            int totalCount = await query.CountAsync();
+
+            _logger.LogInformation("[UserService - Sql Server] Total {Count} user(s) matched filter", totalCount);
+
+            // Sắp xếp theo FullName + Include Role + phân trang
+            List<UserEntity> entities = await query
+                .OrderBy(u => u.FullName)
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .Include(u => u.Role!)
+                .AsNoTracking()
+                .ToListAsync();
+
+            _logger.LogInformation("[UserService - Sql Server] Retrieved {Count} user(s) for current page", entities.Count);
+
+            // Mapping sang DTO
+            List<UserListResponseDTO> dtos = entities.Select(u => new UserListResponseDTO
+            {
+                UserID = u.UserID,
+                Username = u.Username,
+                FullName = u.FullName,
+                Phone = u.Phone,
+                RoleID = u.RoleID,
+                RoleName = u.Role?.RoleName ?? string.Empty,
+                IsActive = !u.IsDeleted
+            }).ToList();
+
+            // Đóng gói và cache
+            PagedResult<UserListResponseDTO> result = new()
+            {
+                Data = dtos,
+                TotalCount = totalCount
+            };
+
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+
+            _logger.LogInformation("[UserService - Redis] Cached filter result. Key: {Key}, DataCount: {Count}, TotalCount: {Total}", cacheKey, dtos.Count, totalCount);
+
+            return result;
+        }
+
+        private string BuildUserFilterCacheKey(UserFilterDTO filter)
+        {
+            return $"{USER_FILTER_PREFIX}kw={filter.SearchKeyword ?? ""}" +
+                   $"|r={filter.RoleID ?? ""}" +
+                   $"|a={filter.IsActive}" +
+                   $"|p={filter.PageNumber}|ps={filter.PageSize}";
         }
     }
 }
