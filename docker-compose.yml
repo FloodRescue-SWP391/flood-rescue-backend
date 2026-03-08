@@ -26,6 +26,9 @@ services:
       - GELF__Port=12201
       - GELF__Protocol=UDP
       - GELF__LogSource=cqh-floodrescue-backend
+      - GmailSettings__FromEmail=chungquochuy2909@gmail.com
+      - GmailSettings__AppPassword=${FLOOD_RESCUE_APP_PASSWORD}
+      - GmailSettings__DisplayName=Flood Rescue System
     networks:
       - flood-rescue-network
       - sql-network
