@@ -163,6 +163,27 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[ReliefOrdersController - Error] GET order detail failed. ReliefOrderID: {ID}", id);
                 return StatusCode(500, ApiResponse<ReliefOrderDetailResponseDTO>.Fail("Internal server error", 500));
+        /// Lấy danh sách Relief Orders có lọc theo trạng thái, thời gian và phân trang
+        /// GET /api/ReliefOrders/filter?statuses=Pending&amp;statuses=Prepared&amp;pageNumber=1&amp;pageSize=10
+        /// </summary>
+        [HttpGet("filter")]
+        [Authorize(Roles = "Inventory Manager")]
+        public async Task<ActionResult<ApiResponse<PagedResult<ReliefOrderListResponseDTO>>>> GetFilteredOrders([FromQuery] ReliefOrderFilterDTO filter)
+        {
+            _logger.LogInformation("[ReliefOrdersController] GET filter relief orders called. Statuses: {Statuses}, Page: {Page}, Size: {Size}",
+                filter.Statuses != null ? string.Join(",", filter.Statuses) : "All",
+                filter.PageNumber, filter.PageSize);
+            try
+            {
+                PagedResult<ReliefOrderListResponseDTO> result = await _service.GetFilteredOrdersAsync(filter);
+
+                _logger.LogInformation("[ReliefOrdersController] GetFilteredOrders success. DataCount: {Count}, TotalCount: {Total}", result.Data.Count, result.TotalCount);
+                return Ok(ApiResponse<PagedResult<ReliefOrderListResponseDTO>>.Ok(result, "Get filtered relief orders successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ReliefOrdersController - Error] GET filter relief orders failed.");
+                return StatusCode(500, ApiResponse<PagedResult<ReliefOrderListResponseDTO>>.Fail("Internal server error", 500));
             }
         }
     }

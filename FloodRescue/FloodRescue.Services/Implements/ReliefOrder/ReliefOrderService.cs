@@ -21,6 +21,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using FloodRescue.Services.DTO.Request.ReliefOrderRequest;
+using FloodRescue.Services.BusinessModels;
 
 namespace FloodRescue.Services.Implements.ReliefOrder
 {
@@ -35,6 +36,7 @@ namespace FloodRescue.Services.Implements.ReliefOrder
 
         private const string PENDING_ORDERS_CACHE_KEY = "relieforder:pending";
         private const string ORDER_DETAIL_KEY_PREFIX = "relieforder:detail:";
+        private const string ORDER_FILTER_PREFIX = "relieforder:filter:";
 
         public ReliefOrderService(
             IUnitOfWork unitOfWork,
@@ -408,6 +410,133 @@ namespace FloodRescue.Services.Implements.ReliefOrder
             _logger.LogInformation("[ReliefOrderService - Redis] Cached order detail for ReliefOrderID: {ID}", reliefOrderId);
 
             return result;
+        }
+        public async Task<PagedResult<ReliefOrderListResponseDTO>> GetFilteredOrdersAsync(ReliefOrderFilterDTO filter)
+        {
+            _logger.LogInformation("[ReliefOrderService] GetFilteredOrders called. Statuses: {Statuses}, Page: {Page}, Size: {Size}",
+                filter.Statuses != null ? string.Join(",", filter.Statuses) : "All",
+                filter.PageNumber, filter.PageSize);
+
+            // Check cache
+            string cacheKey = BuildOrderFilterCacheKey(filter);
+
+            PagedResult<ReliefOrderListResponseDTO>? cached = await _cacheService.GetAsync<PagedResult<ReliefOrderListResponseDTO>>(cacheKey);
+
+            if (cached != null)
+            {
+                _logger.LogInformation("[ReliefOrderService - Redis] Cache hit for filter key: {Key}. TotalCount: {Count}", cacheKey, cached.TotalCount);
+                return cached;
+            }
+
+            _logger.LogInformation("[ReliefOrderService - Redis] Cache miss for filter key: {Key}. Querying database.", cacheKey);
+
+            // Khởi tạo query bằng GetQueryable - chưa chạy xuống DB
+            IQueryable<ReliefOrderEntity> query = _unitOfWork.ReliefOrders.GetQueryable();
+
+            query = query.Where(ro => !ro.IsDeleted);
+
+            // Lọc theo mảng Statuses (Multi-select filter)
+            if (filter.Statuses != null && filter.Statuses.Count > 0)
+            {
+                query = query.Where(ro => filter.Statuses.Contains(ro.Status));
+            }
+
+            // Lọc theo mốc CreatedTime
+            if (filter.CreatedFromDate.HasValue)
+            {
+                query = query.Where(ro => ro.CreatedTime >= filter.CreatedFromDate.Value);
+            }
+
+            if (filter.CreatedToDate.HasValue)
+            {
+                query = query.Where(ro => ro.CreatedTime <= filter.CreatedToDate.Value);
+            }
+
+            // Lọc theo mốc PreparedTime
+            if (filter.PreparedFromDate.HasValue)
+            {
+                query = query.Where(ro => ro.PreparedTime.HasValue && ro.PreparedTime.Value >= filter.PreparedFromDate.Value);
+            }
+
+            if (filter.PreparedToDate.HasValue)
+            {
+                query = query.Where(ro => ro.PreparedTime.HasValue && ro.PreparedTime.Value <= filter.PreparedToDate.Value);
+            }
+
+            // Lọc theo mốc PickedUpTime
+            if (filter.PickedUpFromDate.HasValue)
+            {
+                query = query.Where(ro => ro.PickedUpTime.HasValue && ro.PickedUpTime.Value >= filter.PickedUpFromDate.Value);
+            }
+
+            if (filter.PickedUpToDate.HasValue)
+            {
+                query = query.Where(ro => ro.PickedUpTime.HasValue && ro.PickedUpTime.Value <= filter.PickedUpToDate.Value);
+            }
+
+            // Tính tổng số dòng cho FE làm thanh phân trang
+            int totalCount = await query.CountAsync();
+
+            _logger.LogInformation("[ReliefOrderService - Sql Server] Total {Count} relief order(s) matched filter", totalCount);
+
+            // Sắp xếp ưu tiên đơn mới nhất + Include RescueTeam + phân trang
+            List<ReliefOrderEntity> entities = await query
+                .OrderByDescending(ro => ro.CreatedTime)
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .Include(ro => ro.RescueTeam)
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Lấy danh sách OrderIDs để đếm TotalItems từ ReliefOrderDetails
+            List<Guid> orderIds = entities.Select(ro => ro.ReliefOrderID).ToList();
+
+            List<ReliefOrderDetailEntity> allDetails = await _unitOfWork.ReliefOrderDetails.GetAllAsync(
+                (ReliefOrderDetailEntity d) => orderIds.Contains(d.ReliefOrderID));
+
+            // Group by OrderID để đếm tổng số loại hàng
+            var totalItemsByOrder = allDetails
+                .GroupBy(d => d.ReliefOrderID)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            // Mapping sang DTO
+            List<ReliefOrderListResponseDTO> dtos = entities.Select(ro => new ReliefOrderListResponseDTO
+            {
+                ReliefOrderID = ro.ReliefOrderID,
+                Status = ro.Status,
+                CreatedTime = ro.CreatedTime,
+                PreparedTime = ro.PreparedTime,
+                PickedUpTime = ro.PickedUpTime,
+                AssignedTeamID = ro.RescueTeamID,
+                TeamName = ro.RescueTeam?.TeamName,
+                TotalItems = totalItemsByOrder.GetValueOrDefault(ro.ReliefOrderID, 0)
+            }).ToList();
+
+            // Đóng gói và cache
+            PagedResult<ReliefOrderListResponseDTO> result = new()
+            {
+                Data = dtos,
+                TotalCount = totalCount
+            };
+
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+
+            _logger.LogInformation("[ReliefOrderService - Redis] Cached filter result. Key: {Key}, DataCount: {Count}, TotalCount: {Total}", cacheKey, dtos.Count, totalCount);
+
+            return result;
+        }
+
+        private string BuildOrderFilterCacheKey(ReliefOrderFilterDTO filter)
+        {
+            string statusKey = filter.Statuses != null && filter.Statuses.Count > 0
+                ? string.Join(",", filter.Statuses.OrderBy(s => s))
+                : "";
+
+            return $"{ORDER_FILTER_PREFIX}s={statusKey}" +
+                   $"|cf={filter.CreatedFromDate:yyyyMMdd}|ct={filter.CreatedToDate:yyyyMMdd}" +
+                   $"|pf={filter.PreparedFromDate:yyyyMMdd}|pt={filter.PreparedToDate:yyyyMMdd}" +
+                   $"|uf={filter.PickedUpFromDate:yyyyMMdd}|ut={filter.PickedUpToDate:yyyyMMdd}" +
+                   $"|p={filter.PageNumber}|ps={filter.PageSize}";
         }
     }
 }
