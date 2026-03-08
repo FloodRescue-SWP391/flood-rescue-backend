@@ -14,5 +14,6 @@ namespace FloodRescue.Services.Interface.ReliefOrder
         Task<ReliefOrderResponseDTO?> CreateReliefOrderAsync(ReliefOrderRequestDTO request, Guid coordinatorID);
         Task<List<PendingOrderResponseDTO>> GetPendingOrdersAsync();
         Task<ReliefOrderResponseDTO?> PrepareReliefOrderAsync(PrepareOrderRequestDTO request, Guid managerID);
+        Task<ReliefOrderDetailResponseDTO?> GetOrderDetailAsync(Guid reliefOrderId);
     }
 }
