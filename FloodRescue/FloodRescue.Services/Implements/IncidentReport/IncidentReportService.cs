@@ -8,6 +8,7 @@ using FloodRescue.Services.Interface.IncidentReport;
 using FloodRescue.Services.Interface.Kafka;
 using FloodRescue.Services.SharedSetting;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,6 +24,7 @@ using RescueTeamMemberEntity = FloodRescue.Repositories.Entites.RescueTeamMember
 
 using FloodRescue.Services.DTO.Response.RescueMissionResponse;
 using FloodRescue.Services.DTO.Request.RescueMissionRequest;
+using FloodRescue.Services.BusinessModels;
 
 namespace FloodRescue.Services.Implements.IncidentReport
 {
@@ -36,6 +38,7 @@ namespace FloodRescue.Services.Implements.IncidentReport
         // Cache keys
         private const string INCIDENT_HISTORY_KEY = "incident:history:all";
         private const string PENDING_INCIDENTS_KEY = "incident:pending:all";
+        private const string INCIDENT_FILTER_PREFIX = "incident:filter:";
         public IncidentReportService(IUnitOfWork unitOfWork, ILogger<IncidentReportService> logger, ICacheService cacheService, IKafkaProducerService kafkaProducer)
         {
             _unitOfWork = unitOfWork;
@@ -467,6 +470,112 @@ namespace FloodRescue.Services.Implements.IncidentReport
             }
 
 
+        }
+
+        public async Task<PagedResult<IncidentListResponseDTO>> GetFilteredIncidentsAsync(IncidentFilterDTO filter)
+        {
+            _logger.LogInformation("[IncidentReportService] GetFilteredIncidents called. Statuses: {Statuses}, Page: {Page}, Size: {Size}",
+                filter.Statuses != null ? string.Join(",", filter.Statuses) : "All",
+                filter.PageNumber, filter.PageSize);
+
+            // Check cache
+            string cacheKey = BuildIncidentFilterCacheKey(filter);
+
+            PagedResult<IncidentListResponseDTO>? cached = await _cacheService.GetAsync<PagedResult<IncidentListResponseDTO>>(cacheKey);
+
+            if (cached != null)
+            {
+                _logger.LogInformation("[IncidentReportService - Redis] Cache hit for filter key: {Key}. TotalCount: {Count}", cacheKey, cached.TotalCount);
+                return cached;
+            }
+
+            _logger.LogInformation("[IncidentReportService - Redis] Cache miss for filter key: {Key}. Querying database.", cacheKey);
+
+            // Khởi tạo query bằng GetQueryable - chưa chạy xuống DB
+            IQueryable<IncidentReportEntity> query = _unitOfWork.IncidentReports.GetQueryable();
+
+            // Lọc theo mảng Statuses (Multi-select filter)
+            if (filter.Statuses != null && filter.Statuses.Count > 0)
+            {
+                query = query.Where(ir => filter.Statuses.Contains(ir.Status));
+            }
+
+            // Lọc theo mốc CreatedTime
+            if (filter.CreatedFromDate.HasValue)
+            {
+                query = query.Where(ir => ir.CreatedTime >= filter.CreatedFromDate.Value);
+            }
+
+            if (filter.CreatedToDate.HasValue)
+            {
+                query = query.Where(ir => ir.CreatedTime <= filter.CreatedToDate.Value);
+            }
+
+            // Lọc theo mốc ResolvedTime
+            if (filter.ResolvedFromDate.HasValue)
+            {
+                query = query.Where(ir => ir.ResolvedTime.HasValue && ir.ResolvedTime.Value >= filter.ResolvedFromDate.Value);
+            }
+
+            if (filter.ResolvedToDate.HasValue)
+            {
+                query = query.Where(ir => ir.ResolvedTime.HasValue && ir.ResolvedTime.Value <= filter.ResolvedToDate.Value);
+            }
+
+            // Tính tổng số dòng cho FE làm thanh phân trang
+            int totalCount = await query.CountAsync();
+
+            _logger.LogInformation("[IncidentReportService - Sql Server] Total {Count} incident(s) matched filter", totalCount);
+
+            // Sắp xếp ưu tiên sự cố mới nhất + Include RescueMission -> RescueTeam, Reported (User) + phân trang
+            List<IncidentReportEntity> entities = await query
+                .OrderByDescending(ir => ir.CreatedTime)
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .Include(ir => ir.RescueMission!)
+                    .ThenInclude(rm => rm.RescueTeam!)
+                .Include(ir => ir.Reported!)
+                .AsNoTracking()
+                .ToListAsync();
+
+            _logger.LogInformation("[IncidentReportService - Sql Server] Retrieved {Count} incident(s) for current page", entities.Count);
+
+            // Mapping sang DTO
+            List<IncidentListResponseDTO> dtos = entities.Select(ir => new IncidentListResponseDTO
+            {
+                IncidentReportID = ir.IncidentReportID,
+                RescueMissionID = ir.RescueMissionID,
+                TeamName = ir.RescueMission?.RescueTeam?.TeamName ?? "Unknown",
+                ReporterName = ir.Reported?.FullName ?? "Unknown",
+                Title = ir.Title,
+                Status = ir.Status,
+                CreatedTime = ir.CreatedTime
+            }).ToList();
+
+            // Đóng gói và cache
+            PagedResult<IncidentListResponseDTO> result = new()
+            {
+                Data = dtos,
+                TotalCount = totalCount
+            };
+
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+
+            _logger.LogInformation("[IncidentReportService - Redis] Cached filter result. Key: {Key}, DataCount: {Count}, TotalCount: {Total}", cacheKey, dtos.Count, totalCount);
+
+            return result;
+        }
+
+        private string BuildIncidentFilterCacheKey(IncidentFilterDTO filter)
+        {
+            string statusKey = filter.Statuses != null && filter.Statuses.Count > 0
+                ? string.Join(",", filter.Statuses.OrderBy(s => s))
+                : "";
+
+            return $"{INCIDENT_FILTER_PREFIX}s={statusKey}" +
+                   $"|cf={filter.CreatedFromDate:yyyyMMdd}|ct={filter.CreatedToDate:yyyyMMdd}" +
+                   $"|rf={filter.ResolvedFromDate:yyyyMMdd}|rt={filter.ResolvedToDate:yyyyMMdd}" +
+                   $"|p={filter.PageNumber}|ps={filter.PageSize}";
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using FloodRescue.Services.DTO.Request.IncidentReportRequest;
+﻿using FloodRescue.Services.BusinessModels;
+using FloodRescue.Services.DTO.Request.IncidentReportRequest;
 using FloodRescue.Services.DTO.Request.RescueMissionRequest;
 using FloodRescue.Services.DTO.Response.IncidentResponse;
 using FloodRescue.Services.DTO.Response.RescueMissionResponse;
@@ -31,5 +32,10 @@ namespace FloodRescue.Services.Interface.IncidentReport
         /// Coordinator xử lý sự cố: đóng incident, hủy mission, giải phóng team, đưa request về Processing
         /// </summary>
         Task<(ResolvedIncidentResponseDTO? Data, string? ErrorMessage)> ResolveIncidentAsync(ResolvedIncidentRequestDTO request, Guid currentUserId);
+
+        /// <summary>
+        /// Lấy danh sách sự cố có lọc theo trạng thái, thời gian và phân trang
+        /// </summary>
+        Task<PagedResult<IncidentListResponseDTO>> GetFilteredIncidentsAsync(IncidentFilterDTO filter);
     }
 }
