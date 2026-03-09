@@ -1,6 +1,7 @@
 ﻿using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.RescueMissionRequest;
 using FloodRescue.Services.DTO.Response.RescueMissionResponse;
+using FloodRescue.Services.DTO.Response.RescueTeamResponse;
 using FloodRescue.Services.Interface.RescueMission;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -238,6 +239,107 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[RescueMissionController - Error] GET filter missions failed.");
                 return StatusCode(500, ApiResponse<PagedResult<RescueMissionListResponseDTO>>.Fail("Internal Server Error", 500));
+            }
+        }
+        /// <summary>
+        /// Lấy chi tiết một nhiệm vụ theo ID - Cho Coordinator/Admin/RescueTeam
+        /// GET /api/rescuemission/{id}
+        /// </summary>
+        [HttpGet("{id:guid}")]
+        [Authorize(Roles = "Rescue Coordinator,Admin,Rescue Team Member")]
+        public async Task<ActionResult<ApiResponse<RescueMissionDetailResponseDTO>>> GetMissionDetail(Guid id)
+        {
+            _logger.LogInformation("[RescueMissionController] GET mission detail called with ID: {Id}", id);
+
+            try
+            {
+                // 1. Lấy UserID từ JWT Token
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid currentUserId))
+                {
+                    _logger.LogWarning("[RescueMissionController] Unable to extract UserID from JWT token.");
+                    return Unauthorized(ApiResponse<RescueMissionDetailResponseDTO>.Fail("Invalid token. Please login again.", 401));
+                }
+
+                // 2. Lấy Role từ JWT Token
+                var roleClaim = User.FindFirst(ClaimTypes.Role);
+                string userRole = roleClaim?.Value ?? string.Empty;
+
+                // 3. Gọi service
+                var (data, errorMessage) = await _rescueMissionService.GetMissionDetailByIdAsync(id, currentUserId, userRole);
+
+                // 4. Xử lý kết quả
+                if (errorMessage == "Mission not found")
+                {
+                    _logger.LogWarning("[RescueMissionController] Mission not found with ID: {Id}", id);
+                    return NotFound(ApiResponse<RescueMissionDetailResponseDTO>.Fail(errorMessage, 404));
+                }
+
+                if (errorMessage != null)
+                {
+                    _logger.LogWarning("[RescueMissionController] GetMissionDetail failed: {Error}", errorMessage);
+                    return StatusCode(403, ApiResponse<RescueMissionDetailResponseDTO>.Fail(errorMessage, 403));
+                }
+
+                _logger.LogInformation("[RescueMissionController] GetMissionDetail success for ID: {Id}", id);
+                return Ok(ApiResponse<RescueMissionDetailResponseDTO>.Ok(data!, "Get mission detail successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueMissionController - Error] GetMissionDetail failed for ID: {Id}", id);
+                return StatusCode(500, ApiResponse<RescueMissionDetailResponseDTO>.Fail("Internal server error", 500));
+            }
+        }
+
+        /// <summary>
+        /// Lấy danh sách thành viên của một đội cứu hộ (Đội trưởng luôn ở đầu)
+        /// </summary>
+        [HttpGet("teams/{teamId}/members")]
+        [Authorize(Roles = "Rescue Coordinator,Admin,Rescue Team Member")]
+        public async Task<ActionResult<ApiResponse<List<RescueTeamMemberResponseDTO>>>> GetTeamMembers([FromRoute] Guid teamId)
+        {
+            _logger.LogInformation("[RescueMissionController] GET team members called. TeamID: {TeamID}", teamId);
+
+            try
+            {
+                // 1. Lấy UserID và Role từ JWT Token
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+                var roleClaim = User.FindFirst(ClaimTypes.Role);
+
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid currentUserId))
+                {
+                    _logger.LogWarning("[RescueMissionController] Unable to extract UserID from JWT token.");
+                    return Unauthorized(ApiResponse<List<RescueTeamMemberResponseDTO>>.Fail("Invalid token. Please login again.", 401));
+                }
+
+                string userRole = roleClaim?.Value ?? string.Empty;
+
+                _logger.LogInformation("[RescueMissionController] Fetching team members. TeamID: {TeamID}, UserID: {UserID}, Role: {Role}", teamId, currentUserId, userRole);
+
+                // 2. Gọi service
+                var (data, errorMessage) = await _rescueMissionService.GetTeamMembersAsync(teamId, currentUserId, userRole);
+
+                // 3. Xử lý kết quả
+                if (errorMessage != null)
+                {
+                    _logger.LogWarning("[RescueMissionController] GetTeamMembers failed: {Error}", errorMessage);
+
+                    if (errorMessage.Contains("not authorized"))
+                        return StatusCode(403, ApiResponse<List<RescueTeamMemberResponseDTO>>.Fail(errorMessage, 403));
+
+                    if (errorMessage.Contains("not found"))
+                        return NotFound(ApiResponse<List<RescueTeamMemberResponseDTO>>.Fail(errorMessage, 404));
+
+                    return BadRequest(ApiResponse<List<RescueTeamMemberResponseDTO>>.Fail(errorMessage, 400));
+                }
+
+                _logger.LogInformation("[RescueMissionController] GetTeamMembers success. Found {Count} members for TeamID: {TeamID}", data?.Count ?? 0, teamId);
+                return Ok(ApiResponse<List<RescueTeamMemberResponseDTO>>.Ok(data!, "Get team members successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueMissionController - Error] GetTeamMembers failed unexpectedly. TeamID: {TeamID}", teamId);
+                return StatusCode(500, ApiResponse<List<RescueTeamMemberResponseDTO>>.Fail("Internal server error", 500));
             }
         }
     }
