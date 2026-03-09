@@ -46,6 +46,8 @@ namespace FloodRescue.Services.DTO.Response.RescueRequestResponse
         /// </summary>
         public string? TeamName { get; set; }
 
+        public int PeopleCount {get; set;}
+
         /// <summary>
         /// Thông tin đội trưởng (nếu có mission)
         /// </summary>

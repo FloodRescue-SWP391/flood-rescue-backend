@@ -355,11 +355,6 @@ namespace FloodRescue.Services.Implements.RescueRequest
                 includes: m => m.RescueTeam!
             );
 
-          
-
-
-
-
             if (mission != null)
             {
                 missionStatus = mission.Status;
@@ -403,6 +398,7 @@ namespace FloodRescue.Services.Implements.RescueRequest
                 MissionStatus = missionStatus,
                 TeamName = teamName,
                 TeamLeader = teamLeader,    
+                PeopleCount = rescueRequest.PeopleCount,
                 Members = membersDTO
             };
    
