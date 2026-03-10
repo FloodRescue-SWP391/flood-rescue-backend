@@ -90,23 +90,23 @@ namespace FloodRescue.API.Controllers
             }
         }
 
-        [HttpGet]
-        [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<ApiResponse<List<RescueTeamResponseDTO>>>> GetAllRescueTeams()
-        {
-            _logger.LogInformation("[RescueTeamsController] GET all rescue teams called.");
-            try
-            {
-                List<RescueTeamResponseDTO> result = await _rescueTeamService.GetAllRescueTeamsAsync();
-                _logger.LogInformation("[RescueTeamsController] Returned {Count} rescue teams.", result.Count);
-                return Ok(ApiResponse<List<RescueTeamResponseDTO>>.Ok(result, "Get all rescue teams successfully", 200));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[RescueTeamsController - Error] GET all rescue teams failed.");
-                return StatusCode(500, ApiResponse<List<RescueTeamResponseDTO>>.Fail("Internal server error", 500));
-            }
-        }
+        //[HttpGet]
+        //[Authorize(Roles = "Admin, Rescue Coordinator")]
+        //public async Task<ActionResult<ApiResponse<List<RescueTeamResponseDTO>>>> GetAllRescueTeams()
+        //{
+        //    _logger.LogInformation("[RescueTeamsController] GET all rescue teams called.");
+        //    try
+        //    {
+        //        List<RescueTeamResponseDTO> result = await _rescueTeamService.GetAllRescueTeamsAsync();
+        //        _logger.LogInformation("[RescueTeamsController] Returned {Count} rescue teams.", result.Count);
+        //        return Ok(ApiResponse<List<RescueTeamResponseDTO>>.Ok(result, "Get all rescue teams successfully", 200));
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "[RescueTeamsController - Error] GET all rescue teams failed.");
+        //        return StatusCode(500, ApiResponse<List<RescueTeamResponseDTO>>.Fail("Internal server error", 500));
+        //    }
+        //}
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
@@ -131,5 +131,37 @@ namespace FloodRescue.API.Controllers
             }
         }
 
+        [HttpGet("filter")]
+        [Authorize(Roles = "Admin, Rescue Coordinator")]
+        public async Task<ActionResult<PagedResult<RescueTeamResponseDTO>>> GetFilteredRescueTeams([FromQuery] RescueTeamFilterDTO filter)
+        {
+            _logger.LogInformation("[RescueTeamsController] GET filter called. Status: {Status}, TeamName: {TeamName}, City: {City}, Page: {Page}, Size: {Size}",
+               filter.Status != null ? string.Join(",", filter.Status) : "All",
+               filter.TeamName, filter.City, filter.PageNumber, filter.PageSize);
+            try
+            {
+                if(filter.PageNumber < 1)
+                {
+                    filter.PageNumber = 1;
+                }
+
+                if(filter.PageSize < 1 || filter.PageSize < 50)
+                {
+                    filter.PageSize = 10;
+                }
+
+                PagedResult<RescueTeamResponseDTO> result = await _rescueTeamService.GetFilteredRescueTeamsAsync(filter);
+
+                _logger.LogInformation("[RescueTeamsController] Filter result: DataCount: {Count}, TotalCount: {Total}",
+                  result.Data.Count, result.TotalCount);
+
+                return Ok(ApiResponse<PagedResult<RescueTeamResponseDTO>>.Ok(result, "Get filtered rescue teams successfully", 200));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueTeamsController - Error] GET filter failed with error {Error}.", ex.Message);
+                return StatusCode(500, ApiResponse<PagedResult<RescueTeamResponseDTO>>.Fail("Internal server error", 500));
+            }
+        }
     }
 }
