@@ -3,11 +3,13 @@ using Azure.Core;
 using Confluent.Kafka;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
+using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.RescueTeamRequest;
 using FloodRescue.Services.DTO.Response.RescueTeamResponse;
 using FloodRescue.Services.DTO.Response.Warehouse;
 using FloodRescue.Services.Interface.Cache;
 using FloodRescue.Services.Interface.RescueTeam;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -35,6 +37,8 @@ namespace FloodRescue.Services.Implements.RescueTeam
 
         private const string ALL_RESCUETEAMS_KEY = "RescueTeams:all";
         private const string RESCUETEAM_KEY_PREFIX = "RescueTeam:";
+        private const string RESCUETEAM_FILTER_PREFIX = "RescueTeam:filter:";
+
         public async Task<RescueTeamResponseDTO> CreateRescueTeamAsync(RescueTeamRequestDTO rescueTeamDTO)
         {
             _logger.LogInformation("[RescueTeamService] Request to create new Rescue Team. Name: {RescueTeamName}", rescueTeamDTO.TeamName);
@@ -145,6 +149,78 @@ namespace FloodRescue.Services.Implements.RescueTeam
             }
             _logger.LogInformation("[RescueTeamService - Sql Server] No changes detected for Rescue Team ID: {RescueTeamId}.", rescueTeamId);
             return null;
+        }
+
+        public async Task<PagedResult<RescueTeamResponseDTO>> GetFilteredRescueTeamsAsync(RescueTeamFilterDTO filter)
+        {
+            _logger.LogInformation("[RescueTeamService] GetFilteredRescueTeams called with Status: {Status}, TeamName: {TeamName}, City: {City}, Page: {Page}, Size: {Size}",
+               filter.Status != null ? string.Join(",", filter.Status) : "All",
+               filter.TeamName, filter.City, filter.PageNumber, filter.PageSize);
+
+            string cacheKey = BuildFiterCacheKey(filter);
+
+            PagedResult<RescueTeamResponseDTO>? cached = await _cacheService.GetAsync<PagedResult<RescueTeamResponseDTO>>(cacheKey);
+
+            if (cached != null)
+            {
+                _logger.LogInformation("[RescueTeamService - Redis] Cache hit for filter key: {Key}. TotalCount: {Count}", cacheKey, cached.TotalCount);
+                return cached;
+            }
+
+            _logger.LogInformation("[RescueTeamService - Redis] Cache miss for filter key: {Key}. Querying database.", cacheKey);
+
+            IQueryable<RescueTeamEntity> query = _unitOfWork.RescueTeams.GetQueryable();
+
+            query = query.Where(rt => !rt.IsDeleted);
+
+            if (filter.Status != null && filter.Status.Count > 0)
+            {
+                query = query.Where(rt => filter.Status.Contains(rt.CurrentStatus));
+            }
+
+            if (!string.IsNullOrEmpty(filter.TeamName))
+            {
+                query = query.Where(rt => rt.TeamName.Contains(filter.TeamName));
+            }
+
+            if (!string.IsNullOrEmpty(filter.City))
+            {
+                query = query.Where(rt => rt.City.Contains(filter.City));
+            }
+
+            int totalCount = await query.CountAsync();
+
+            List<RescueTeamEntity> entities = await query
+                                              .OrderBy(rt => rt.TeamName)
+                                              .Skip((filter.PageNumber - 1) * filter.PageSize)
+                                              .Take(filter.PageSize)
+                                              .AsNoTracking()
+                                              .ToListAsync();
+
+            List<RescueTeamResponseDTO> dtos = _mapper.Map<List<RescueTeamResponseDTO>>(entities);
+
+            PagedResult<RescueTeamResponseDTO> result = new()
+            {
+                Data = dtos,
+                TotalCount = totalCount
+            };
+
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+
+            _logger.LogInformation("[RescueTeamService - Redis] Cached filter result. Key: {Key}, DataCount: {Count}, TotalCount: {Total}",
+               cacheKey, dtos.Count, totalCount);
+
+            return result;
+
+        }
+
+        private string BuildFiterCacheKey(RescueTeamFilterDTO filter)
+        {
+            string statusKey = filter.Status != null && filter.Status.Count > 0
+                                ? string.Join(",", filter.Status.OrderBy(s => s))
+                                : "";
+
+            return $"{RESCUETEAM_FILTER_PREFIX}s={statusKey}|n={filter.TeamName}|c={filter.City}|p={filter.PageNumber}|ps={filter.PageSize}";
         }
     }
 }
