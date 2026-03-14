@@ -229,6 +229,14 @@ namespace FloodRescue.Services.Implements.RescueTeam
         {
             _logger.LogInformation("[RescueTeamService] Get Rescue Team Member in {teamId}", teamId);
 
+            var cached = await _cacheService.GetAsync<RescueTeamByIdResponseDTO>($"{RESCUETEAM_MEMBER_PREFIX}{teamId}");
+
+            if(cached != null)
+            {
+                _logger.LogInformation("[RescueTeamService - Redis] Cached hit for Get Rescue Team Member with key {key}", $"{RESCUETEAM_MEMBER_PREFIX}{teamId}");
+                return (cached, null);
+            }
+
             List<User> users = await _unitOfWork.Users.GetAllAsync(filter: u => u.RescueTeamMember!.RescueTeamID == teamId, includes: u => u.RescueTeamMember!);
 
             if (users.Count == 0 || users == null)
@@ -249,9 +257,9 @@ namespace FloodRescue.Services.Implements.RescueTeam
 
             _logger.LogInformation("[RescueTeamService] Response List with {Count} Rescue Team Members for Team ID {teamId}", response.TeamMember.Count(), teamId);
 
-            await _cacheService.SetAsync(RESCUETEAM_MEMBER_PREFIX, response, TimeSpan.FromMinutes(5));
+            await _cacheService.SetAsync($"{RESCUETEAM_MEMBER_PREFIX}{teamId}", response, TimeSpan.FromMinutes(5));
 
-            _logger.LogInformation("[RescueTeamService - Redis] Set Cache for team members with Team ID {teamId}. Key: {Key}", teamId, RESCUETEAM_MEMBER_PREFIX);
+            _logger.LogInformation("[RescueTeamService - Redis] Set Cache for team members with Team ID {teamId}. Key: {Key}", teamId, $"{RESCUETEAM_MEMBER_PREFIX}{teamId}");
 
             return (response, null);
         }
