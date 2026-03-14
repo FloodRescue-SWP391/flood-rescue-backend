@@ -207,7 +207,8 @@ namespace FloodRescue.Services.Implements.Auth
                 UserID = user.UserID,
                 Username = user.Username,
                 FullName = user.FullName,
-                Role = user.Role?.RoleName ?? string.Empty
+                Role = user.Role?.RoleName ?? string.Empty,
+                TeamID = user.Role?.RoleName == "Rescue Team Member" ? user.RescueTeamMember?.RescueTeamID : null
             };
 
             _logger.LogInformation("[AuthService] Login successful. UserID: {UserID}, Username: {Username}, Role: {Role}", user.UserID, user.Username, user.Role?.RoleName);
