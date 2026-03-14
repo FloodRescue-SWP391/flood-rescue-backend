@@ -20,6 +20,7 @@ namespace FloodRescue.Services.DTO.Response.AuthResponse
         public string Username { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
+        public Guid? TeamID { get; set; }
 
     }
 }

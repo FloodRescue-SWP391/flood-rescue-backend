@@ -5,6 +5,7 @@ using FloodRescue.Services.Interface.RescueTeam;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace FloodRescue.API.Controllers
 {
@@ -161,6 +162,32 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[RescueTeamsController - Error] GET filter failed with error {Error}.", ex.Message);
                 return StatusCode(500, ApiResponse<PagedResult<RescueTeamResponseDTO>>.Fail("Internal server error", 500));
+            }
+        }
+
+        [HttpGet("rescue-team-member-{teamId}")]
+        [Authorize(Roles = "Rescue Team Member, Admin, Rescue Coordinator")]
+        public async Task<ActionResult<ApiResponse<RescueTeamByIdResponseDTO>>> GetTeamMembersById ([FromRoute] Guid teamId)
+        {
+            _logger.LogInformation("[RescueTeamsController] Get Team Member By Id called. With team id: {team id}", teamId);
+
+            try
+            {
+                var (data, errorMessage) = await  _rescueTeamService.GetTeamMembersByTeamID(teamId);
+
+                if(data == null)
+                {
+                    return NotFound(ApiResponse<RescueTeamByIdResponseDTO>.Fail($"Rescue Team Members not found or team id not exists with team id {teamId} check error with {errorMessage}", 404));
+                }
+
+                _logger.LogInformation("[RescueTeamsController] Get team members sucessfully with team id {team id}", teamId);
+                return Ok(ApiResponse<RescueTeamByIdResponseDTO>.Ok(data, "Get Rescue Team Members successfully", 200));
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[RescueTeamController - Error] Get Team Members by Id failed with error {error}", ex.Message);
+                return StatusCode(500, ApiResponse<RescueTeamByIdResponseDTO>.Fail("Internal server error", 500));
             }
         }
     }

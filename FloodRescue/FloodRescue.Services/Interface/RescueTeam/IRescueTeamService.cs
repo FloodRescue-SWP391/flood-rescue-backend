@@ -19,5 +19,7 @@ namespace FloodRescue.Services.Interface.RescueTeam
         Task<RescueTeamResponseDTO?> UpdateRescueTeamAsync(Guid rescueTeamId, RescueTeamRequestDTO rescueTeamDTO);
         Task<bool> DeleteRescueTeamAsync(Guid rescueTeamId);
         Task<PagedResult<RescueTeamResponseDTO>> GetFilteredRescueTeamsAsync(RescueTeamFilterDTO filter);
+        Task<(RescueTeamByIdResponseDTO?, string? errorMessage)> GetTeamMembersByTeamID(Guid teamId);
+
     }
 }

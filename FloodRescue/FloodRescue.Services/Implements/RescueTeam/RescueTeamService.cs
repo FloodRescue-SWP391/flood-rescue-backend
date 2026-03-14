@@ -38,6 +38,7 @@ namespace FloodRescue.Services.Implements.RescueTeam
         private const string ALL_RESCUETEAMS_KEY = "RescueTeams:all";
         private const string RESCUETEAM_KEY_PREFIX = "RescueTeam:";
         private const string RESCUETEAM_FILTER_PREFIX = "RescueTeam:filter:";
+        private const string RESCUETEAM_MEMBER_PREFIX = "RescueTeam:member:";
 
         public async Task<RescueTeamResponseDTO> CreateRescueTeamAsync(RescueTeamRequestDTO rescueTeamDTO)
         {
@@ -221,6 +222,38 @@ namespace FloodRescue.Services.Implements.RescueTeam
                                 : "";
 
             return $"{RESCUETEAM_FILTER_PREFIX}s={statusKey}|n={filter.TeamName}|c={filter.City}|p={filter.PageNumber}|ps={filter.PageSize}";
+        }
+
+
+        public async Task<(RescueTeamByIdResponseDTO?, string? errorMessage)> GetTeamMembersByTeamID(Guid teamId)
+        {
+            _logger.LogInformation("[RescueTeamService] Get Rescue Team Member in {teamId}", teamId);
+
+            List<User> users = await _unitOfWork.Users.GetAllAsync(filter: u => u.RescueTeamMember!.RescueTeamID == teamId, includes: u => u.RescueTeamMember!);
+
+            if (users.Count == 0 || users == null)
+            {
+                return (null, "List users may be null or empty");
+            }
+
+            RescueTeamByIdResponseDTO response = new RescueTeamByIdResponseDTO
+            {
+                TeamMember = users.Select(u => new DTO.Response.RescueRequestResponse.TeamMemberDTO
+                {
+                    UserID = u.UserID,
+                    FullName = u.FullName,
+                    IsLeader = u.RescueTeamMember!.IsLeader,
+                    Phone = u.Phone
+                }).ToList()
+            };
+
+            _logger.LogInformation("[RescueTeamService] Response List with {Count} Rescue Team Members for Team ID {teamId}", response.TeamMember.Count(), teamId);
+
+            await _cacheService.SetAsync(RESCUETEAM_MEMBER_PREFIX, response, TimeSpan.FromMinutes(5));
+
+            _logger.LogInformation("[RescueTeamService - Redis] Set Cache for team members with Team ID {teamId}. Key: {Key}", teamId, RESCUETEAM_MEMBER_PREFIX);
+
+            return (response, null);
         }
     }
 }
