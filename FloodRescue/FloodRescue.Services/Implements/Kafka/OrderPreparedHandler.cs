@@ -44,12 +44,12 @@ namespace FloodRescue.Services.Implements.Kafka
 
                 OrderPreparedNotification notification = _mapper.Map<OrderPreparedNotification>(kafkaMessage);
                 notification.Message = $"Relief Order {kafkaMessage.ReliefOrderID} has been prepared and is ready for pickup.";
-
+                var leaderGroupName = $"Team_{kafkaMessage.RescueTeamID}_Leader";
                 _logger.LogInformation("[OrderPreparedHandler - SignalR] Start to send notification to Rescue Team ID: {ID}", kafkaMessage.RescueTeamID);
 
                 // Send notification to Rescue Team Leader
                 await _realtimeNotificationService.SendToGroupAsync(
-                    groupName: GroupSettings.RESCUE_TEAM_GROUP,
+                    groupName: leaderGroupName,
                     method: "OrderPrepared",
                     message: notification);
 
