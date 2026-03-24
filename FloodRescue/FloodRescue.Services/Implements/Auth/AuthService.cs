@@ -9,6 +9,7 @@ using FloodRescue.Services.DTO.Request.User;
 using FloodRescue.Services.DTO.Response.AuthResponse;
 using FloodRescue.Services.DTO.Response.RegisterResponse;
 using FloodRescue.Services.Interface.Auth;
+using FloodRescue.Services.Interface.Cache;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
@@ -28,13 +29,17 @@ namespace FloodRescue.Services.Implements.Auth
         private readonly ITokenService _tokenService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthService> _logger;
+        private readonly ICacheService _cacheService;
 
-        public AuthService(IUnitOfWork unitOfWork, IMapper mapper, IConfiguration configuration, ITokenService tokenService, ILogger<AuthService> logger) {
+        private const string USER_FILTER_PREFIX = "user:filter:";
+
+        public AuthService(IUnitOfWork unitOfWork, IMapper mapper, IConfiguration configuration, ITokenService tokenService, ILogger<AuthService> logger, ICacheService cacheService) {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _configuration = configuration;
             _tokenService = tokenService;
             _logger = logger;
+            _cacheService = cacheService;
         }
 
         public async Task<(AuthResponseDTO? Data, string? ErrorMessage)> RefeshTokenAsync(RefreshTokenRequest request)
@@ -171,6 +176,10 @@ namespace FloodRescue.Services.Implements.Auth
 
             RegisterResponseDTO responseDTO = _mapper.Map<RegisterResponseDTO>(newUser);
             _logger.LogInformation("[AuthService - Sql Server] User registered successfully. UserID: {UserID}, Username: {Username}", newUser.UserID, newUser.Username);
+
+            await _cacheService.RemovePatternAsync($"{USER_FILTER_PREFIX}*");
+            _logger.LogInformation("[AuthService - Redis] Pattern cache with prefix {prefix} has been deleted", USER_FILTER_PREFIX);
+
             return (responseDTO, null);
         }
 
