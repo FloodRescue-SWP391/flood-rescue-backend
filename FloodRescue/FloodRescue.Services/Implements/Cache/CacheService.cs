@@ -56,14 +56,31 @@ namespace FloodRescue.Services.Implements.Cache
         public async Task RemovePatternAsync(string pattern)
         {
             IServer server = _redis.GetServer(_redis.GetEndPoints().First());
-            IEnumerable<RedisKey> keys = server.Keys(pattern: pattern);
+
+            //IEnumerable<RedisKey> keys = server.Keys(pattern: pattern);
+
+            // Phòng trường hợp mẫu pattern là "FloodRescue:pattern:(cái gì đó - tùy cú pháp người đặt)"
+            var searchPattern = $"*{pattern}*";
+
+            //gom hết tất cả các key bên trong của server redis
+            var keys = server.Keys(pattern: searchPattern).ToArray();
 
             int count = 0;
-            foreach (RedisKey key in keys)
+            
+            if(keys.Length > 0)
             {
-                await _cache.RemoveAsync(key!);
-                count++;
+                //truy cập vào bên trong database
+                var db = _redis.GetDatabase();
+
+                //Remove toàn bộ tất cả phần tử keys cùng 1 lúc
+                await db.KeyDeleteAsync(keys);
+                count = keys.Length;
             }
+            // foreach (RedisKey key in keys)
+            // {
+            //     await _cache.RemoveAsync(key!);
+            //     count++;
+            // }
             _logger.LogInformation("[CacheService - Redis] Removed {Count} keys matching pattern '{Pattern}'", count, pattern);
         }
 
