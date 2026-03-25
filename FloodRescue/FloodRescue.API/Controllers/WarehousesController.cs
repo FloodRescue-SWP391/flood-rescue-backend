@@ -78,7 +78,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Inventory Manager, Admin")]
         public async Task<ActionResult<ApiResponse<UpdateWarehouseResponseDTO>>> PutWarehouse(int id, UpdateWarehouseRequestDTO warehouse)
         {
             _logger.LogInformation("[WarehousesController] PUT warehouse called. ID: {Id}", id);
@@ -102,7 +102,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Inventory Manager, Admin")]
         public async Task<ActionResult<ApiResponse<CreateWarehouseResponseDTO>>> PostWarehouse(CreateWarehouseRequestDTO warehouse)
         {
             _logger.LogInformation("[WarehousesController] POST warehouse called. Name: {Name}", warehouse.Name);
@@ -125,7 +125,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Inventory Manager, Admin")]
         public async Task<ActionResult<ApiResponse<bool>>> DeleteWarehouse(int id)
         {
             _logger.LogInformation("[WarehousesController] DELETE warehouse called. ID: {Id}", id);
