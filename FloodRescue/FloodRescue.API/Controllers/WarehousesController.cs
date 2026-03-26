@@ -149,6 +149,7 @@ namespace FloodRescue.API.Controllers
         }
 
         [HttpGet("filter")]
+        [Authorize(Roles = "Inventory Manager, Admin")]
         public async Task<ActionResult<ApiResponse<PagedResult<ShowWareHouseResponseDTO>>>> GetFilteredWarehouse([FromQuery] WarehousesFilterRequestDTO filter)
         {
             _logger.LogInformation("[WarehousesController] GET filter warehouses called. Name: {name}, Address: {address}, IsActive: {IsActive}, Page: {Page}, Size: {Size}",
