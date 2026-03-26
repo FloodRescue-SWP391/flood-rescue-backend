@@ -8,6 +8,7 @@ namespace FloodRescue.Services.DTO.Response.Warehouse
 {
     public class ShowWareHouseResponseDTO
     {
+        public int WarehouseID { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Address { get; set; }
         public double LocationLong { get; set; }
