@@ -41,10 +41,21 @@ namespace FloodRescue.Services.Implements.RescueMission
 
         // Cache keys
         private const string PENDING_MISSIONS_KEY_PREFIX = "rescuemission:pending:team:";
-
         private const string MISSION_FILTER_PREFIX = "rescuemission:filter";
         private const string MISSION_DETAIL_KEY_PREFIX = "rescuemission:detail:";
+
         private const string TEAM_MEMBERS_KEY_PREFIX = "rescueteam:members:";
+
+
+        private const string TRACK_REQUEST_KEY_PREFIX = "rescuerequest:track:";
+        private const string RESCUE_REQUEST_FILTER_PREFIX = "rescuerequest:filter:";
+        private const string REQUEST_DETAIL_KEY_PREFIX = "rescuerequest:detail:";
+
+
+        private const string PENDING_ORDERS_CACHE_KEY = "relieforder:pending";
+        private const string ORDER_DETAIL_KEY_PREFIX = "relieforder:detail:";
+        private const string ORDER_FILTER_PREFIX = "relieforder:filter:";
+
         public RescueMissionService(IUnitOfWork unitOfWork,
             ILogger<RescueMissionService> logger,
             IKafkaProducerService kafkaProducer,
@@ -142,13 +153,20 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 await _unitOfWork.CommitTransactionAsync();
 
-                await _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}{request.RescueTeamID}");
+                await Task.WhenAll(
+                    _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{MISSION_DETAIL_KEY_PREFIX}*"),
+                   // _cacheService.RemovePatternAsync($"*{TEAM_MEMBERS_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{TRACK_REQUEST_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{RESCUE_REQUEST_FILTER_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{REQUEST_DETAIL_KEY_PREFIX}*")
+                );
 
-                await _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*");
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix in rescue request {prefix1}, {prefix2}, {prefix3}, {prefix4}", TRACK_REQUEST_KEY_PREFIX, MISSION_FILTER_PREFIX, RESCUE_REQUEST_FILTER_PREFIX, REQUEST_DETAIL_KEY_PREFIX);
 
-                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix {prefix}", MISSION_FILTER_PREFIX);
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix {prefix1}, {prefix2}, {prefix3}, {prefix4}", MISSION_FILTER_PREFIX, MISSION_FILTER_PREFIX, MISSION_DETAIL_KEY_PREFIX, TEAM_MEMBERS_KEY_PREFIX);
 
-                _logger.LogInformation("[RescueMissionService - Redis] Cleared pending missions cache for TeamID: {TeamID}", request.RescueTeamID);
                 return response;
                 
             }
@@ -249,6 +267,8 @@ namespace FloodRescue.Services.Implements.RescueMission
             // 8. Cache the result
             await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
             _logger.LogInformation("[RescueMissionService - Redis] Cached {Count} pending missions for TeamID: {TeamID}", result.Count, teamId);
+
+
             return (result, null);
         }
 
@@ -305,6 +325,7 @@ namespace FloodRescue.Services.Implements.RescueMission
                     kafkaMessage.AcceptedAt = respondedAt;  
 
                     await _kafkaProducer.ProduceAsync(topic: KafkaSettings.TEAM_ACCEPTED_TOPIC, key: rescueMission.RescueMissionID.ToString(), message: kafkaMessage);
+
                     
                     _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic}", KafkaSettings.TEAM_ACCEPTED_TOPIC);
 
@@ -358,13 +379,19 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 await _unitOfWork.CommitTransactionAsync();
 
-                await _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}{rescueTeam.RescueTeamID}");
-             
-                _logger.LogInformation("[RescueMissionService - Redis] Cleared pending missions cache for TeamID: {TeamID}", rescueTeam.RescueTeamID);
+                await Task.WhenAll(
+                   _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}*"),
+                   _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*"),
+                   _cacheService.RemovePatternAsync($"*{MISSION_DETAIL_KEY_PREFIX}*"),
+                  // _cacheService.RemovePatternAsync($"*{TEAM_MEMBERS_KEY_PREFIX}*"),
+                   _cacheService.RemovePatternAsync($"*{TRACK_REQUEST_KEY_PREFIX}*"),
+                   _cacheService.RemovePatternAsync($"*{RESCUE_REQUEST_FILTER_PREFIX}*"),
+                   _cacheService.RemovePatternAsync($"*{REQUEST_DETAIL_KEY_PREFIX}*")
+               );
 
-                await _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*");
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix in rescue request {prefix1}, {prefix2}, {prefix3}, {prefix4}", TRACK_REQUEST_KEY_PREFIX, MISSION_FILTER_PREFIX, RESCUE_REQUEST_FILTER_PREFIX, REQUEST_DETAIL_KEY_PREFIX);
 
-                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix {prefix}", MISSION_FILTER_PREFIX);
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix {prefix1}, {prefix2}, {prefix3}", MISSION_FILTER_PREFIX, MISSION_FILTER_PREFIX, MISSION_DETAIL_KEY_PREFIX);
 
                 return response;
 
@@ -445,9 +472,19 @@ namespace FloodRescue.Services.Implements.RescueMission
 
                 await _unitOfWork.CommitTransactionAsync();
 
-                await _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*");
+                await Task.WhenAll(
+                  _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}*"),
+                  _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*"),
+                  _cacheService.RemovePatternAsync($"*{MISSION_DETAIL_KEY_PREFIX}*"),
+                 // _cacheService.RemovePatternAsync($"*{TEAM_MEMBERS_KEY_PREFIX}*"),
+                  _cacheService.RemovePatternAsync($"*{TRACK_REQUEST_KEY_PREFIX}*"),
+                  _cacheService.RemovePatternAsync($"*{RESCUE_REQUEST_FILTER_PREFIX}*"),
+                  _cacheService.RemovePatternAsync($"*{REQUEST_DETAIL_KEY_PREFIX}*")
+              );
 
-                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix {prefix}", MISSION_FILTER_PREFIX);
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix in rescue request {prefix1}, {prefix2}, {prefix3}, {prefix4}", TRACK_REQUEST_KEY_PREFIX, MISSION_FILTER_PREFIX, RESCUE_REQUEST_FILTER_PREFIX, REQUEST_DETAIL_KEY_PREFIX);
+
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix {prefix1}, {prefix2}, {prefix3}", MISSION_FILTER_PREFIX, MISSION_FILTER_PREFIX, MISSION_DETAIL_KEY_PREFIX);
 
                 _logger.LogInformation("[RescueMissionService] Transaction committed for CompleteMission. MissionID: {MissionID}", request.RescueMissionID);
 
@@ -581,6 +618,37 @@ namespace FloodRescue.Services.Implements.RescueMission
                 _logger.LogInformation("[RescueMissionService - Kafka Producer] Kafka message sent to topic {Topic}", KafkaSettings.DELIVERY_STARTED_TOPIC);
 
                 _logger.LogInformation("[RescueMissionService] Successfully confirmed pickup for ReliefOrder {OrderID}, Mission {MissionID}", request.ReliefOrderID, request.RescueMissionID);
+
+                /*
+                      private const string PENDING_ORDERS_CACHE_KEY = "relieforder:pending";
+                      private const string ORDER_DETAIL_KEY_PREFIX = "relieforder:detail:";
+                      private const string ORDER_FILTER_PREFIX = "relieforder:filter:";
+                
+                 */
+
+                await Task.WhenAll(
+                    _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{MISSION_DETAIL_KEY_PREFIX}*"),
+                    //_cacheService.RemovePatternAsync($"*{TEAM_MEMBERS_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{TRACK_REQUEST_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{RESCUE_REQUEST_FILTER_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{REQUEST_DETAIL_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{PENDING_ORDERS_CACHE_KEY}*"),
+                    _cacheService.RemovePatternAsync($"*{ORDER_DETAIL_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{ORDER_FILTER_PREFIX}*")
+                );
+
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix in rescue request {prefix1}, {prefix2}, {prefix3}, {prefix4}", TRACK_REQUEST_KEY_PREFIX, MISSION_FILTER_PREFIX, RESCUE_REQUEST_FILTER_PREFIX, REQUEST_DETAIL_KEY_PREFIX);
+
+
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared cache with cache key pattern in relief orders {prefix1}, {prefix2}, {prefix3}", PENDING_ORDERS_CACHE_KEY, ORDER_DETAIL_KEY_PREFIX, ORDER_FILTER_PREFIX);
+
+
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared cache with cache key pattern {prefix1}, {prefix2}, {prefix3}", PENDING_ORDERS_CACHE_KEY, ORDER_DETAIL_KEY_PREFIX, ORDER_FILTER_PREFIX);
+
+
+                _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix {prefix1}, {prefix2}, {prefix3}", MISSION_FILTER_PREFIX, MISSION_FILTER_PREFIX, MISSION_DETAIL_KEY_PREFIX);
 
                 ConfirmPickupResponseDTO response = new ConfirmPickupResponseDTO
                 {

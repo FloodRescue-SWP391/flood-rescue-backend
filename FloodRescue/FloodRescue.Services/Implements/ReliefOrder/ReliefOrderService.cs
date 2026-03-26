@@ -38,6 +38,16 @@ namespace FloodRescue.Services.Implements.ReliefOrder
         private const string ORDER_DETAIL_KEY_PREFIX = "relieforder:detail:";
         private const string ORDER_FILTER_PREFIX = "relieforder:filter:";
 
+
+        private const string PENDING_MISSIONS_KEY_PREFIX = "rescuemission:pending:team:";
+        private const string MISSION_FILTER_PREFIX = "rescuemission:filter";
+        private const string MISSION_DETAIL_KEY_PREFIX = "rescuemission:detail:";
+
+
+        private const string TRACK_REQUEST_KEY_PREFIX = "rescuerequest:track:";
+        private const string RESCUE_REQUEST_FILTER_PREFIX = "rescuerequest:filter:";
+        private const string REQUEST_DETAIL_KEY_PREFIX = "rescuerequest:detail:";
+
         public ReliefOrderService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
@@ -130,6 +140,26 @@ namespace FloodRescue.Services.Implements.ReliefOrder
                     message: kafkaMessage);
 
                 _logger.LogInformation("[ReliefOrderService - Kafka Consumer] Kafka message sent to topic {Topic}", KafkaSettings.RELIEF_ORDER_CREATED_TOPIC);
+
+                await Task.WhenAll(
+                    _cacheService.RemovePatternAsync($"{PENDING_ORDERS_CACHE_KEY}*"),
+                    _cacheService.RemovePatternAsync($"{ORDER_DETAIL_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"{ORDER_FILTER_PREFIX}*"),
+
+                     _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{MISSION_DETAIL_KEY_PREFIX}*"),
+                    // _cacheService.RemovePatternAsync($"*{TEAM_MEMBERS_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{TRACK_REQUEST_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{RESCUE_REQUEST_FILTER_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"*{REQUEST_DETAIL_KEY_PREFIX}*")
+                );
+
+                _logger.LogInformation("[ReliefOrderService - Redis] Cleared filter list cache for prefix in rescue request {prefix1}, {prefix2}, {prefix3}, {prefix4}", TRACK_REQUEST_KEY_PREFIX, MISSION_FILTER_PREFIX, RESCUE_REQUEST_FILTER_PREFIX, REQUEST_DETAIL_KEY_PREFIX);
+
+                _logger.LogInformation("[ReliefOrderService - Redis] Cleared filter list cache for prefix in rescue mission {prefix1}, {prefix2}, {prefix3}", MISSION_FILTER_PREFIX, MISSION_FILTER_PREFIX, MISSION_DETAIL_KEY_PREFIX);
+
+                _logger.LogInformation("[ReliefOrderService - Redis] Cleared cache with cache key pattern {prefix1}, {prefix2}, {prefix3}", PENDING_ORDERS_CACHE_KEY, ORDER_DETAIL_KEY_PREFIX, ORDER_FILTER_PREFIX);
 
                 return _mapper.Map<ReliefOrderResponseDTO>(order);
             }

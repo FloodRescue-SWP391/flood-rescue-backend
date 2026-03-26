@@ -42,6 +42,10 @@ namespace FloodRescue.Services.Implements.IncidentReport
         private const string PENDING_INCIDENTS_KEY = "incident:pending:all";
         private const string INCIDENT_FILTER_PREFIX = "incident:filter:";
         private const string INCIDENT_DETAIL_KEY_PREFIX = "incident:detail:";
+
+        private const string PENDING_MISSIONS_KEY_PREFIX = "rescuemission:pending:team:";
+        private const string MISSION_FILTER_PREFIX = "rescuemission:filter";
+        private const string MISSION_DETAIL_KEY_PREFIX = "rescuemission:detail:";
         public IncidentReportService(IUnitOfWork unitOfWork, ILogger<IncidentReportService> logger, ICacheService cacheService, IKafkaProducerService kafkaProducer, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
@@ -274,12 +278,35 @@ namespace FloodRescue.Services.Implements.IncidentReport
 
                 _logger.LogInformation("[IncidentReportService] Transaction committed for ResolveIncident. IncidentID: {IncidentID}", request.IncidentReportID);
 
+                /*
+                    private const string INCIDENT_HISTORY_KEY = "incident:history:all";
+                    private const string PENDING_INCIDENTS_KEY = "incident:pending:all";
+                    private const string INCIDENT_FILTER_PREFIX = "incident:filter:";
+                    private const string INCIDENT_DETAIL_KEY_PREFIX = "incident:detail:";
+
+
+                    private const string PENDING_MISSIONS_KEY_PREFIX = "rescuemission:pending:team:";
+                    private const string MISSION_FILTER_PREFIX = "rescuemission:filter";
+                    private const string MISSION_DETAIL_KEY_PREFIX = "rescuemission:detail:";
+                 
+                 */
+
                 // Xóa cache vì dữ liệu đã thay đổi
                 await Task.WhenAll(
-                    _cacheService.RemoveAsync(PENDING_INCIDENTS_KEY),
-                    _cacheService.RemoveAsync(INCIDENT_HISTORY_KEY)
+                    _cacheService.RemovePatternAsync($"{INCIDENT_HISTORY_KEY}*"),
+                    _cacheService.RemovePatternAsync($"{PENDING_INCIDENTS_KEY}*"),
+                    _cacheService.RemovePatternAsync($"{INCIDENT_FILTER_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"{INCIDENT_DETAIL_KEY_PREFIX}*"),
+
+
+                    _cacheService.RemovePatternAsync($"{PENDING_MISSIONS_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"{MISSION_FILTER_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"{MISSION_DETAIL_KEY_PREFIX}*")
+
                 );
-                _logger.LogInformation("[IncidentReportService - Redis] Cleared cache for pending and history incidents.");
+
+                _logger.LogInformation("[IncidentReportService - Redis] Cleared cache for rescue mission");
+                _logger.LogInformation("[IncidentReportService - Redis] Cleared cache for incidents.");
 
                 // Gửi message qua Kafka
                 IncidentResolvedMessage kafkaMessage = new IncidentResolvedMessage
@@ -419,8 +446,23 @@ namespace FloodRescue.Services.Implements.IncidentReport
                 _logger.LogInformation("[IncidentReportService] Transaction committed for ReportIncident. MissionID: {MissionID}", request.RescueMissionID);
 
                 // Xóa cache pending incidents vì có incident mới
-                await _cacheService.RemoveAsync(PENDING_INCIDENTS_KEY);
-                _logger.LogInformation("[IncidentReportService - Redis] Cleared cache for pending incidents.");
+                await Task.WhenAll(
+                     _cacheService.RemovePatternAsync($"{INCIDENT_HISTORY_KEY}*"),
+                     _cacheService.RemovePatternAsync($"{PENDING_INCIDENTS_KEY}*"),
+                     _cacheService.RemovePatternAsync($"{INCIDENT_FILTER_PREFIX}*"),
+                     _cacheService.RemovePatternAsync($"{INCIDENT_DETAIL_KEY_PREFIX}*"),
+
+
+                     _cacheService.RemovePatternAsync($"{PENDING_MISSIONS_KEY_PREFIX}*"),
+                     _cacheService.RemovePatternAsync($"{MISSION_FILTER_PREFIX}*"),
+                     _cacheService.RemovePatternAsync($"{MISSION_DETAIL_KEY_PREFIX}*")
+
+                 );
+
+
+                _logger.LogInformation("[IncidentReportService - Redis] Cleared cache for rescue mission");
+
+                _logger.LogInformation("[IncidentReportService - Redis] Cleared cache for incidents.");
 
                 // Gửi message qua Kafka
                 IncidentReportedMessage kafkaMessage = new IncidentReportedMessage

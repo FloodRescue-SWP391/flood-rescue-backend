@@ -152,12 +152,35 @@ namespace FloodRescue.Services.Implements.RescueRequest
                 responseDTO.ImageUrls = savedImageUrls;
 
                 // 10. Invalidate cache list vì có data mới
-                await _cacheService.RemoveAsync(ALL_RESCUE_REQUESTS_KEY);
-                _logger.LogInformation("[RescueRequestService - Redis] Cleared cache for All RescueRequests list.");
+                //await _cacheService.RemoveAsync(ALL_RESCUE_REQUESTS_KEY);
+                //_logger.LogInformation("[RescueRequestService - Redis] Cleared cache for All RescueRequests list.");
 
                 // 11. Cache luôn request mới theo ShortCode (citizen sẽ tra cứu ngay)
-                await _cacheService.SetAsync($"{RESCUE_REQUEST_KEY_PREFIX}{shortCode}", responseDTO, TimeSpan.FromMinutes(10));
-                _logger.LogInformation("[RescueRequestService - Redis] Cached new RescueRequest with ShortCode: {ShortCode}", shortCode);
+                //await _cacheService.SetAsync($"{RESCUE_REQUEST_KEY_PREFIX}{shortCode}", responseDTO, TimeSpan.FromMinutes(10));
+                //_logger.LogInformation("[RescueRequestService - Redis] Cached new RescueRequest with ShortCode: {ShortCode}", shortCode);
+
+
+                /*
+                    // Cache keys
+                        private const string ALL_RESCUE_REQUESTS_KEY = "rescuerequest:all";
+                        private const string RESCUE_REQUEST_KEY_PREFIX = "rescuerequest:shortcode:";
+                        // Add this constant with the other cache keys (around line 30)
+                        private const string TRACK_REQUEST_KEY_PREFIX = "rescuerequest:track:";
+                        private const string RESCUE_REQUEST_FILTER_PREFIX = "rescuerequest:filter:";
+                        private const string REQUEST_DETAIL_KEY_PREFIX = "rescuerequest:detail:"; 
+                 */
+
+                // xóa cache toàn bộ khi có yêu cầu mới
+                await Task.WhenAll(
+                    _cacheService.RemovePatternAsync($"{ALL_RESCUE_REQUESTS_KEY}*"),
+                    _cacheService.RemovePatternAsync($"{RESCUE_REQUEST_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"{TRACK_REQUEST_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"{RESCUE_REQUEST_FILTER_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"{REQUEST_DETAIL_KEY_PREFIX}*")
+                );
+
+
+                _logger.LogInformation("[RescueRequestService - Redis]: Remove cache by key pattern with {key1}, {key2}, {key3}", RESCUE_REQUEST_FILTER_PREFIX, REQUEST_DETAIL_KEY_PREFIX, TRACK_REQUEST_KEY_PREFIX);
 
                 // 12. Kafka Produce - bắn message lên topic để consumer xử lí (SMS, notification, ...)
 
@@ -201,7 +224,11 @@ namespace FloodRescue.Services.Implements.RescueRequest
         }
 
 
-
+        /// <summary>
+        /// Hàm này cũ rồi nên front end không xài nữa chuyển qua 1 hàm tra cứu mới
+        /// </summary>
+        /// <param name="shortCode"></param>
+        /// <returns></returns>
         public async Task<CreateRescueRequestResponseDTO?> GetByShortCodeAsync(string shortCode)
         {
             _logger.LogInformation("[RescueRequestService] Searching for RescueRequest with ShortCode: {ShortCode}", shortCode);
@@ -233,6 +260,10 @@ namespace FloodRescue.Services.Implements.RescueRequest
             return responseDTO;
         }
 
+        /// <summary>
+        /// Hàm này là hàm cũ rồi nên front end không xài nữa. Chuyển qua hàm get filtered phân trang
+        /// </summary>
+        /// <returns></returns>
         public async Task<List<CreateRescueRequestResponseDTO>> GetAllRescueRequestsAsync()
         {
             _logger.LogInformation("[RescueRequestService] Getting all RescueRequests");
@@ -309,6 +340,11 @@ namespace FloodRescue.Services.Implements.RescueRequest
             return shortCode;
         }
 
+        /// <summary>
+        /// Hàm tra cứu short code by id mà hiện giờ front end đang xài
+        /// </summary>
+        /// <param name="shortCode"></param>
+        /// <returns></returns>
         public async Task<(TrackRequestResponseDTO? Data, string? ErrorMessage)> TrackRequestByShortCodeAsync(string shortCode)
         {
             _logger.LogInformation("[RescueRequestService] TrackRequest called. ShortCode: {ShortCode}", shortCode);
@@ -467,6 +503,11 @@ namespace FloodRescue.Services.Implements.RescueRequest
 
         #endregion
 
+        /// <summary>
+        /// Hàm truy vấn kèm bộ lọc phân trang, front end sẽ xài hàm này 
+        /// </summary>
+        /// <param name="filter"></param>
+        /// <returns></returns>
         public async Task<PagedResult<RescueRequestListResponseDTO>> GetFilteredRescueRequestAsync(RescueRequestFilterDTO filter)
         {
             _logger.LogInformation("[RescueRequestService] GetFilterdRescueRequest called with Status: {Status}, Type: {Type}, Page: {Page}, Size: {Size}",
