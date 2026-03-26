@@ -10,6 +10,7 @@ using FloodRescue.Services.Interface.Warehouse;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -144,6 +145,28 @@ namespace FloodRescue.API.Controllers
             {
                 _logger.LogError(ex, "[WarehousesController - Error] DELETE warehouse failed. ID: {Id}", id);
                 return StatusCode(500, ApiResponse<bool>.Fail("Internal server error", 500));
+            }
+        }
+
+        [HttpGet("filter")]
+        public async Task<ActionResult<ApiResponse<PagedResult<ShowWareHouseResponseDTO>>>> GetFilteredWarehouse([FromQuery] WarehousesFilterRequestDTO filter)
+        {
+            _logger.LogInformation("[WarehousesController] GET filter warehouses called. Name: {name}, Address: {address}, IsActive: {IsActive}, Page: {Page}, Size: {Size}",
+          filter.Name, filter.Address, filter.IsActive, filter.PageNumber, filter.PageSize);
+
+            try
+            {
+                PagedResult<ShowWareHouseResponseDTO> warehousesFiltered = await _warehouseService.GetFilteredWarehouseAsync(filter);
+
+                _logger.LogInformation("[WarehousesController] Get filtered warehouses in service successfully with List count {count} - TotalCount {}", warehousesFiltered.Data.Count, warehousesFiltered.TotalCount);
+
+                return Ok(ApiResponse<PagedResult<ShowWareHouseResponseDTO>>.Ok(warehousesFiltered, "Get Filterd Warehouse Successfully", 200));
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Get filterd warehouses failed with error {error}", ex.Message);
+                return StatusCode(500, ApiResponse<PagedResult<ShowWareHouseResponseDTO>>.Fail("Internal Sever Error", 500));
             }
         }
 

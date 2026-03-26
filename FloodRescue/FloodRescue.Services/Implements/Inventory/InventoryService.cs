@@ -150,6 +150,12 @@ namespace FloodRescue.Services.Implements.Inventory
 
                 _logger.LogInformation("[InventoryService] Transaction committed. Successfully adjusted {Count} item(s) in WarehouseID: {WarehouseID}", adjustedItems.Count, request.WarehouseID);
 
+                await Task.WhenAll(
+                    _cacheService.RemovePatternAsync($"{INVENTORY_CACHE_KEY_PREFIX}*")
+                );
+
+                _logger.LogInformation("[InventoryService - Redis] Cleared inventory cache with prefix {prefix}", INVENTORY_CACHE_KEY_PREFIX);
+
                 AdjustInventoryResponseDTO response = new AdjustInventoryResponseDTO
                 {
                     WarehouseID = warehouse.WarehouseID,
@@ -368,9 +374,18 @@ namespace FloodRescue.Services.Implements.Inventory
                 await _unitOfWork.CommitTransactionAsync();
 
                 // Invalidate cache for this warehouse
-                string cacheKey = $"{INVENTORY_CACHE_KEY_PREFIX}{request.WarehouseID}";
-                await _cacheService.RemoveAsync(cacheKey);
-                _logger.LogInformation("[InventoryService - Redis] Cleared cache for WarehouseID: {WarehouseID}", request.WarehouseID);
+                //string cacheKey = $"{INVENTORY_CACHE_KEY_PREFIX}{request.WarehouseID}";
+                //await _cacheService.RemoveAsync(cacheKey);
+                //_logger.LogInformation("[InventoryService - Redis] Cleared cache for WarehouseID: {WarehouseID}", request.WarehouseID);
+
+
+
+                await Task.WhenAll(
+                    _cacheService.RemovePatternAsync($"{INVENTORY_CACHE_KEY_PREFIX}*")
+                );
+
+                _logger.LogInformation("[InventoryService - Redis] Cleared inventory cache with prefix {prefix}", INVENTORY_CACHE_KEY_PREFIX);
+
                 // 7. TẠO RESPONSE
                 ReceiveInventoryResponseDTO response = new ReceiveInventoryResponseDTO
                 {

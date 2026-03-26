@@ -2,11 +2,13 @@
 using Confluent.Kafka;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
+using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.Warehouse;
 using FloodRescue.Services.DTO.Request.WarehouseRequest;
 using FloodRescue.Services.DTO.Response.Warehouse;
 using FloodRescue.Services.Interface.Cache;
 using FloodRescue.Services.Interface.Warehouse;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.Extensions.Logging;
 using System;
@@ -14,6 +16,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Twilio.Rest.Studio.V2.Flow;
+using WarehouseEnity = FloodRescue.Repositories.Entites.Warehouse;
 
 using WarehouseEntity = FloodRescue.Repositories.Entites.Warehouse;
 
@@ -39,6 +43,7 @@ namespace FloodRescue.Services.Implements.Warehouse
         private const string ALL_WAREHOUSES_KEY = "warehouse:all";
         //lấy theo id
         private const string WAREHOUSE_KEY_PREFIX = "warehouse:";
+        private const string WAREHOUSE_FILTER_PREFIX = "warehouse:filter";
 
         public async Task<CreateWarehouseResponseDTO> CreateWarehouseAsync(CreateWarehouseRequestDTO request)
         {
@@ -49,7 +54,12 @@ namespace FloodRescue.Services.Implements.Warehouse
             _logger.LogInformation("[WarehouseService - Sql Server] Successfully created Warehouse with ID: {WarehouseId}", warehouse.WarehouseID);
             CreateWarehouseResponseDTO responseDTO = _mapper.Map<CreateWarehouseResponseDTO>(warehouse);
 
-            await _cacheService.RemoveAsync(ALL_WAREHOUSES_KEY);
+            await Task.WhenAll(
+                _cacheService.RemovePatternAsync($"{ALL_WAREHOUSES_KEY}*"),
+                _cacheService.RemovePatternAsync($"{WAREHOUSE_KEY_PREFIX}*"),
+                _cacheService.RemovePatternAsync($"{WAREHOUSE_FILTER_PREFIX}*")
+            );
+
             _logger.LogInformation("[WarehouseService - Redis] Cleared cache for All Warehouses list.");
             return responseDTO;
         }
@@ -75,10 +85,13 @@ namespace FloodRescue.Services.Implements.Warehouse
             if (result > 0)
             {
                 _logger.LogInformation("[WarehouseService - Sql Server] Successfully soft-deleted Warehouse ID: {WarehouseId} in database.", warehouseId);
+
                 await Task.WhenAll(
-                    _cacheService.RemoveAsync(ALL_WAREHOUSES_KEY),
-                    _cacheService.RemoveAsync($"{WAREHOUSE_KEY_PREFIX}{warehouseId}")
-                );
+                  _cacheService.RemovePatternAsync($"{ALL_WAREHOUSES_KEY}*"),
+                  _cacheService.RemovePatternAsync($"{WAREHOUSE_KEY_PREFIX}*"),
+                  _cacheService.RemovePatternAsync($"{WAREHOUSE_FILTER_PREFIX}*")
+              );
+
                 _logger.LogInformation("[WarehouseService - Redis] Cleared cache for Warehouse ID: {WarehouseId} and List.", warehouseId);
                 return true;
             }
@@ -172,16 +185,84 @@ namespace FloodRescue.Services.Implements.Warehouse
             if (result > 0)
             {
                 _logger.LogInformation("[WarehouseService - Sql Server] Successfully updated Warehouse ID: {WarehouseId} in database.", id);
+
                 await Task.WhenAll(
-                        _cacheService.RemoveAsync(ALL_WAREHOUSES_KEY),
-                        _cacheService.RemoveAsync($"{WAREHOUSE_KEY_PREFIX}{id}")
+                 _cacheService.RemovePatternAsync($"{ALL_WAREHOUSES_KEY}*"),
+                 _cacheService.RemovePatternAsync($"{WAREHOUSE_KEY_PREFIX}*"),
+                 _cacheService.RemovePatternAsync($"{WAREHOUSE_FILTER_PREFIX}*")
                 );
+
                 _logger.LogInformation("[WarehouseService - Redis] Cleared cache for Warehouse ID: {WarehouseId} and List.", id);
                 return _mapper.Map<UpdateWarehouseResponseDTO>(_warehouse);
             }
             _logger.LogInformation("[WarehouseService - Sql Server] No changes detected for Warehouse ID: {WarehouseId}.", id);
             return null;
 
+        }
+
+
+        public async Task<PagedResult<ShowWareHouseResponseDTO>> GetFilteredWarehouseAsync(WarehousesFilterRequestDTO filter)
+        {
+            _logger.LogInformation("[WarehouseService] Get and filter warehouse started with filter {name}, {address}, {isDeleted}", filter.Name ?? "", filter.Address ?? "", filter.IsActive);
+
+            string cacheKey = BuildFilterCacheKey(filter);
+
+            PagedResult<ShowWareHouseResponseDTO>? cached = await _cacheService.GetAsync<PagedResult<ShowWareHouseResponseDTO>>(cacheKey);
+
+            if (cached != null)
+            {
+                _logger.LogInformation("[RescueRequestService - Redis] Cache hit for filter key: {key}. TotalCount: {Count}", cacheKey, cached.TotalCount);
+                return cached;
+            }
+
+
+            //SELECT * FROM Warehouses
+            IQueryable<WarehouseEnity> query = _unitOfWork.Warehouses.GetQueryable();
+
+            if (!string.IsNullOrEmpty(filter.Name))
+            {
+                query = query.Where(w => w.Name.Contains(filter.Name));
+            }
+
+            if(!string.IsNullOrEmpty(filter.Address))
+            {
+                query = query.Where(w => w.Address!.Contains(filter.Address));
+            }
+
+
+            if(filter.IsActive.HasValue)
+            {
+                //isActive == true thì có nghĩa là isDeleted == false
+                bool isDeleted = !filter.IsActive.Value;
+                query = query.Where(w => w.IsDeleted == isDeleted);
+            }
+
+            int totalCount = await query.CountAsync();
+
+            List<WarehouseEnity> warehouses = await query.OrderBy(u => u.Name)
+                                               .Skip((filter.PageNumber - 1) * filter.PageSize)
+                                               .Take(filter.PageSize)
+                                               .AsNoTracking()
+                                               .ToListAsync();
+
+            List<ShowWareHouseResponseDTO> showWarehouseReponseList = _mapper.Map<List<ShowWareHouseResponseDTO>>(warehouses);
+
+            PagedResult<ShowWareHouseResponseDTO> dtos = new BusinessModels.PagedResult<ShowWareHouseResponseDTO>
+            {
+                Data = showWarehouseReponseList,
+                TotalCount = totalCount
+
+            };
+
+            await _cacheService.SetAsync(cacheKey, dtos, TimeSpan.FromMinutes(5));
+
+            return dtos;
+
+        }
+
+        private string BuildFilterCacheKey(WarehousesFilterRequestDTO filter)
+        {
+            return $"{WAREHOUSE_FILTER_PREFIX}n={filter.Name}|a={filter.Address}|d={filter.IsActive}|pn={filter.PageNumber}|ps={filter.PageSize}"; 
         }
     }
 }

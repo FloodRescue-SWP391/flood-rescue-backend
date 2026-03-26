@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using FloodRescue.Repositories.Entites;
 using FloodRescue.Repositories.Interface;
+using FloodRescue.Services.BusinessModels;
 using FloodRescue.Services.DTO.Request.Warehouse;
 using FloodRescue.Services.DTO.Request.WarehouseRequest;
 using FloodRescue.Services.DTO.Response.Warehouse;
@@ -26,5 +27,7 @@ namespace FloodRescue.Services.Interface.Warehouse
         public Task<List<ShowWareHouseResponseDTO>> GetAllWarehousesAsync();
 
         public Task<UpdateWarehouseResponseDTO?> UpdateWarehouseAsync(int id, UpdateWarehouseRequestDTO warehouse);
+
+        Task<PagedResult<ShowWareHouseResponseDTO>> GetFilteredWarehouseAsync(WarehousesFilterRequestDTO filter);
     }
 }

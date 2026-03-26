@@ -109,6 +109,11 @@ namespace FloodRescue.Services.Implements.UserManagement
 
             _logger.LogInformation("[UserService] Successfully updated user. UserID: {UserID}", userId);
 
+
+            await _cacheService.RemovePatternAsync($"{USER_FILTER_PREFIX}*");
+
+            _logger.LogInformation("[UserService - Redis] Cleared cached with cache key pattern {key}", USER_FILTER_PREFIX);
+
             // Lấy lại Role name để trả response (có thể đã thay đổi hoặc giữ nguyên)
             RoleEntity? currentRole = await _unitOfWork.Roles.GetAsync((RoleEntity r) => r.RoleID == user.RoleID);
 
@@ -127,6 +132,13 @@ namespace FloodRescue.Services.Implements.UserManagement
             return (response, null);
         }
 
+
+        /// <summary>
+        /// Hàm này là hàm xóa User
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="currentUserId"></param>
+        /// <returns></returns>
         public async Task<(bool Success, string? ErrorMessage)> DeactivateUserAsync(Guid userId, Guid currentUserId)
         {
             _logger.LogInformation("[UserService] DeactivateUser called for UserID: {UserID} by AdminID: {AdminID}", userId, currentUserId);
@@ -171,6 +183,11 @@ namespace FloodRescue.Services.Implements.UserManagement
 
             _logger.LogInformation("[UserService] Successfully deactivated user. UserID: {UserID}, Username: {Username}", userId, user.Username);
 
+            await _cacheService.RemovePatternAsync($"{USER_FILTER_PREFIX}*");
+
+            _logger.LogInformation("[UserService - Redis] Cleared cached with cache key pattern {key}", USER_FILTER_PREFIX);
+
+          
             return (true, null);
         }
 
