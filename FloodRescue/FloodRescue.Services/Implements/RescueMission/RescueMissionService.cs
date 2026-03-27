@@ -40,6 +40,7 @@ namespace FloodRescue.Services.Implements.RescueMission
         private readonly ICacheService _cacheService;
 
         // Cache keys
+        private const string ALL_RESCUE_REQUESTS_KEY = "rescuerequest:all";
         private const string PENDING_MISSIONS_KEY_PREFIX = "rescuemission:pending:team:";
         private const string MISSION_FILTER_PREFIX = "rescuemission:filter";
         private const string MISSION_DETAIL_KEY_PREFIX = "rescuemission:detail:";
@@ -160,7 +161,8 @@ namespace FloodRescue.Services.Implements.RescueMission
                    // _cacheService.RemovePatternAsync($"*{TEAM_MEMBERS_KEY_PREFIX}*"),
                     _cacheService.RemovePatternAsync($"*{TRACK_REQUEST_KEY_PREFIX}*"),
                     _cacheService.RemovePatternAsync($"*{RESCUE_REQUEST_FILTER_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"*{REQUEST_DETAIL_KEY_PREFIX}*")
+                    _cacheService.RemovePatternAsync($"*{REQUEST_DETAIL_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"{ALL_RESCUE_REQUESTS_KEY}*")
                 );
 
                 _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix in rescue request {prefix1}, {prefix2}, {prefix3}, {prefix4}", TRACK_REQUEST_KEY_PREFIX, MISSION_FILTER_PREFIX, RESCUE_REQUEST_FILTER_PREFIX, REQUEST_DETAIL_KEY_PREFIX);
@@ -386,7 +388,8 @@ namespace FloodRescue.Services.Implements.RescueMission
                   // _cacheService.RemovePatternAsync($"*{TEAM_MEMBERS_KEY_PREFIX}*"),
                    _cacheService.RemovePatternAsync($"*{TRACK_REQUEST_KEY_PREFIX}*"),
                    _cacheService.RemovePatternAsync($"*{RESCUE_REQUEST_FILTER_PREFIX}*"),
-                   _cacheService.RemovePatternAsync($"*{REQUEST_DETAIL_KEY_PREFIX}*")
+                   _cacheService.RemovePatternAsync($"*{REQUEST_DETAIL_KEY_PREFIX}*"),
+                   _cacheService.RemovePatternAsync($"{ALL_RESCUE_REQUESTS_KEY}*")
                );
 
                 _logger.LogInformation("[RescueMissionService - Redis] Cleared filter list cache for prefix in rescue request {prefix1}, {prefix2}, {prefix3}, {prefix4}", TRACK_REQUEST_KEY_PREFIX, MISSION_FILTER_PREFIX, RESCUE_REQUEST_FILTER_PREFIX, REQUEST_DETAIL_KEY_PREFIX);
