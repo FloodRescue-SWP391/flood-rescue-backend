@@ -6,6 +6,7 @@ namespace FloodRescue.Services.DTO.Request.IncidentReportRequest
     public class IncidentFilterDTO
     {
         public List<string>? Statuses { get; set; }
+        public Guid? RescueTeamID { get; set; }
         public DateTime? CreatedFromDate { get; set; }
         public DateTime? CreatedToDate { get; set; }
         public DateTime? ResolvedFromDate { get; set; }
