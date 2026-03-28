@@ -268,7 +268,7 @@ namespace FloodRescue.Services.Implements.IncidentReport
                 _logger.LogInformation("[IncidentReportService] RescueTeam {TeamID} - {TeamName} set to Available", rescueTeam.RescueTeamID, rescueTeam.TeamName);
 
                 // Update RescueRequest: Status = Processing
-                rescueRequest.Status = RescueRequestSettings.PROCESSING_STATUS;
+                rescueRequest.Status = RescueRequestSettings.PENDING_STATUS;
 
                 _logger.LogInformation("[IncidentReportService] RescueRequest {RequestID} set to Processing", rescueRequest.RescueRequestID);
 

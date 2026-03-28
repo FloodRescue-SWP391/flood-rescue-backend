@@ -11,6 +11,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace FloodRescue.Services.Implements.Kafka
@@ -59,6 +60,8 @@ namespace FloodRescue.Services.Implements.Kafka
                     _logger.LogInformation("[TeamAcceptedHandler - SignalR] Sent TeamAcceptedNotification to Coordinator {CoordinatorID} for RescueRequest {RescueRequestID}", acceptedMessage.CoordinatorID, acceptedMessage.RescueRequestID);
                 }
 
+
+                await _realtimeNotificationService.SendToGroupAsync(groupName: GroupSettings.MANAGER_GROUP, method: "ReceiveOrderRespone", message: notification);
 
                 await _realtimeNotificationService.SendToGroupAsync(groupName: GroupSettings.RESCUE_COORDINATOR_GROUP, method: "ReceiveTeamResponse", message: notification);
 
