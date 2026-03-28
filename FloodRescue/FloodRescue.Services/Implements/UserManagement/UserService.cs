@@ -110,7 +110,7 @@ namespace FloodRescue.Services.Implements.UserManagement
             _logger.LogInformation("[UserService] Successfully updated user. UserID: {UserID}", userId);
 
 
-            await _cacheService.RemovePatternAsync($"{USER_FILTER_PREFIX}*");
+            await _cacheService.RemovePatternAsync($"{USER_FILTER_PREFIX}");
 
             _logger.LogInformation("[UserService - Redis] Cleared cached with cache key pattern {key}", USER_FILTER_PREFIX);
 
@@ -183,7 +183,7 @@ namespace FloodRescue.Services.Implements.UserManagement
 
             _logger.LogInformation("[UserService] Successfully deactivated user. UserID: {UserID}, Username: {Username}", userId, user.Username);
 
-            await _cacheService.RemovePatternAsync($"{USER_FILTER_PREFIX}*");
+            await _cacheService.RemovePatternAsync($"{USER_FILTER_PREFIX}");
 
             _logger.LogInformation("[UserService - Redis] Cleared cached with cache key pattern {key}", USER_FILTER_PREFIX);
 

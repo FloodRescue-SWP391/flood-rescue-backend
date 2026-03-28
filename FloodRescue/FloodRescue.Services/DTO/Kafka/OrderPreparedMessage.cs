@@ -11,6 +11,7 @@ namespace FloodRescue.Services.DTO.Kafka
         public Guid? ManagerID { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime? PreparedTime { get; set; }
+        public string WarehouseAddress { get; set; } = string.Empty;
         public List<OrderPreparedItemMessage> Items { get; set; } = new();
     }
 
@@ -18,5 +19,6 @@ namespace FloodRescue.Services.DTO.Kafka
     {
         public int ReliefItemID { get; set; }
         public int Quantity { get; set; }
+        public string WarehouseAddress { get; set; } = string.Empty;
     }
 }

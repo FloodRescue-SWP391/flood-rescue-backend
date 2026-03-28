@@ -55,9 +55,9 @@ namespace FloodRescue.Services.Implements.Warehouse
             CreateWarehouseResponseDTO responseDTO = _mapper.Map<CreateWarehouseResponseDTO>(warehouse);
 
             await Task.WhenAll(
-                _cacheService.RemovePatternAsync($"{ALL_WAREHOUSES_KEY}*"),
-                _cacheService.RemovePatternAsync($"{WAREHOUSE_KEY_PREFIX}*"),
-                _cacheService.RemovePatternAsync($"{WAREHOUSE_FILTER_PREFIX}*")
+                _cacheService.RemovePatternAsync($"{ALL_WAREHOUSES_KEY}"),
+                _cacheService.RemovePatternAsync($"{WAREHOUSE_KEY_PREFIX}"),
+                _cacheService.RemovePatternAsync($"{WAREHOUSE_FILTER_PREFIX}")
             );
 
             _logger.LogInformation("[WarehouseService - Redis] Cleared cache for All Warehouses list.");
@@ -87,9 +87,9 @@ namespace FloodRescue.Services.Implements.Warehouse
                 _logger.LogInformation("[WarehouseService - Sql Server] Successfully soft-deleted Warehouse ID: {WarehouseId} in database.", warehouseId);
 
                 await Task.WhenAll(
-                  _cacheService.RemovePatternAsync($"{ALL_WAREHOUSES_KEY}*"),
-                  _cacheService.RemovePatternAsync($"{WAREHOUSE_KEY_PREFIX}*"),
-                  _cacheService.RemovePatternAsync($"{WAREHOUSE_FILTER_PREFIX}*")
+                  _cacheService.RemovePatternAsync($"{ALL_WAREHOUSES_KEY}"),
+                  _cacheService.RemovePatternAsync($"{WAREHOUSE_KEY_PREFIX}"),
+                  _cacheService.RemovePatternAsync($"{WAREHOUSE_FILTER_PREFIX}")
               );
 
                 _logger.LogInformation("[WarehouseService - Redis] Cleared cache for Warehouse ID: {WarehouseId} and List.", warehouseId);
@@ -187,9 +187,9 @@ namespace FloodRescue.Services.Implements.Warehouse
                 _logger.LogInformation("[WarehouseService - Sql Server] Successfully updated Warehouse ID: {WarehouseId} in database.", id);
 
                 await Task.WhenAll(
-                 _cacheService.RemovePatternAsync($"{ALL_WAREHOUSES_KEY}*"),
-                 _cacheService.RemovePatternAsync($"{WAREHOUSE_KEY_PREFIX}*"),
-                 _cacheService.RemovePatternAsync($"{WAREHOUSE_FILTER_PREFIX}*")
+                 _cacheService.RemovePatternAsync($"{ALL_WAREHOUSES_KEY}"),
+                 _cacheService.RemovePatternAsync($"{WAREHOUSE_KEY_PREFIX}"),
+                 _cacheService.RemovePatternAsync($"{WAREHOUSE_FILTER_PREFIX}")
                 );
 
                 _logger.LogInformation("[WarehouseService - Redis] Cleared cache for Warehouse ID: {WarehouseId} and List.", id);

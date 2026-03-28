@@ -447,15 +447,15 @@ namespace FloodRescue.Services.Implements.IncidentReport
 
                 // Xóa cache pending incidents vì có incident mới
                 await Task.WhenAll(
-                     _cacheService.RemovePatternAsync($"{INCIDENT_HISTORY_KEY}*"),
-                     _cacheService.RemovePatternAsync($"{PENDING_INCIDENTS_KEY}*"),
-                     _cacheService.RemovePatternAsync($"{INCIDENT_FILTER_PREFIX}*"),
-                     _cacheService.RemovePatternAsync($"{INCIDENT_DETAIL_KEY_PREFIX}*"),
+                     _cacheService.RemovePatternAsync($"{INCIDENT_HISTORY_KEY}"),
+                     _cacheService.RemovePatternAsync($"{PENDING_INCIDENTS_KEY}"),
+                     _cacheService.RemovePatternAsync($"{INCIDENT_FILTER_PREFIX}"),
+                     _cacheService.RemovePatternAsync($"{INCIDENT_DETAIL_KEY_PREFIX}"),
 
 
-                     _cacheService.RemovePatternAsync($"{PENDING_MISSIONS_KEY_PREFIX}*"),
-                     _cacheService.RemovePatternAsync($"{MISSION_FILTER_PREFIX}*"),
-                     _cacheService.RemovePatternAsync($"{MISSION_DETAIL_KEY_PREFIX}*")
+                     _cacheService.RemovePatternAsync($"{PENDING_MISSIONS_KEY_PREFIX}"),
+                     _cacheService.RemovePatternAsync($"{MISSION_FILTER_PREFIX}"),
+                     _cacheService.RemovePatternAsync($"{MISSION_DETAIL_KEY_PREFIX}")
 
                  );
 
