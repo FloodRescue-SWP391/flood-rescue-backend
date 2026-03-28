@@ -78,12 +78,24 @@ namespace FloodRescue.Services.Implements.Auth
         public async Task<(RegisterResponseDTO? Data,string? ErrorMessage)> RegisterAsync(RegisterRequestDTO request)
         {
             _logger.LogInformation("[AuthService] Registering new user. Username: {Username}", request.Username);
+
+           
+
             // 1. Check if username already exists
             var existingUserName = await _unitOfWork.Users.GetAsync(u => u.Username == request.Username && !u.IsDeleted);
             if (existingUserName != null)
             {
                 _logger.LogWarning("[AuthService - Sql Server] Register failed. Username '{Username}' already exists.", request.Username);
                 return (null, "Username already exists");
+            }
+
+
+            // Check RescueTeam if has leader already
+            var leader = await _unitOfWork.RescueTeamMembers.GetAsync(rtm => rtm.RescueTeamID == request.RescueTeamID && rtm.IsLeader);
+            if (leader != null)
+            {
+                _logger.LogInformation("[AuthService - Sql Server] Register failed. Leader in team {leader} has already exists", leader.RescueTeamID);
+                return (null, "Leader already exists");
             }
 
             //  2. Check if phone number already exists

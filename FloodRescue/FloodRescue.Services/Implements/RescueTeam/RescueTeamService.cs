@@ -49,10 +49,10 @@ namespace FloodRescue.Services.Implements.RescueTeam
             _logger.LogInformation("[RescueTeamService - Sql Server] Successfully created Rescue Team with ID: {RescueTeamId}", rescueTeam.RescueTeamID);
 
             await Task.WhenAll(
-                  _cacheService.RemovePatternAsync($"{RESCUETEAM_FILTER_PREFIX}*"),
-                  _cacheService.RemovePatternAsync($"{ALL_RESCUETEAMS_KEY}*"),
-                  _cacheService.RemovePatternAsync($"{RESCUETEAM_KEY_PREFIX}*"),
-                  _cacheService.RemovePatternAsync($"{RESCUETEAM_MEMBER_PREFIX}*")
+                  _cacheService.RemovePatternAsync($"{RESCUETEAM_FILTER_PREFIX}"),
+                  _cacheService.RemovePatternAsync($"{ALL_RESCUETEAMS_KEY}"),
+                  _cacheService.RemovePatternAsync($"{RESCUETEAM_KEY_PREFIX}"),
+                  _cacheService.RemovePatternAsync($"{RESCUETEAM_MEMBER_PREFIX}")
             );
           
             _logger.LogInformation("[RescueTeamService - Redis] Cleared cache for Rescue Teams.");
@@ -74,10 +74,10 @@ namespace FloodRescue.Services.Implements.RescueTeam
                 await _unitOfWork.SaveChangesAsync();
                 _logger.LogInformation("[RescueTeamService - Sql Server] Successfully deleted Rescue Team ID: {RescueTeamId}", rescueTeamId);
                 await Task.WhenAll(
-                 _cacheService.RemovePatternAsync($"{RESCUETEAM_FILTER_PREFIX}*"),
-                 _cacheService.RemovePatternAsync($"{ALL_RESCUETEAMS_KEY}*"),
-                 _cacheService.RemovePatternAsync($"{RESCUETEAM_KEY_PREFIX}*"),
-                 _cacheService.RemovePatternAsync($"{RESCUETEAM_MEMBER_PREFIX}*")
+                 _cacheService.RemovePatternAsync($"{RESCUETEAM_FILTER_PREFIX}"),
+                 _cacheService.RemovePatternAsync($"{ALL_RESCUETEAMS_KEY}"),
+                 _cacheService.RemovePatternAsync($"{RESCUETEAM_KEY_PREFIX}"),
+                 _cacheService.RemovePatternAsync($"{RESCUETEAM_MEMBER_PREFIX}")
            );
 
                 _logger.LogInformation("[RescueTeamService - Redis] Cleared cache for Rescue Teams.");
@@ -153,10 +153,10 @@ namespace FloodRescue.Services.Implements.RescueTeam
                 _logger.LogInformation("[RescueTeamService - Sql Server] Successfully updated Rescue Team ID: {RescueTeamId} in database.", rescueTeamId);
 
                 await Task.WhenAll(
-                  _cacheService.RemovePatternAsync($"{RESCUETEAM_FILTER_PREFIX}*"),
-                  _cacheService.RemovePatternAsync($"{ALL_RESCUETEAMS_KEY}*"),
-                  _cacheService.RemovePatternAsync($"{RESCUETEAM_KEY_PREFIX}*"),
-                  _cacheService.RemovePatternAsync($"{RESCUETEAM_MEMBER_PREFIX}*")
+                  _cacheService.RemovePatternAsync($"{RESCUETEAM_FILTER_PREFIX}"),
+                  _cacheService.RemovePatternAsync($"{ALL_RESCUETEAMS_KEY}"),
+                  _cacheService.RemovePatternAsync($"{RESCUETEAM_KEY_PREFIX}"),
+                  _cacheService.RemovePatternAsync($"{RESCUETEAM_MEMBER_PREFIX}")
             );
 
                 _logger.LogInformation("[RescueTeamService - Redis] Cleared cache for Rescue Teams.");
