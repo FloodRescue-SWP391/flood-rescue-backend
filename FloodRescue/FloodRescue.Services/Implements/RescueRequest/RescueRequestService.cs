@@ -172,11 +172,11 @@ namespace FloodRescue.Services.Implements.RescueRequest
 
                 // xóa cache toàn bộ khi có yêu cầu mới
                 await Task.WhenAll(
-                    _cacheService.RemovePatternAsync($"{ALL_RESCUE_REQUESTS_KEY}*"),
-                    _cacheService.RemovePatternAsync($"{RESCUE_REQUEST_KEY_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"{TRACK_REQUEST_KEY_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"{RESCUE_REQUEST_FILTER_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"{REQUEST_DETAIL_KEY_PREFIX}*")
+                    _cacheService.RemovePatternAsync($"{ALL_RESCUE_REQUESTS_KEY}"),
+                    _cacheService.RemovePatternAsync($"{RESCUE_REQUEST_KEY_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{TRACK_REQUEST_KEY_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{RESCUE_REQUEST_FILTER_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{REQUEST_DETAIL_KEY_PREFIX}")
                 );
 
 

@@ -43,7 +43,7 @@ namespace FloodRescue.Services.Implements.ReliefOrder
         private const string MISSION_FILTER_PREFIX = "rescuemission:filter";
         private const string MISSION_DETAIL_KEY_PREFIX = "rescuemission:detail:";
 
-
+        private const string ALL_RESCUE_REQUESTS_KEY = "rescuerequest:all";
         private const string TRACK_REQUEST_KEY_PREFIX = "rescuerequest:track:";
         private const string RESCUE_REQUEST_FILTER_PREFIX = "rescuerequest:filter:";
         private const string REQUEST_DETAIL_KEY_PREFIX = "rescuerequest:detail:";
@@ -142,17 +142,18 @@ namespace FloodRescue.Services.Implements.ReliefOrder
                 _logger.LogInformation("[ReliefOrderService - Kafka Consumer] Kafka message sent to topic {Topic}", KafkaSettings.RELIEF_ORDER_CREATED_TOPIC);
 
                 await Task.WhenAll(
-                    _cacheService.RemovePatternAsync($"{PENDING_ORDERS_CACHE_KEY}*"),
-                    _cacheService.RemovePatternAsync($"{ORDER_DETAIL_KEY_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"{ORDER_FILTER_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"{PENDING_ORDERS_CACHE_KEY}"),
+                    _cacheService.RemovePatternAsync($"{ORDER_DETAIL_KEY_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{ORDER_FILTER_PREFIX}"),
 
-                     _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"*{MISSION_FILTER_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"*{MISSION_DETAIL_KEY_PREFIX}*"),
+                     _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{MISSION_FILTER_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{MISSION_DETAIL_KEY_PREFIX}"),
                     // _cacheService.RemovePatternAsync($"*{TEAM_MEMBERS_KEY_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"*{TRACK_REQUEST_KEY_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"*{RESCUE_REQUEST_FILTER_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"*{REQUEST_DETAIL_KEY_PREFIX}*")
+                    _cacheService.RemovePatternAsync($"{TRACK_REQUEST_KEY_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{RESCUE_REQUEST_FILTER_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{REQUEST_DETAIL_KEY_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{ALL_RESCUE_REQUESTS_KEY}")
                 );
 
                 _logger.LogInformation("[ReliefOrderService - Redis] Cleared filter list cache for prefix in rescue request {prefix1}, {prefix2}, {prefix3}, {prefix4}", TRACK_REQUEST_KEY_PREFIX, MISSION_FILTER_PREFIX, RESCUE_REQUEST_FILTER_PREFIX, REQUEST_DETAIL_KEY_PREFIX);
@@ -273,19 +274,25 @@ namespace FloodRescue.Services.Implements.ReliefOrder
 
             await _unitOfWork.BeginTransactionAsync();
 
+            List<OrderPreparedItemMessage> itemMessages = new List<OrderPreparedItemMessage>();
+            List<ReliefItemDetailsTracking> trackingLists = new List<ReliefItemDetailsTracking>();
+
             try
             {
                 // Set ManagerID from JWT token
                 reliefOrder.ManagerID = managerID;
 
                 // Loop through items and process inventory
+                // Trong request là 1 mảng Items chứ danh sách những món Relief Item
                 foreach (var item in request.Items)
                 {
                     _logger.LogInformation("[ReliefOrderService] Processing item ReliefItemID: {ItemID} - Quantity: {Quantity}", item.ReliefItemID, item.Quantity);
 
                     // Check inventory
+                    // Trong inventory có chứa warehouse nên join qua để lấy địa chỉ 
+                    // Tìm trong tồn kho lấy item tương đương với 1 món Relief Item đó ra để trừ hay cộng tồn kho đó vô
                     InventoryEntity? inventory = await _unitOfWork.Inventories.GetAsync(
-                        inv => inv.ReliefItemID == item.ReliefItemID);
+                        inv => inv.ReliefItemID == item.ReliefItemID, includes: inv => inv.Warehouse!);
 
                     if (inventory == null)
                     {
@@ -316,8 +323,27 @@ namespace FloodRescue.Services.Implements.ReliefOrder
                         ReliefItemID = item.ReliefItemID,
                         Quantity = item.Quantity
                     };
-
+                
                     await _unitOfWork.ReliefOrderDetails.AddAsync(orderDetail);
+
+                    string warehouseAddress = inventory.Warehouse!.Address!;
+
+                    OrderPreparedItemMessage itemMessage = new OrderPreparedItemMessage
+                    {
+                        ReliefItemID = item.ReliefItemID,
+                        Quantity = item.Quantity,
+                        WarehouseAddress = warehouseAddress,
+                    };
+
+                    ReliefItemDetailsTracking trackItem = new ReliefItemDetailsTracking
+                    {
+                        ReliefItemID =  item.ReliefItemID,
+                        Quantity = item.Quantity,
+                        WarehouseAddress = warehouseAddress,
+                    };
+
+                    itemMessages.Add(itemMessage);
+                    trackingLists.Add(trackItem);
 
                     _logger.LogInformation("[ReliefOrderService] ReliefOrderDetail saved for ReliefItemID: {ItemID}", item.ReliefItemID);
                 }
@@ -334,6 +360,27 @@ namespace FloodRescue.Services.Implements.ReliefOrder
 
                 _logger.LogInformation("[ReliefOrderService] Transaction committed successfully for ReliefOrderID: {ID}", reliefOrder.ReliefOrderID);
 
+                await Task.WhenAll(
+                  _cacheService.RemovePatternAsync($"{PENDING_ORDERS_CACHE_KEY}"),
+                  _cacheService.RemovePatternAsync($"{ORDER_DETAIL_KEY_PREFIX}"),
+                  _cacheService.RemovePatternAsync($"{ORDER_FILTER_PREFIX}"),
+
+                   _cacheService.RemoveAsync($"{PENDING_MISSIONS_KEY_PREFIX}"),
+                  _cacheService.RemovePatternAsync($"{MISSION_FILTER_PREFIX}"),
+                  _cacheService.RemovePatternAsync($"{MISSION_DETAIL_KEY_PREFIX}"),
+                  // _cacheService.RemovePatternAsync($"*{TEAM_MEMBERS_KEY_PREFIX}*"),
+                  _cacheService.RemovePatternAsync($"{TRACK_REQUEST_KEY_PREFIX}"),
+                  _cacheService.RemovePatternAsync($"{RESCUE_REQUEST_FILTER_PREFIX}"),
+                  _cacheService.RemovePatternAsync($"{REQUEST_DETAIL_KEY_PREFIX}"),
+                  _cacheService.RemovePatternAsync($"{ALL_RESCUE_REQUESTS_KEY}")
+              );
+
+                _logger.LogInformation("[ReliefOrderService - Redis] Cleared filter list cache for prefix in rescue request {prefix1}, {prefix2}, {prefix3}, {prefix4}", TRACK_REQUEST_KEY_PREFIX, MISSION_FILTER_PREFIX, RESCUE_REQUEST_FILTER_PREFIX, REQUEST_DETAIL_KEY_PREFIX);
+
+                _logger.LogInformation("[ReliefOrderService - Redis] Cleared filter list cache for prefix in rescue mission {prefix1}, {prefix2}, {prefix3}", MISSION_FILTER_PREFIX, MISSION_FILTER_PREFIX, MISSION_DETAIL_KEY_PREFIX);
+
+                _logger.LogInformation("[ReliefOrderService - Redis] Cleared cache with cache key pattern {prefix1}, {prefix2}, {prefix3}", PENDING_ORDERS_CACHE_KEY, ORDER_DETAIL_KEY_PREFIX, ORDER_FILTER_PREFIX);
+
                 // Kafka message after commit
                 var kafkaMessage = new OrderPreparedMessage
                 {
@@ -343,11 +390,7 @@ namespace FloodRescue.Services.Implements.ReliefOrder
                     ManagerID = reliefOrder.ManagerID,
                     Status = reliefOrder.Status,
                     PreparedTime = reliefOrder.PreparedTime,
-                    Items = request.Items.Select(i => new OrderPreparedItemMessage
-                    {
-                        ReliefItemID = i.ReliefItemID,
-                        Quantity = i.Quantity
-                    }).ToList()
+                    Items = itemMessages,
                 };
 
                 await _kafkaProducer.ProduceAsync(
@@ -357,7 +400,11 @@ namespace FloodRescue.Services.Implements.ReliefOrder
 
                 _logger.LogInformation("[ReliefOrderService - Kafka Producer] Kafka message sent to topic {Topic}", KafkaSettings.ORDER_PREPARED_TOPIC);
 
-                return _mapper.Map<ReliefOrderResponseDTO>(reliefOrder);
+                ReliefOrderResponseDTO response = _mapper.Map<ReliefOrderResponseDTO>(reliefOrder);
+
+                response.ItemTrackings = trackingLists;
+
+                return response;
             }
             catch (InvalidOperationException)
             {

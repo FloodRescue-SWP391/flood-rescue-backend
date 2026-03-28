@@ -1,3 +1,4 @@
+using FloodRescue.Services.DTO.Kafka;
 using System;
 
 namespace FloodRescue.Services.DTO.SignalR
@@ -9,6 +10,8 @@ namespace FloodRescue.Services.DTO.SignalR
         public Guid? RescueTeamID { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime? PreparedTime { get; set; }
+        public List<OrderPreparedMessage> OrderMessages { get; set; } = new List<OrderPreparedMessage>();
         public string Message { get; set; } = string.Empty;
     }
+
 }

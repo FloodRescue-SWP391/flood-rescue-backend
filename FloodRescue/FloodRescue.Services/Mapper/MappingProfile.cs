@@ -21,6 +21,7 @@ using FloodRescue.Services.DTO.Response.Warehouse;
 using FloodRescue.Services.DTO.SignalR;
 using System;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -203,7 +204,8 @@ namespace FloodRescue.Services.Mapper
 
 
             // mapper OrderPreparedMessage -> OrderPreparedNotification
-            CreateMap<OrderPreparedMessage, OrderPreparedNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
+            CreateMap<OrderPreparedMessage, OrderPreparedNotification>().ForMember(dest => dest.Message, opt => opt.Ignore())
+                                                 .ForMember(dest => dest.OrderMessages, opt => opt.MapFrom(src => src.Items));
 
             // mapper DeliveryStartedMessage -> DeliveryStartedNotification
             CreateMap<DeliveryStartedMessage, DeliveryStartedNotification>().ForMember(dest => dest.Message, opt => opt.Ignore());
