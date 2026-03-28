@@ -27,6 +27,8 @@ namespace FloodRescue.Services.DTO.Response.RescueMissionResponse
         public Guid RescueRequestID { get; set; }
         public string? CitizenName { get; set; }
         public string CitizenPhone { get; set; } = string.Empty;
+        public string CitizenEmail { get; set; } = string.Empty;
+        public DateTime CreatedTime { get; set; }
         public string? Address { get; set; }
         public double LocationLatitude { get; set; }
         public double LocationLongitude { get; set; }

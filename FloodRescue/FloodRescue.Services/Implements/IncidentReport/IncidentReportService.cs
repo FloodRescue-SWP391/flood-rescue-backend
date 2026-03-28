@@ -46,6 +46,13 @@ namespace FloodRescue.Services.Implements.IncidentReport
         private const string PENDING_MISSIONS_KEY_PREFIX = "rescuemission:pending:team:";
         private const string MISSION_FILTER_PREFIX = "rescuemission:filter";
         private const string MISSION_DETAIL_KEY_PREFIX = "rescuemission:detail:";
+
+
+        private const string ALL_RESCUE_REQUESTS_KEY = "rescuerequest:all";
+        private const string TRACK_REQUEST_KEY_PREFIX = "rescuerequest:track:";
+        private const string RESCUE_REQUEST_FILTER_PREFIX = "rescuerequest:filter:";
+        private const string REQUEST_DETAIL_KEY_PREFIX = "rescuerequest:detail:";
+
         public IncidentReportService(IUnitOfWork unitOfWork, ILogger<IncidentReportService> logger, ICacheService cacheService, IKafkaProducerService kafkaProducer, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
@@ -293,16 +300,20 @@ namespace FloodRescue.Services.Implements.IncidentReport
 
                 // Xóa cache vì dữ liệu đã thay đổi
                 await Task.WhenAll(
-                    _cacheService.RemovePatternAsync($"{INCIDENT_HISTORY_KEY}*"),
-                    _cacheService.RemovePatternAsync($"{PENDING_INCIDENTS_KEY}*"),
-                    _cacheService.RemovePatternAsync($"{INCIDENT_FILTER_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"{INCIDENT_DETAIL_KEY_PREFIX}*"),
+                    _cacheService.RemovePatternAsync($"{INCIDENT_HISTORY_KEY}"),
+                    _cacheService.RemovePatternAsync($"{PENDING_INCIDENTS_KEY}"),
+                    _cacheService.RemovePatternAsync($"{INCIDENT_FILTER_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{INCIDENT_DETAIL_KEY_PREFIX}"),
 
 
-                    _cacheService.RemovePatternAsync($"{PENDING_MISSIONS_KEY_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"{MISSION_FILTER_PREFIX}*"),
-                    _cacheService.RemovePatternAsync($"{MISSION_DETAIL_KEY_PREFIX}*")
+                    _cacheService.RemovePatternAsync($"{PENDING_MISSIONS_KEY_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{MISSION_FILTER_PREFIX}"),
+                    _cacheService.RemovePatternAsync($"{MISSION_DETAIL_KEY_PREFIX}"),
 
+                     _cacheService.RemovePatternAsync($"{ALL_RESCUE_REQUESTS_KEY}"),
+                     _cacheService.RemovePatternAsync($"{TRACK_REQUEST_KEY_PREFIX}"),
+                     _cacheService.RemovePatternAsync($"{RESCUE_REQUEST_FILTER_PREFIX}"),
+                     _cacheService.RemovePatternAsync($"{REQUEST_DETAIL_KEY_PREFIX}")
                 );
 
                 _logger.LogInformation("[IncidentReportService - Redis] Cleared cache for rescue mission");
@@ -446,16 +457,27 @@ namespace FloodRescue.Services.Implements.IncidentReport
                 _logger.LogInformation("[IncidentReportService] Transaction committed for ReportIncident. MissionID: {MissionID}", request.RescueMissionID);
 
                 // Xóa cache pending incidents vì có incident mới
+                /*
+                    private const string ALL_RESCUE_REQUESTS_KEY = "rescuerequest:all";
+                    private const string TRACK_REQUEST_KEY_PREFIX = "rescuerequest:track:";
+                    private const string RESCUE_REQUEST_FILTER_PREFIX = "rescuerequest:filter:";
+                    private const string REQUEST_DETAIL_KEY_PREFIX = "rescuerequest:detail:";
+                                 
+                 */
                 await Task.WhenAll(
                      _cacheService.RemovePatternAsync($"{INCIDENT_HISTORY_KEY}"),
                      _cacheService.RemovePatternAsync($"{PENDING_INCIDENTS_KEY}"),
                      _cacheService.RemovePatternAsync($"{INCIDENT_FILTER_PREFIX}"),
                      _cacheService.RemovePatternAsync($"{INCIDENT_DETAIL_KEY_PREFIX}"),
 
-
                      _cacheService.RemovePatternAsync($"{PENDING_MISSIONS_KEY_PREFIX}"),
                      _cacheService.RemovePatternAsync($"{MISSION_FILTER_PREFIX}"),
-                     _cacheService.RemovePatternAsync($"{MISSION_DETAIL_KEY_PREFIX}")
+                     _cacheService.RemovePatternAsync($"{MISSION_DETAIL_KEY_PREFIX}"),
+
+                     _cacheService.RemovePatternAsync($"{ALL_RESCUE_REQUESTS_KEY}"),
+                     _cacheService.RemovePatternAsync($"{TRACK_REQUEST_KEY_PREFIX}"),
+                     _cacheService.RemovePatternAsync($"{RESCUE_REQUEST_FILTER_PREFIX}"),
+                     _cacheService.RemovePatternAsync($"{REQUEST_DETAIL_KEY_PREFIX}")
 
                  );
 
@@ -540,6 +562,11 @@ namespace FloodRescue.Services.Implements.IncidentReport
             // Khởi tạo query bằng GetQueryable - chưa chạy xuống DB
             IQueryable<IncidentReportEntity> query = _unitOfWork.IncidentReports.GetQueryable();
 
+            if (filter.RescueTeamID.HasValue)
+            {
+                query = query.Where(ir => ir.RescueMission!.RescueTeamID == filter.RescueTeamID);
+            }
+
             // Lọc theo mảng Statuses (Multi-select filter)
             if (filter.Statuses != null && filter.Statuses.Count > 0)
             {
@@ -620,7 +647,7 @@ namespace FloodRescue.Services.Implements.IncidentReport
 
             return $"{INCIDENT_FILTER_PREFIX}s={statusKey}" +
                    $"|cf={filter.CreatedFromDate:yyyyMMdd}|ct={filter.CreatedToDate:yyyyMMdd}" +
-                   $"|rf={filter.ResolvedFromDate:yyyyMMdd}|rt={filter.ResolvedToDate:yyyyMMdd}" +
+                   $"|rf={filter.ResolvedFromDate:yyyyMMdd}|rtd={filter.ResolvedToDate:yyyyMMdd}|rt={filter.RescueTeamID}" +
                    $"|p={filter.PageNumber}|ps={filter.PageSize}";
         }
         /// <summary>
