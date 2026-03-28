@@ -169,7 +169,7 @@ namespace FloodRescue.API.Controllers
         /// GET /api/ReliefOrders/filter?statuses=Pending&amp;statuses=Prepared&amp;pageNumber=1&amp;pageSize=10
         /// </summary>
         [HttpGet("filter")]
-        [Authorize(Roles = "Inventory Manager")]
+        [Authorize(Roles = "Inventory Manager, Rescue Team Member, Rescue Coordinator")]
         public async Task<ActionResult<ApiResponse<PagedResult<ReliefOrderListResponseDTO>>>> GetFilteredOrders([FromQuery] ReliefOrderFilterDTO filter)
         {
             _logger.LogInformation("[ReliefOrdersController] GET filter relief orders called. Statuses: {Statuses}, Page: {Page}, Size: {Size}",

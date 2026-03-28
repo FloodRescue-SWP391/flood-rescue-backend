@@ -571,22 +571,62 @@ namespace FloodRescue.Services.Implements.ReliefOrder
             List<ReliefOrderDetailEntity> allDetails = await _unitOfWork.ReliefOrderDetails.GetAllAsync(
                 (ReliefOrderDetailEntity d) => orderIds.Contains(d.ReliefOrderID));
 
+
+
             // Group by OrderID để đếm tổng số loại hàng
             var totalItemsByOrder = allDetails
                 .GroupBy(d => d.ReliefOrderID)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            // Mapping sang DTO
-            List<ReliefOrderListResponseDTO> dtos = entities.Select(ro => new ReliefOrderListResponseDTO
+            // Lấy status của Rescue Mission
+            // Lấy hết ID của rescue request ra
+            var requestIds = entities.Select(ro => ro.RescueRequestID).Distinct().ToList();
+
+            //Lấy hết ID của rescue team ra
+            var teamIds = entities.Where(ro => ro.RescueTeamID.HasValue).Select(ro => ro.RescueTeamID!.Value).ToList();
+
+            //Lấy Mission thông qua team id và rescue request id thông qua team
+            var relatedMission = await _unitOfWork.RescueMissions.GetQueryable()
+                                .Where(m => requestIds.Contains(m.RescueRequestID)
+                                && teamIds.Contains(m.RescueTeamID)
+                                && !m.IsDeleted)
+                                .Select(m => new { m.RescueRequestID, m.RescueTeamID, m.Status })
+                                .ToListAsync();
+
+            var missionStatusDict = relatedMission.GroupBy(m => new { m.RescueRequestID, m.RescueTeamID })
+                                    .ToDictionary(g => g.Key, g => g.FirstOrDefault()?.Status);
+
+            List<ReliefOrderListResponseDTO> dtos = entities.Select(ro =>
             {
-                ReliefOrderID = ro.ReliefOrderID,
-                Status = ro.Status,
-                CreatedTime = ro.CreatedTime,
-                PreparedTime = ro.PreparedTime,
-                PickedUpTime = ro.PickedUpTime,
-                AssignedTeamID = ro.RescueTeamID,
-                TeamName = ro.RescueTeam?.TeamName,
-                TotalItems = totalItemsByOrder.GetValueOrDefault(ro.ReliefOrderID, 0)
+                int totalItems = totalItemsByOrder.GetValueOrDefault(ro.ReliefOrderID, 0);
+
+                string? missionStatus = null;
+
+                // Đảm bảo Order đã được gán Team thì mới đi tìm Mission
+                if (ro.RescueTeamID.HasValue)
+                {
+                    // Ổ khóa của Dictionary là { Guid, Guid }
+                    // ro.RescueRequestID đã là Guid. 
+                    // ro.RescueTeamID là Guid? nên phải thêm .Value để nó thành Guid.
+                    var searchKey = new { RescueRequestID = ro.RescueRequestID, RescueTeamID = ro.RescueTeamID.Value };
+
+                    missionStatus = missionStatusDict.GetValueOrDefault(searchKey);
+                }
+
+                bool isMissionAccepted = missionStatus == "InProgress";
+
+                return new ReliefOrderListResponseDTO
+                {
+                    ReliefOrderID = ro.ReliefOrderID,
+                    Status = ro.Status,
+                    CreatedTime = ro.CreatedTime,
+                    PreparedTime = ro.PreparedTime,
+                    PickedUpTime = ro.PickedUpTime,
+                    AssignedTeamID = ro.RescueTeamID,
+                    TeamName = ro.RescueTeam?.TeamName,
+                    TotalItems = totalItems,
+                    CanPrepare = (ro.Status == "Pending" && totalItems > 0 && isMissionAccepted)
+                };
             }).ToList();
 
             // Đóng gói và cache
