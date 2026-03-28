@@ -210,6 +210,7 @@ namespace FloodRescue.API.Controllers
 
 
         [HttpGet("filter")]
+        [Authorize(Roles = "Rescue Coordinator,Admin,Rescue Team Member")]
         public async Task<ActionResult<ApiResponse<PagedResult<RescueMissionListResponseDTO>>>> GetFilterdMissions([FromQuery]RescueMissionFilterDTO filter)
         {
             _logger.LogInformation("[RescueMissionController] GET filter missions called. Statuses: {Statuses}, TeamID: {TeamID}, Page: {Page}, Size: {Size}",

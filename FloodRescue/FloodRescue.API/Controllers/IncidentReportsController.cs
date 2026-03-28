@@ -169,7 +169,7 @@ namespace FloodRescue.API.Controllers
         /// GET /api/incidentreports/filter?statuses=Pending&amp;statuses=Resolved&amp;pageNumber=1&amp;pageSize=10
         /// </summary>
         [HttpGet("filter")]
-        [Authorize(Roles = "Rescue Coordinator")]
+        [Authorize(Roles = "Rescue Coordinator, Rescue Team Member")]
         public async Task<ActionResult<ApiResponse<PagedResult<IncidentListResponseDTO>>>> GetFilteredIncidents([FromQuery] IncidentFilterDTO filter)
         {
             _logger.LogInformation("[IncidentReportsController] GET filter incidents called. Statuses: {Statuses}, Page: {Page}, Size: {Size}",
@@ -193,7 +193,7 @@ namespace FloodRescue.API.Controllers
         /// GET /api/incidentreports/{id}
         /// </summary>
         [HttpGet("{id:guid}")]
-        [Authorize(Roles = "Rescue Coordinator,Admin")]
+        [Authorize(Roles = "Rescue Coordinator,Admin,Rescue Team Member")]
         public async Task<ActionResult<ApiResponse<IncidentDetailResponseDTO>>> GetIncidentDetail(Guid id)
         {
             _logger.LogInformation("[IncidentReportsController] GET incident detail called with ID: {Id}", id);
