@@ -625,7 +625,7 @@ namespace FloodRescue.Services.Implements.ReliefOrder
                     AssignedTeamID = ro.RescueTeamID,
                     TeamName = ro.RescueTeam?.TeamName,
                     TotalItems = totalItems,
-                    CanPrepare = (ro.Status == "Pending" && totalItems > 0 && isMissionAccepted)
+                    CanPrepare = (ro.Status == "Pending" && isMissionAccepted)
                 };
             }).ToList();
 
