@@ -8,6 +8,7 @@ using FloodRescue.Services.DTO.Request.RescueRequest;
 using FloodRescue.Services.DTO.Request.RescueTeamRequest;
 using FloodRescue.Services.DTO.Request.User;
 using FloodRescue.Services.DTO.Request.Warehouse;
+using FloodRescue.Services.DTO.Request.WarehouseRequest;
 using FloodRescue.Services.DTO.Response.AuthResponse;
 using FloodRescue.Services.DTO.Response.Category;
 using FloodRescue.Services.DTO.Response.IncidentResponse;
@@ -66,6 +67,7 @@ namespace FloodRescue.Services.Mapper
 
             // Mapping Warehouse -> UpdateWarehouseResponseDTO
             CreateMap<Warehouse, UpdateWarehouseResponseDTO>();
+            CreateMap<UpdateWarehouseRequestDTO, Warehouse>();
 
             CreateMap<Warehouse, ShowWareHouseResponseDTO>();
 
