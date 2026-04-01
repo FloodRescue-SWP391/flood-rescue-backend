@@ -62,6 +62,8 @@ namespace FloodRescue.Services.Mapper
             //Mapping CreateWarehouseRequestDTO -> WarehouseRequest
             CreateMap<CreateWarehouseRequestDTO, Warehouse>();
 
+            CreateMap<Warehouse, CreateWarehouseResponseDTO>();
+
             // Mapping Warehouse -> UpdateWarehouseResponseDTO
             CreateMap<Warehouse, UpdateWarehouseResponseDTO>();
 
